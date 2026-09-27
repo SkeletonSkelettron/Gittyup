@@ -119,6 +119,8 @@ set(QT_MODULES
     Core5Compat
     Gui
     Network
+    Quick
+    QuickWidgets
     Widgets
     Test)
 
@@ -143,7 +145,7 @@ else()
 endif()
 
 find_package(
-  Qt6 6.4
+  Qt6 6.5
   COMPONENTS ${QT_MODULES} LinguistTools
   REQUIRED)
 if(FLATPAK)

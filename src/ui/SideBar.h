@@ -10,23 +10,55 @@
 #ifndef SIDEBAR_H
 #define SIDEBAR_H
 
+#include <QModelIndex>
 #include <QWidget>
 
 class Account;
-class TabWidget;
 class MainWindow;
+class QAbstractItemModel;
+class QMenu;
+class QQuickWidget;
+class TabWidget;
 
+// The repository sidebar. The list is drawn by qrc:/qml/SideBar.qml, which
+// reads the model and calls the invokable methods.
 class SideBar : public QWidget {
   Q_OBJECT
 
+  Q_PROPERTY(QAbstractItemModel *model READ model CONSTANT)
+
 public:
   SideBar(TabWidget *tabs, MainWindow *mainWindow, QWidget *parent = nullptr);
+  ~SideBar() override;
 
   QSize sizeHint() const override;
   QSize minimumSizeHint() const override;
 
+  QAbstractItemModel *model() const { return mModel; }
+
+  // Single click.
+  Q_INVOKABLE void activate(const QModelIndex &index);
+  // Double click.
+  Q_INVOKABLE void open(const QModelIndex &index);
+  Q_INVOKABLE void remove(const QModelIndex &index);
+  Q_INVOKABLE void showContextMenu(const QModelIndex &index, qreal x, qreal y);
+  Q_INVOKABLE void showAddMenu(qreal x, qreal y);
+  Q_INVOKABLE void showOptionsMenu(qreal x, qreal y);
+
+  // Persist the expansion state of sections and remote accounts.
+  Q_INVOKABLE bool isExpanded(const QModelIndex &index) const;
+  Q_INVOKABLE void setExpanded(const QModelIndex &index, bool expanded);
+
 private:
+  void hideAfterOpen();
   void promptToRemoveAccount(Account *account);
+
+  TabWidget *mTabs;
+  MainWindow *mMainWindow;
+  QAbstractItemModel *mModel;
+  QQuickWidget *mView;
+  QMenu *mAddMenu;
+  QMenu *mOptionsMenu;
 };
 
 #endif

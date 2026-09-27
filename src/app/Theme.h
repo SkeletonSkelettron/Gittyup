@@ -87,6 +87,10 @@ public:
   // and theme.property['color.*'] entries from the theme's .lua file.
   virtual QVariantMap editorStyleProperties() const;
 
+  // Colors for the QML parts of the interface: theme['ui'] entries from the
+  // theme's .lua file. Missing entries fall back to the widget palette.
+  virtual QVariantMap ui() const;
+
   static Theme *create(const QString &name = QString());
 
 private:

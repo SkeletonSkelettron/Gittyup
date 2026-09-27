@@ -20,7 +20,7 @@ class ThemeButton : public QPushButton {
   Q_OBJECT
 
 public:
-  enum class Theme { Default, Dark, System, Mocha };
+  enum class Theme { Default, Dark, System, Mocha, KrakenDark, KrakenLight };
 
   ThemeButton(const QString &title, const QIcon &icon,
               const QString &description, const Theme &theme,
@@ -68,6 +68,14 @@ public:
         case Theme::Mocha:
           Settings::instance()->setValue(Setting::Id::ColorTheme, "Mocha");
           break;
+        case Theme::KrakenDark:
+          Settings::instance()->setValue(Setting::Id::ColorTheme,
+                                         "Kraken Dark");
+          break;
+        case Theme::KrakenLight:
+          Settings::instance()->setValue(Setting::Id::ColorTheme,
+                                         "Kraken Light");
+          break;
       }
 
       window()->close();
@@ -108,6 +116,16 @@ ThemeDialog::ThemeDialog(QWidget *parent) : QDialog(parent) {
       tr("Catppuccin Mocha Theme"), QIcon(":/mocha.png"),
       tr("A more modern dark theme"), ThemeButton::Theme::Mocha);
 
+  ThemeButton *krakenDark =
+      new ThemeButton(tr("Kraken Dark Theme"), QIcon(":/kraken_dark.png"),
+                      tr("A flat dark theme with a teal accent"),
+                      ThemeButton::Theme::KrakenDark);
+
+  ThemeButton *krakenLight =
+      new ThemeButton(tr("Kraken Light Theme"), QIcon(":/kraken_light.png"),
+                      tr("A flat light theme with a teal accent"),
+                      ThemeButton::Theme::KrakenLight);
+
   QHBoxLayout *themeButtons1 = new QHBoxLayout; // 1th row
   themeButtons1->addWidget(native);
   themeButtons1->addWidget(dark);
@@ -116,9 +134,14 @@ ThemeDialog::ThemeDialog(QWidget *parent) : QDialog(parent) {
   themeButtons2->addWidget(system);
   themeButtons2->addWidget(mocha);
 
+  QHBoxLayout *themeButtons3 = new QHBoxLayout; // 3rd row
+  themeButtons3->addWidget(krakenDark);
+  themeButtons3->addWidget(krakenLight);
+
   QVBoxLayout *layout = new QVBoxLayout(this);
   layout->addLayout(themeButtons1);
   layout->addLayout(themeButtons2);
+  layout->addLayout(themeButtons3);
 }
 
 #include "ThemeDialog.moc"

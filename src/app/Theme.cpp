@@ -277,6 +277,8 @@ QVariantMap Theme::editorStyleProperties() const {
   return mMap.value("property").toMap();
 }
 
+QVariantMap Theme::ui() const { return mMap.value("ui").toMap(); }
+
 Theme *Theme::create(const QString &defaultName) {
   // Upgrade theme key to capital case.
   Settings *settings = Settings::instance();

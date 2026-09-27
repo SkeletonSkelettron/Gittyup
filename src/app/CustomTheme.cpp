@@ -281,11 +281,14 @@ QString CustomTheme::styleSheet() const {
   if (!fontValue.isEmpty())
     font += QString("font-style: %1;").arg(fontValue);
 
-  return text.arg(
+  text = text.arg(
       button.value("background").toMap().value("pressed").toString(),
       menubar.value("background").toString(), menubar.value("text").toString(),
       button.value("background").toMap().value("checked").toString(),
       tabbarBase, tabbarText, tabbarSelected, font);
+
+  // Themes can append their own rules with theme['stylesheet'].
+  return text + mMap.value("stylesheet").toString();
 }
 
 void CustomTheme::polish(QPalette &palette) const {
@@ -522,6 +525,8 @@ QColor CustomTheme::star() {
 QVariantMap CustomTheme::editorStyleProperties() const {
   return mMap.value("property").toMap();
 }
+
+QVariantMap CustomTheme::ui() const { return mMap.value("ui").toMap(); }
 
 #ifndef Q_OS_MAC
 void CustomTheme::polishWindow(QWindow *window) const {

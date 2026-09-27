@@ -54,7 +54,27 @@ add_library(
   TreeView.cpp
   TreeWidget.cpp
   ViewDelegate.cpp
-  ConfigKeys.cpp)
+  ConfigKeys.cpp
+  qml/QmlSupport.cpp
+  qml/QmlTheme.cpp)
+
+# QML files and icons for the tool bar and sidebar.
+file(
+  GLOB QML_ICONS
+  RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/qml/icons/*.svg)
+file(
+  GLOB QML_FILES
+  RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/qml/*.qml)
+qt_add_resources(
+  ui
+  "qml"
+  PREFIX
+  "/"
+  FILES
+  ${QML_FILES}
+  ${QML_ICONS})
 
 target_compile_definitions(ui PRIVATE BUILD_DESCRIPTION="${BUILD_DESCRIPTION}")
 
@@ -62,6 +82,7 @@ target_include_directories(ui PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 target_link_libraries(
   ui
+  PUBLIC
   conf
   cred
   dialogs
@@ -78,6 +99,8 @@ target_link_libraries(
   watcher
   Qt6::Concurrent
   Qt6::Network
+  Qt6::Quick
+  Qt6::QuickWidgets
   Qt6::Widgets)
 
 set_target_properties(ui PROPERTIES AUTOMOC ON)

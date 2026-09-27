@@ -129,6 +129,7 @@ MainWindow::MainWindow(const git::Repository &repo, QWidget *parent,
   connect(splitter, &QSplitter::splitterMoved, [this] {
     QSplitter *splitter = static_cast<QSplitter *>(centralWidget());
     mIsSideBarVisible = (splitter->sizes().first() > 0);
+    mToolBar->updateView();
   });
 
   // Create tab container.
@@ -187,6 +188,7 @@ void MainWindow::setSideBarVisible(bool visible) {
     return;
 
   mIsSideBarVisible = visible;
+  mToolBar->updateView();
 
   // Remember in settings.
   QSettings().setValue(kSidebarKey, visible);
