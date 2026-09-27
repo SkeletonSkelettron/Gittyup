@@ -226,10 +226,6 @@ QString CustomTheme::styleSheet() const {
                  "  border-radius: 4px"
                  "}"
 
-                 "CommitToolBar QToolButton {"
-                 "  background: none"
-                 "}"
-
                  "QTableView QPushButton {"
                  "  margin: 2px;"
                  "  padding: 6px"

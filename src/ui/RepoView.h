@@ -21,6 +21,7 @@
 #include "git/Submodule.h"
 #include "git/Rebase.h"
 #include "host/Account.h"
+#include <QAbstractItemModel>
 #include <QFuture>
 #include <QFutureWatcher>
 #include <QProcess>
@@ -37,9 +38,10 @@ class Location;
 class LogEntry;
 class LogView;
 class MainWindow;
-class PathspecWidget;
-class ReferenceWidget;
+class QQuickWidget;
+class RefsPanel;
 class RemoteCallbacks;
+class TreeModel;
 class ToolBar;
 struct ContributorInfo;
 
@@ -49,6 +51,10 @@ class Result;
 
 class RepoView : public QSplitter {
   Q_OBJECT
+
+  Q_PROPERTY(QString pathspec READ pathspec WRITE setPathspec NOTIFY
+                 pathspecChanged)
+  Q_PROPERTY(QAbstractItemModel *pathModel READ pathModel CONSTANT)
 
 public:
   enum ViewMode {
@@ -310,7 +316,13 @@ public:
   void refresh(bool restoreSelection);
 
   // pathspec search filter
-  void setPathspec(const QString &path);
+  QString pathspec() const { return mPathspec; }
+  Q_INVOKABLE void setPathspec(const QString &path);
+  QAbstractItemModel *pathModel() const;
+  Q_INVOKABLE void showPathContextMenu(const QString &path, qreal x, qreal y);
+
+  // Map a point in the scene of the QML page to global coordinates.
+  QPoint mapFromPage(qreal x, qreal y) const;
 
   git::Commit nextRevision(const QString &path) const;
   git::Commit previousRevision(const QString &path) const;
@@ -365,6 +377,7 @@ private slots:
 signals:
   void statusChanged(bool dirty);
   void loadingChanged(bool loading);
+  void pathspecChanged(const QString &pathspec);
 
 protected:
   void showEvent(QShowEvent *event) override;
@@ -417,11 +430,13 @@ private:
   Repository *mRemoteRepo;
   bool mRemoteRepoCached = false;
 
-  ReferenceWidget *mRefs;
-  PathspecWidget *mPathspec;
+  RefsPanel *mRefs;
+  QString mPathspec;
+  TreeModel *mPathModel;
   CommitList *mCommits;
   DetailView *mDetails;
   QWidget *mSideBar;
+  QQuickWidget *mPage;
 
   LogEntry *mLogRoot;
   LogEntry *mRebase{nullptr};

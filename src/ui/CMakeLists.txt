@@ -6,7 +6,6 @@ add_library(
   BlameMargin.cpp
   ColumnView.cpp
   CommitList.cpp
-  CommitToolBar.cpp
   CommitEditor.cpp
   ContextMenuButton.cpp
   DetailView.cpp
@@ -30,12 +29,11 @@ add_library(
   Location.cpp
   MainWindow.cpp
   MenuBar.cpp
-  PathspecWidget.cpp
   ProgressIndicator.cpp
   ReferenceList.cpp
   ReferenceView.cpp
+  RefsPanel.cpp
   ReferenceModel.cpp
-  ReferenceWidget.cpp
   RepoView.cpp
   RemoteCallbacks.cpp
   SearchField.cpp
@@ -55,6 +53,7 @@ add_library(
   TreeWidget.cpp
   ViewDelegate.cpp
   ConfigKeys.cpp
+  qml/CommitGraphItem.cpp
   qml/QmlSupport.cpp
   qml/QmlTheme.cpp)
 

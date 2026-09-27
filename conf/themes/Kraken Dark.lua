@@ -155,6 +155,9 @@ theme['tooltip']   = {
 
 theme['ui']        = {
   dark             = true,
+  base             = '#1C1F24',
+  alternate        = '#1F2228',
+  panel            = '#1F2228',
   toolbar          = '#2A2E36',
   sidebar          = '#1F2228',
   field            = '#1C1F24',

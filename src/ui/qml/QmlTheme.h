@@ -20,6 +20,9 @@ class QmlTheme : public QObject {
 
   Q_PROPERTY(bool dark READ dark CONSTANT)
 
+  Q_PROPERTY(QColor base READ base CONSTANT)
+  Q_PROPERTY(QColor alternate READ alternate CONSTANT)
+  Q_PROPERTY(QColor panel READ panel CONSTANT)
   Q_PROPERTY(QColor toolbar READ toolbar CONSTANT)
   Q_PROPERTY(QColor sidebar READ sidebar CONSTANT)
   Q_PROPERTY(QColor field READ field CONSTANT)
@@ -42,6 +45,9 @@ class QmlTheme : public QObject {
   Q_PROPERTY(QColor ahead READ ahead CONSTANT)
   Q_PROPERTY(QColor behind READ behind CONSTANT)
   Q_PROPERTY(QColor star READ star CONSTANT)
+  Q_PROPERTY(QColor added READ added CONSTANT)
+  Q_PROPERTY(QColor modified READ modified CONSTANT)
+  Q_PROPERTY(QColor deleted READ deleted CONSTANT)
 
   Q_PROPERTY(QColor tooltip READ tooltip CONSTANT)
   Q_PROPERTY(QColor tooltipText READ tooltipText CONSTANT)
@@ -51,6 +57,9 @@ public:
 
   bool dark() const { return mDark; }
 
+  QColor base() const { return color("base"); }
+  QColor alternate() const { return color("alternate"); }
+  QColor panel() const { return color("panel"); }
   QColor toolbar() const { return color("toolbar"); }
   QColor sidebar() const { return color("sidebar"); }
   QColor field() const { return color("field"); }
@@ -73,6 +82,9 @@ public:
   QColor ahead() const { return color("ahead"); }
   QColor behind() const { return color("behind"); }
   QColor star() const { return color("star"); }
+  QColor added() const { return color("added"); }
+  QColor modified() const { return color("modified"); }
+  QColor deleted() const { return color("deleted"); }
 
   QColor tooltip() const { return color("tooltip"); }
   QColor tooltipText() const { return color("tooltip_text"); }

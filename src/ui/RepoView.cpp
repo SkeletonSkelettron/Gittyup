@@ -10,15 +10,16 @@
 #include "RepoView.h"
 #include "BlameEditor.h"
 #include "CommitList.h"
-#include "CommitToolBar.h"
 #include "DetailView.h"
 #include "EditorWindow.h"
+#include "FileContextMenu.h"
 #include "History.h"
 #include "MainWindow.h"
 #include "MenuBar.h"
-#include "PathspecWidget.h"
 #include "qtsupport.h"
-#include "ReferenceWidget.h"
+#include "RefsPanel.h"
+#include "TreeModel.h"
+#include "qml/QmlSupport.h"
 #include "RemoteCallbacks.h"
 #include "SearchField.h"
 #include "DoubleTreeWidget.h"
@@ -58,6 +59,7 @@
 #include <QMessageBox>
 #include <QtNetwork>
 #include <QPushButton>
+#include <QQuickWidget>
 #include <QSettings>
 #include <QShortcut>
 #include <QTimeLine>
@@ -73,7 +75,7 @@
 
 namespace {
 
-const QString kSplitterKey = "reposplitter";
+const QString kSplitterKey = "reposplitter2";
 const QString kMsgFmt = "%1 - <span style='color: gray'>%2</span>";
 
 QString msg(const git::Commit &commit) {
@@ -217,32 +219,9 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
       mHistory->clean();
   });
 
-  mSideBar = new QWidget(this);
-  QVBoxLayout *sidebarLayout = new QVBoxLayout(mSideBar);
-  sidebarLayout->setContentsMargins(0, 0, 0, 0);
-  sidebarLayout->setSpacing(0);
-
-  QWidget *header = new QWidget(mSideBar);
-  QVBoxLayout *headerLayout = new QVBoxLayout(header);
-  headerLayout->setContentsMargins(4, 4, 4, 4);
-  headerLayout->setSpacing(4);
-  sidebarLayout->addWidget(header);
-
-  // Hide references when commit list is filtered.
-  connect(searchField, &QLineEdit::textChanged, header,
-          [header](const QString &text) {
-            header->setVisible(text.simplified().isEmpty());
-          });
-
-  // Create header tool bar.
-  CommitToolBar *commitToolBar = new CommitToolBar(header);
-  headerLayout->addWidget(commitToolBar);
-
-  // Create reference list.
-  mRefs = new ReferenceWidget(repo, ReferenceView::AllRefs, header);
-  headerLayout->addWidget(mRefs);
-
-  connect(mRefs, &ReferenceWidget::referenceChanged, menuBar,
+  // Create reference panel.
+  mRefs = new RefsPanel(repo, this);
+  connect(mRefs, &RefsPanel::referenceChanged, menuBar,
           &MenuBar::updateBranch);
 
   // Select HEAD branch when it changes.
@@ -257,37 +236,43 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
             }
           });
 
-  // Create pathspec chooser.
-  mPathspec = new PathspecWidget(repo, header);
-  headerLayout->addWidget(mPathspec);
+  // Create the model of the pathspec file tree.
+  mPathModel = new TreeModel(repo, this);
+  if (git::Reference head = repo.head())
+    mPathModel->setTree(head.target().tree());
+  connect(notifier, &git::RepositoryNotifier::referenceUpdated, this,
+          [this](const git::Reference &ref) {
+            if (ref.isValid() && ref.isHead())
+              mPathModel->setTree(ref.target().tree());
+          });
 
   // Create commit list.
-  mCommits = new CommitList(mIndex, mSideBar);
-  sidebarLayout->addWidget(mCommits);
+  mCommits = new CommitList(mIndex, this);
 
-  connect(commitToolBar, &CommitToolBar::settingsChanged, mCommits,
-          &CommitList::resetSettings);
-  connect(mRefs, &ReferenceWidget::referenceChanged, mCommits,
+  connect(mRefs, &RefsPanel::referenceChanged, mCommits,
           &CommitList::setReference);
-  connect(mRefs, &ReferenceWidget::referenceSelected, mCommits,
+  connect(mRefs, &RefsPanel::referenceSelected, mCommits,
           &CommitList::selectReference);
+  connect(mRefs, &RefsPanel::stashSelected, mCommits, &CommitList::selectRow);
   connect(mCommits, &CommitList::statusChanged, this, &RepoView::statusChanged);
   connect(mCommits, &CommitList::loadingChanged, this,
           &RepoView::loadingChanged);
-
-  // Respond to pathspec change.
-  connect(mPathspec, &PathspecWidget::pathspecChanged, this,
-          [this](const QString &pathspec) {
-            git::Config config = mRepo.appConfig();
-            mCommits->setPathspec(pathspec,
-                                  config.value<bool>("index.enable", true));
-          });
 
   // Respond to search query change.
   connect(searchField, &SearchField::textChanged, mCommits,
           &CommitList::setFilter);
   connect(mIndex, &Index::indexReset, this,
           [this, searchField] { mCommits->setFilter(searchField->text()); });
+
+  // Create the QML page with the reference panel and the commit graph.
+  mSideBar = QmlSupport::createView(
+      "RepoPage",
+      {{"repoView", QVariant::fromValue<QObject *>(this)},
+       {"refsPanel", QVariant::fromValue<QObject *>(mRefs)},
+       {"commitList", QVariant::fromValue<QObject *>(mCommits)}},
+      this);
+  mPage = static_cast<QQuickWidget *>(mSideBar);
+  mPage->setMinimumWidth(480);
 
   mDetails = new DetailView(repo, this);
 
@@ -389,8 +374,8 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
   mDetailSplitter->setHandleWidth(0);
   mDetailSplitter->addWidget(mSideBar);
   mDetailSplitter->addWidget(mDetails);
-  mDetailSplitter->setStretchFactor(0, 1);
-  mDetailSplitter->setStretchFactor(1, 3);
+  mDetailSplitter->setStretchFactor(0, 3);
+  mDetailSplitter->setStretchFactor(1, 2);
   connect(mDetailSplitter, &QSplitter::splitterMoved, this, [this] {
     QSettings().setValue(kSplitterKey, mDetailSplitter->saveState());
   });
@@ -453,15 +438,17 @@ void RepoView::diffSelected(const git::Diff diff, const QString &file,
   git::Diff diff2 = diff;
   mHistory->update(diff.isValid() ? location() : Location(),
                    spontaneous); // TODO: why this changes diff?
-  mDetails->setDiff(diff2, file, mPathspec->pathspec());
+  mDetails->setDiff(diff2, file, mPathspec);
 }
 
 RepoView::~RepoView() {
-  // Work around crash caused by clearing focus from the commit list
-  // when it's destroyed. If it gets destroyed after the detail view
-  // then the focus change may trigger the menu bar to query the mode
-  // index from the already destroyed detail view.
-  mCommits->clearFocus();
+  // The QML page references this object, so it has to go first.
+  delete mPage;
+  mSideBar = nullptr;
+}
+
+QPoint RepoView::mapFromPage(qreal x, qreal y) const {
+  return QmlSupport::host(mPage)->mapToGlobal(x, y);
 }
 
 void RepoView::clean(const QStringList &untracked) {
@@ -2826,7 +2813,21 @@ void RepoView::refresh(bool restoreSelection) {
 }
 
 void RepoView::setPathspec(const QString &path) {
-  mPathspec->setPathspec(path);
+  if (path == mPathspec)
+    return;
+
+  mPathspec = path;
+  emit pathspecChanged(path);
+
+  git::Config config = mRepo.appConfig();
+  mCommits->setPathspec(path, config.value<bool>("index.enable", true));
+}
+
+QAbstractItemModel *RepoView::pathModel() const { return mPathModel; }
+
+void RepoView::showPathContextMenu(const QString &path, qreal x, qreal y) {
+  FileContextMenu menu(this, {path});
+  menu.exec(mapFromPage(x, y));
 }
 
 git::Commit RepoView::nextRevision(const QString &path) const {

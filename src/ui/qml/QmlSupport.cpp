@@ -6,6 +6,7 @@
 //
 
 #include "QmlSupport.h"
+#include "CommitGraphItem.h"
 #include "QmlTheme.h"
 #include "host/Account.h"
 #include <QBuffer>
@@ -99,6 +100,7 @@ QQuickWidget *createView(const QString &name, const QVariantMap &context,
           QQmlEngine::setObjectOwnership(theme, QQmlEngine::CppOwnership);
           return theme;
         });
+    qmlRegisterType<CommitGraphItem>("Gittyup", 1, 0, "CommitGraph");
   }
 
   QQuickWidget *view = new QQuickWidget(parent);

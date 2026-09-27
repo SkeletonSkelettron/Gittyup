@@ -897,7 +897,7 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
         CommitList *commits = view->commitList();
         QAbstractItemModel *model = commits->model();
         for (int i = 0; i < model->rowCount(); ++i) {
-          commits->setCurrentIndex(model->index(i, 0));
+          commits->selectRow(i);
           view->find(); // Force editors to load.
           QCoreApplication::processEvents();
         }

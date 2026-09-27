@@ -36,6 +36,9 @@ QmlTheme::QmlTheme() {
   // Derive every color from the widget palette so that themes without a
   // theme['ui'] section still get a consistent QML interface.
   mColors = {
+      {"base", base},
+      {"alternate", palette.color(QPalette::AlternateBase)},
+      {"panel", window},
       {"toolbar", window},
       {"sidebar", base},
       {"field", base},
@@ -55,6 +58,9 @@ QmlTheme::QmlTheme() {
       {"ahead", highlight},
       {"behind", highlight},
       {"star", QColor("#FFCE6D")},
+      {"added", QColor("#3FB950")},
+      {"modified", QColor("#D29922")},
+      {"deleted", QColor("#F85149")},
       {"tooltip", palette.color(QPalette::ToolTipBase)},
       {"tooltip_text", palette.color(QPalette::ToolTipText)},
   };
@@ -70,6 +76,13 @@ QmlTheme::QmlTheme() {
                      theme->badge(Theme::BadgeRole::Foreground,
                                   Theme::BadgeState::Notification));
     }
+
+    QColor plus = theme->diff(Theme::Diff::Plus);
+    if (plus.isValid())
+      mColors.insert("added", plus);
+    QColor minus = theme->diff(Theme::Diff::Minus);
+    if (minus.isValid())
+      mColors.insert("deleted", minus);
 
     QColor star = theme->star();
     if (star.isValid())
