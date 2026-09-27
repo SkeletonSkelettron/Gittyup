@@ -4,11 +4,15 @@ add_library(
   Badge.cpp
   BlameEditor.cpp
   BlameMargin.cpp
+  ChangedFilesModel.cpp
   ColumnView.cpp
   CommitList.cpp
   CommitEditor.cpp
+  CommitMessage.cpp
   ContextMenuButton.cpp
   DetailView.cpp
+  DiffLines.cpp
+  DiffModel.cpp
   DiffView/DiffView.cpp
   DiffView/HunkWidget.cpp
   DiffView/FileWidget.cpp

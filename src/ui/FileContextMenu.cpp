@@ -374,6 +374,7 @@ void FileContextMenu::handleUncommittedChanges(const git::Index &index,
         dialog->open();
       });
   discard->setEnabled(!modified.isEmpty() || submodules.count());
+  mDiscardAction = discard;
 
   QAction *remove = addAction(tr("Remove Untracked Files"),
                               [view, untracked] { view->clean(untracked); });
