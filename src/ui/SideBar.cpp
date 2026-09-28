@@ -77,14 +77,16 @@ public:
   RepoModel(TabWidget *tabs, QObject *parent = nullptr)
       : QAbstractItemModel(parent), mTabs(tabs), mCloudIcon(":/cloud.png"),
         mErrorIcon(tabs->style()->standardIcon(QStyle::SP_MessageBoxCritical)) {
+    // Tabs are also removed without a notice, like when the window is
+    // destroyed.
     connect(tabs, &TabWidget::tabAboutToBeInserted, this,
-            &RepoModel::beginResetModel);
+            &RepoModel::beginTabsReset);
     connect(tabs, &TabWidget::tabAboutToBeRemoved, this,
-            &RepoModel::beginResetModel);
+            &RepoModel::beginTabsReset);
     connect(tabs, QOverload<>::of(&TabWidget::tabInserted), this,
-            &RepoModel::endResetModel);
+            &RepoModel::endTabsReset);
     connect(tabs, QOverload<>::of(&TabWidget::tabRemoved), this,
-            &RepoModel::endResetModel);
+            &RepoModel::endTabsReset);
     connect(tabs->tabBar(), &QTabBar::tabMoved, [this] {
       beginResetModel();
       endResetModel();
@@ -637,7 +639,24 @@ public:
     endResetModel();
   }
 
+  void beginTabsReset() {
+    if (mTabsResetting)
+      return;
+
+    mTabsResetting = true;
+    beginResetModel();
+  }
+
+  void endTabsReset() {
+    if (!mTabsResetting)
+      beginResetModel();
+
+    mTabsResetting = false;
+    endResetModel();
+  }
+
 private:
+  bool mTabsResetting = false;
   TabWidget *mTabs;
   bool mShowFullPath = false;
   bool mShowFullName = false;
