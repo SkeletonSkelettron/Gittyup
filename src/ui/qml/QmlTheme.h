@@ -108,6 +108,7 @@ private:
   QmlTheme();
 
   bool mDark = false;
+  bool mProvisional = false;
   QVariantMap mColors;
   QString mMonoFont;
 };

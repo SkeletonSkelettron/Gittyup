@@ -45,27 +45,34 @@ void QmlDialog::setContent(const QString &name, const QVariantMap &context) {
 
 void QmlDialog::showEvent(QShowEvent *event) {
   QDialog::showEvent(event);
-
   updateSize();
 
-  // A QQuickWidget that is resized before its window is exposed keeps
-  // drawing at its old size, so resize it again after that.
+  // Showing the dialog moves the focus to the first item, so move it to
+  // the item that should have it.
   QTimer::singleShot(0, this, [this] {
-    if (!mView)
-      return;
-
-    if (mView->quickWindow()->size() != mView->size()) {
-      QSize size = mView->size();
-      mView->resize(size + QSize(0, 1));
-      mView->resize(size);
-    }
-
-    // Showing the dialog moves the focus to the first item, so move it to
-    // the item that should have it.
     QQuickItem *root = rootItem();
     if (root && root->metaObject()->indexOfMethod("focusInitialItem()") >= 0)
       QMetaObject::invokeMethod(root, "focusInitialItem");
   });
+}
+
+void QmlDialog::syncView() {
+  if (!mView)
+    return;
+
+  // The layout doesn't always follow a resize of the dialog that happens
+  // while it's being shown.
+  if (mView->geometry() != rect())
+    mView->setGeometry(rect());
+
+  // A QQuickWidget that is resized before its window is exposed keeps
+  // drawing at its old size, so resize it again after that.
+  if (mView->quickWindow()->size() == mView->size())
+    return;
+
+  QSize size = mView->size();
+  mView->resize(size + QSize(0, 1));
+  mView->resize(size);
 }
 
 QQuickItem *QmlDialog::rootItem() const {
@@ -80,4 +87,7 @@ void QmlDialog::updateSize() {
   QSize size(qCeil(root->implicitWidth()), qCeil(root->implicitHeight()));
   setMinimumSize(size);
   resize(size.expandedTo(QSize(width(), 0)));
+
+  QTimer::singleShot(0, this, &QmlDialog::syncView);
+  QTimer::singleShot(100, this, &QmlDialog::syncView);
 }

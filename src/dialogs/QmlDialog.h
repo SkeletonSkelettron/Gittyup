@@ -35,6 +35,7 @@ protected:
 
 private:
   void updateSize();
+  void syncView();
 
   QQuickWidget *mView = nullptr;
 };

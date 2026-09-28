@@ -22,11 +22,16 @@ QColor mix(const QColor &a, const QColor &b, qreal t) {
 } // namespace
 
 QmlTheme *QmlTheme::instance() {
-  static QmlTheme *instance = new QmlTheme;
+  // Colors that are read while the theme is being chosen come from the
+  // palette only, so read them again once the theme exists. The previous
+  // instance is kept for the views that still use it.
+  static QmlTheme *instance = nullptr;
+  if (!instance || (instance->mProvisional && Application::theme()))
+    instance = new QmlTheme;
   return instance;
 }
 
-QmlTheme::QmlTheme() {
+QmlTheme::QmlTheme() : mProvisional(!Application::theme()) {
   QPalette palette;
   QColor window = palette.color(QPalette::Window);
   QColor base = palette.color(QPalette::Base);
