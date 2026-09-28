@@ -10,6 +10,7 @@
 #include "BlameMargin.h"
 #include "ProgressIndicator.h"
 #include "app/Application.h"
+#include "qml/QmlTheme.h"
 #include "conf/Settings.h"
 #include "editor/TextEditor.h"
 #include "git/Commit.h"
@@ -29,16 +30,41 @@
 namespace {
 
 const QString kNowrapFmt = "<span style='white-space: nowrap'>%1</span><br>";
-const QString kStyleSheet = "BlameMargin {"
-                            "  background-color: palette(base);"
-                            "  border-right: 1px solid palette(mid)"
-                            "}";
+
+// Width of the bar that shows the age of the lines.
+const qreal kAgeBarWidth = 3;
+
+// A short, relative date like "3 days ago".
+QString relativeDate(const QDateTime &dateTime) {
+  qint64 secs = dateTime.secsTo(QDateTime::currentDateTime());
+  auto format = [](qint64 n, const QString &one, const QString &many) {
+    return (n == 1) ? one : many.arg(n);
+  };
+
+  if (secs < 60)
+    return BlameMargin::tr("just now");
+  if (secs < 3600)
+    return format(secs / 60, BlameMargin::tr("1 minute ago"),
+                  BlameMargin::tr("%1 minutes ago"));
+  if (secs < 86400)
+    return format(secs / 3600, BlameMargin::tr("1 hour ago"),
+                  BlameMargin::tr("%1 hours ago"));
+  if (secs < 86400 * 30)
+    return format(secs / 86400, BlameMargin::tr("1 day ago"),
+                  BlameMargin::tr("%1 days ago"));
+  if (secs < 86400 * 365)
+    return format(secs / (86400 * 30), BlameMargin::tr("1 month ago"),
+                  BlameMargin::tr("%1 months ago"));
+  return format(secs / (86400 * 365), BlameMargin::tr("1 year ago"),
+                BlameMargin::tr("%1 years ago"));
+}
 
 } // namespace
 
 BlameMargin::BlameMargin(TextEditor *editor, QWidget *parent)
     : QWidget(parent), mEditor(editor), mIndex(-1), mProgress(0) {
-  setStyleSheet(kStyleSheet);
+  setAttribute(Qt::WA_OpaquePaintEvent);
+  setMouseTracking(true);
 
   // Can't connect directly because of different parameter types.
   QScrollBar *sb = editor->verticalScrollBar();
@@ -91,7 +117,7 @@ void BlameMargin::clear() {
   update();
 }
 
-QSize BlameMargin::minimumSizeHint() const { return QSize(92, 0); }
+QSize BlameMargin::minimumSizeHint() const { return QSize(160, 0); }
 
 bool BlameMargin::event(QEvent *event) {
   if (event->type() != QEvent::ToolTip || !mBlame.isValid())
@@ -171,16 +197,17 @@ void BlameMargin::mouseDoubleClickEvent(QMouseEvent *event) {
 }
 
 void BlameMargin::paintEvent(QPaintEvent *event) {
-  // Draw background.
-  QStyleOption opt;
-  opt.initFrom(this);
+  QmlTheme *theme = QmlTheme::instance();
   QPainter painter(this);
-  style()->drawPrimitive(QStyle::PE_Widget, &opt, &painter, this);
+  painter.fillRect(rect(), theme->panel());
+
+  // Separate the margin from the text.
+  painter.fillRect(QRectF(width() - 1, 0, 1, height()), theme->border());
 
   // Draw busy indicator.
   if (!mBlame.isValid()) {
     QRect rect(0, 10, width(), ProgressIndicator::size().height());
-    ProgressIndicator::paint(&painter, rect, "#808080", mProgress);
+    ProgressIndicator::paint(&painter, rect, theme->textMuted(), mProgress);
     return;
   }
 
@@ -192,12 +219,9 @@ void BlameMargin::paintEvent(QPaintEvent *event) {
   regular.setPointSize(size);
   QFontMetricsF regularMetrics(regular);
 
-  QFont bold = font();
-  bold.setBold(true);
-  bold.setPointSize(size);
-  QFontMetricsF boldMetrics(bold);
-
-  QDate today = QDate::currentDate();
+  QFont small = regular;
+  small.setPointSize(qMax(6, size - 1));
+  QFontMetricsF smallMetrics(small);
 
   int lh = mEditor->textHeight(0);
   int lc = mEditor->lineCount() + 1;
@@ -216,8 +240,6 @@ void BlameMargin::paintEvent(QPaintEvent *event) {
       index++;
       continue;
     }
-    while (index + 1 < count && mBlame.id(index + 1) == id)
-      ++index;
 
     bool invalid = false;
     while (index + 1 < count) {
@@ -240,120 +262,96 @@ void BlameMargin::paintEvent(QPaintEvent *event) {
     int next = (index + 1 < count) ? mBlame.line(index + 1) : lc;
     QRectF rect(0, (line - first) * lh, width() - 1, (next - line) * lh);
 
-    // Get short date.
-    QString date;
-    int time = -1;
     git::Signature signature = mBlame.signature(index);
-    if (signature.isValid()) {
-      QDateTime dateTime = signature.date();
-      date = (dateTime.date() == today)
-                 ? QLocale().toString(dateTime.time(), QLocale::ShortFormat)
-                 : QLocale().toString(dateTime.date(), QLocale::ShortFormat);
-      time = dateTime.toSecsSinceEpoch();
-    }
+    int time = signature.isValid() ? signature.date().toSecsSinceEpoch() : -1;
 
-    // Draw background.
+    // Highlight the selected commit.
     if (id == mSelection) {
-      painter.fillRect(rect, palette().highlight());
-    } else if (time >= 0 && mMinTime >= 0 && mMaxTime >= 0 &&
-               mMinTime != mMaxTime) {
-
-      // Translate to zero.
-      qreal val = (time - mMinTime);
-      qreal max = (mMaxTime - mMinTime);
-      qreal mid = max / 2;
-
-      QColor color;
-      if (val > mid) { // hot
-        color = Application::theme()->heatMap(Theme::HeatMap::Hot);
-        color.setAlphaF(val / max);
-      } else { // cold
-        color = Application::theme()->heatMap(Theme::HeatMap::Cold);
-        color.setAlphaF(1 - val / mid);
-      }
-
-      painter.fillRect(rect, color);
+      painter.fillRect(rect, theme->selected());
+    } else if (id == mHover) {
+      painter.fillRect(rect, theme->hover());
     }
+
+    // Draw the age of the lines as a bar from cold to hot.
+    QColor age = theme->textDisabled();
+    if (time >= 0 && mMinTime >= 0 && mMaxTime >= 0 && mMinTime != mMaxTime &&
+        Settings::instance()
+            ->value(Setting::Id::ShowHeatmapInBlameMargin)
+            .toBool()) {
+      qreal val = qreal(time - mMinTime) / (mMaxTime - mMinTime);
+      QColor cold = Application::theme()->heatMap(Theme::HeatMap::Cold);
+      QColor hot = Application::theme()->heatMap(Theme::HeatMap::Hot);
+      cold.setAlphaF(1);
+      hot.setAlphaF(1);
+      age = QColor::fromRgbF(
+          cold.redF() + (hot.redF() - cold.redF()) * val,
+          cold.greenF() + (hot.greenF() - cold.greenF()) * val,
+          cold.blueF() + (hot.blueF() - cold.blueF()) * val);
+    }
+
+    QRectF bar(rect.x() + 2, rect.y() + 2, kAgeBarWidth, rect.height() - 4);
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(age);
+    painter.drawRoundedRect(bar, 1.5, 1.5);
 
     // Draw separator line wholly within the current cell.
-    QPointF pt1 = rect.bottomLeft() + QPointF(0.5, -0.5);
-    QPointF pt2 = rect.bottomRight() + QPointF(-0.5, -0.5);
-    painter.setPen(QColor("#E6E6E6"));
-    painter.drawLine(pt1, pt2);
+    painter.fillRect(QRectF(rect.left(), rect.bottom() - 1, rect.width(), 1),
+                     theme->border());
 
     // Calculate inner rectangle.
     rect.setY(qMax(0.0, rect.y()));
-    rect.adjust(4, 0, -4, 0);
+    rect.adjust(kAgeBarWidth + 10, 0, -8, 0);
 
-    painter.setPen(palette().color(QPalette::Text));
+    // Draw the date on the right of the summary.
+    QString date = signature.isValid() ? relativeDate(signature.date()) : "";
+    qreal dateWidth = date.isEmpty() ? 0 : smallMetrics.horizontalAdvance(date);
+    QRectF firstLine(rect.x(), rect.y(), rect.width(), lh);
+    painter.setFont(small);
+    painter.setPen(theme->textMuted());
+    painter.drawText(firstLine, Qt::AlignRight | Qt::AlignVCenter, date);
 
-    // Draw name or initials.
-    QRectF nameRect;
-    QString name = this->name(index);
-    if (!name.isEmpty()) {
-      nameRect = boldMetrics.boundingRect(name);
-      QRectF dateRect = regularMetrics.boundingRect(date);
-      if (nameRect.width() + dateRect.width() + 4 > rect.width())
-        name = git::Signature::initials(name);
-
-      painter.setFont(bold);
-      painter.drawText(rect, Qt::AlignLeft, name);
-    }
-
+    // Draw the summary of the commit.
+    QString summary = mBlame.isCommitted(index)
+                          ? mBlame.message(index).section('\n', 0, 0)
+                          : tr("Not Committed");
     painter.setFont(regular);
+    painter.setPen(mBlame.isCommitted(index) ? theme->text()
+                                             : theme->textMuted());
+    QRectF summaryRect = firstLine.adjusted(0, 0, -(dateWidth + 8), 0);
+    painter.drawText(summaryRect, Qt::AlignLeft | Qt::AlignVCenter,
+                     regularMetrics.elidedText(summary, Qt::ElideRight,
+                                               summaryRect.width()));
 
-    // Draw date.
-    if (signature.isValid()) {
-      // Get long date.
-      QDateTime dateTime = signature.date();
-      QString longDate =
-          (dateTime.date() == today)
-              ? QLocale().toString(dateTime.time(), QLocale::LongFormat)
-              : QLocale().toString(dateTime.date(), QLocale::LongFormat);
-
-      QRectF dateRect = regularMetrics.boundingRect(longDate);
-      if (nameRect.width() + dateRect.width() + 4 <= rect.width())
-        date = longDate;
-
-      painter.drawText(rect, Qt::AlignRight, date);
-    }
-
-    // Draw message.
-    if (next - qMax(line, first) > 1) {
-      rect.setY(rect.y() + lh);
-
-      painter.setPen(palette().color(QPalette::BrightText));
-
-      // Layout text.
-      qreal y = 0;
-      QFontMetricsF fm(painter.font());
-      qreal lineSpacing = fm.lineSpacing();
-      QString text = mBlame.message(index);
-      QTextLayout layout(text, painter.font());
-      layout.beginLayout();
-      forever {
-        QTextLine line = layout.createLine();
-        if (!line.isValid())
-          break;
-
-        line.setLineWidth(rect.width());
-        qreal nextLineY = y + lineSpacing;
-        if (rect.height() >= nextLineY + lineSpacing) {
-          line.draw(&painter, QPointF(0, rect.y() + y));
-          y = nextLineY;
-        } else {
-          // Draw the last line elided.
-          QString substr = text.mid(line.textStart());
-          QString elided = fm.elidedText(substr, Qt::ElideRight, rect.width());
-          painter.drawText(QPointF(0, rect.y() + y + fm.ascent()), elided);
-          break;
-        }
-      }
-      layout.endLayout();
+    // Draw the author below if there is room.
+    if (next - qMax(line, first) > 1 && mBlame.isCommitted(index)) {
+      QRectF secondLine(rect.x(), rect.y() + lh, rect.width(), lh);
+      QString author = name(index);
+      painter.setFont(small);
+      painter.setPen(theme->textMuted());
+      painter.drawText(secondLine, Qt::AlignLeft | Qt::AlignVCenter,
+                       smallMetrics.elidedText(author, Qt::ElideRight,
+                                               secondLine.width()));
     }
 
     ++index;
   }
+}
+
+void BlameMargin::mouseMoveEvent(QMouseEvent *event) {
+  int index = mBlame.isValid() ? this->index(event->position().y()) : -1;
+  git::Id id = (index >= 0) ? mBlame.id(index) : git::Id();
+  if (id != mHover) {
+    mHover = id;
+    update();
+  }
+
+  QWidget::mouseMoveEvent(event);
+}
+
+void BlameMargin::leaveEvent(QEvent *event) {
+  mHover = git::Id();
+  update();
+  QWidget::leaveEvent(event);
 }
 
 void BlameMargin::wheelEvent(QWheelEvent *event) {

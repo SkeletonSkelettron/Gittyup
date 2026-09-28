@@ -31,7 +31,7 @@
 
 namespace {
 
-const QString kSplitterKey = QString("blamesplitter");
+const QString kSplitterKey = QString("blamesplitter2");
 
 class BlameCallbacks : public git::Blame::Callbacks {
 public:
@@ -67,11 +67,13 @@ BlameEditor::BlameEditor(const git::Repository &repo, QWidget *parent)
   mFind->hide(); // Start hidden.
 
   // Add widgets.
+  // The blame is on the left of the text, like in GitKraken.
   QSplitter *splitter = new QSplitter(this);
   splitter->setHandleWidth(1);
-  splitter->addWidget(mEditor);
   splitter->addWidget(mMargin);
-  splitter->setStretchFactor(0, 1);
+  splitter->addWidget(mEditor);
+  splitter->setStretchFactor(1, 1);
+  splitter->setSizes({300, 700});
   connect(splitter, &QSplitter::splitterMoved, this, [splitter] {
     QSettings().setValue(kSplitterKey, splitter->saveState());
   });

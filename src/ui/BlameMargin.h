@@ -41,6 +41,8 @@ protected:
   void mousePressEvent(QMouseEvent *event) override;
   void mouseReleaseEvent(QMouseEvent *event) override;
   void mouseDoubleClickEvent(QMouseEvent *event) override;
+  void mouseMoveEvent(QMouseEvent *event) override;
+  void leaveEvent(QEvent *event) override;
   void paintEvent(QPaintEvent *event) override;
   void wheelEvent(QWheelEvent *event) override;
 
@@ -58,6 +60,7 @@ private:
 
   int mIndex;
   git::Id mSelection;
+  git::Id mHover;
 
   int mProgress;
   QTimer mTimer;
