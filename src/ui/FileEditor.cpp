@@ -129,6 +129,15 @@ bool FileEditor::wrapLines() const {
   return Settings::instance()->isTextEditorWrapLines();
 }
 
+bool FileEditor::useTabs() const {
+  return Settings::instance()->value(Setting::Id::UseTabsForIndent).toBool();
+}
+
+int FileEditor::indentWidth() const {
+  int width = Settings::instance()->value(Setting::Id::IndentWidth).toInt();
+  return width > 0 ? width : 4;
+}
+
 QObject *FileEditor::blame() const { return mBlame; }
 
 QObject *FileEditor::finder() const { return mFinder; }

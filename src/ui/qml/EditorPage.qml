@@ -201,6 +201,20 @@ Rectangle {
                     background: null
                     focus: true
                     Component.onCompleted: editor.setDocument(textDocument)
+
+                    // Indent with spaces up to the next indentation stop.
+                    Keys.onTabPressed: (event) => {
+                        if (editor.useTabs || readOnly) {
+                            event.accepted = false
+                            return
+                        }
+
+                        remove(selectionStart, selectionEnd)
+                        const row = editor.row(cursorPosition)
+                        const column = cursorPosition - editor.position(row, 0)
+                        const width = editor.indentWidth
+                        insert(cursorPosition, " ".repeat(width - column % width))
+                    }
                 }
             }
         }

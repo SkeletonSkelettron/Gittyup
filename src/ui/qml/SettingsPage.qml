@@ -18,7 +18,7 @@ PreferencesPage {
         { title: qsTr("Appearance"), icon: "palette",
           description: qsTr("The theme, the window and the prompts.") },
         { title: qsTr("Editor"), icon: "code",
-          description: qsTr("The font and the indentation of the text editor.") },
+          description: qsTr("The font of code in diffs and files, and how the editor indents.") },
         { title: qsTr("Updates"), icon: "download",
           description: qsTr("Keep Gittyup up to date.") },
         { title: qsTr("Plugins"), icon: "plug",
@@ -276,35 +276,6 @@ PreferencesPage {
                         model: dialog.encodings
                         currentIndex: dialog.encoding()
                         onActivated: (index) => dialog.setEncoding(index)
-                    }
-                }
-            }
-
-            SettingSection {
-                title: qsTr("Display")
-
-                SettingRow {
-                    label: qsTr("Long lines")
-
-                    CheckBox {
-                        text: qsTr("Wrap lines in the editor")
-                        checked: dialog.wrapLines()
-                        onToggled: dialog.setWrapLines(checked)
-                    }
-                }
-
-                SettingRow {
-                    label: qsTr("Collapse")
-                    hint: qsTr("Files that start collapsed")
-
-                    SettingCheck {
-                        setting: "AutoCollapseAddedFiles"
-                        text: qsTr("Added files")
-                    }
-
-                    SettingCheck {
-                        setting: "AutoCollapseDeletedFiles"
-                        text: qsTr("Deleted files")
                     }
                 }
             }
@@ -621,6 +592,16 @@ PreferencesPage {
                     SettingCheck {
                         setting: "ShowHeatmapInBlameMargin"
                         text: qsTr("Show a heat map in the blame margin")
+                    }
+                }
+
+                SettingRow {
+                    label: qsTr("Long lines")
+
+                    CheckBox {
+                        text: qsTr("Wrap lines in the editor")
+                        checked: dialog.wrapLines()
+                        onToggled: dialog.setWrapLines(checked)
                     }
                 }
             }

@@ -33,6 +33,8 @@ class FileEditor : public QObject, public FindTarget {
   Q_PROPERTY(bool modified READ isModified NOTIFY modifiedChanged)
   Q_PROPERTY(int tabWidth READ tabWidth NOTIFY settingsChanged)
   Q_PROPERTY(bool wrapLines READ wrapLines NOTIFY settingsChanged)
+  Q_PROPERTY(bool useTabs READ useTabs NOTIFY settingsChanged)
+  Q_PROPERTY(int indentWidth READ indentWidth NOTIFY settingsChanged)
   Q_PROPERTY(QObject *blame READ blame CONSTANT)
   Q_PROPERTY(QObject *finder READ finder CONSTANT)
 
@@ -53,6 +55,8 @@ public:
   bool isModified() const;
   int tabWidth() const;
   bool wrapLines() const;
+  bool useTabs() const;
+  int indentWidth() const;
 
   QObject *blame() const;
   QObject *finder() const;

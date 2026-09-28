@@ -8,6 +8,7 @@
 //
 
 #include "Test.h"
+#include "conf/Settings.h"
 #include "dialogs/ConfirmDialog.h"
 #include "ui/EditorWindow.h"
 #include "ui/FileEditor.h"
@@ -25,6 +26,7 @@ private slots:
   void initTestCase();
   void insertText();
   void copyPaste();
+  void indent();
   void find();
   void cleanupTestCase();
 
@@ -63,6 +65,25 @@ void TestEditor::copyPaste() {
   keyClick(mView, 'C', Qt::ControlModifier);
   keyClick(mView, Qt::Key_Right);
   keyClick(mView, 'V', Qt::ControlModifier);
+  QCOMPARE(text(), QString("This is a test.\nThis is a test.\n"));
+}
+
+void TestEditor::indent() {
+  // The tab key indents with spaces or a tab, like the settings say.
+  Settings *settings = Settings::instance();
+  bool tabs = settings->value(Setting::Id::UseTabsForIndent).toBool();
+  int width = settings->value(Setting::Id::IndentWidth).toInt();
+
+  keyClick(mView, Qt::Key_End, Qt::ControlModifier);
+  keyClick(mView, Qt::Key_Tab);
+  QString indent = tabs ? QString("\t") : QString(width, ' ');
+  QVERIFY(text().endsWith("\n" + indent));
+
+  keyClick(mView, 'A', Qt::ControlModifier);
+  keyClick(mView, Qt::Key_Right);
+  keyClick(mView, Qt::Key_Backspace);
+  for (int i = 1; i < indent.length(); ++i)
+    keyClick(mView, Qt::Key_Backspace);
   QCOMPARE(text(), QString("This is a test.\nThis is a test.\n"));
 }
 
