@@ -1,0 +1,962 @@
+import QtQuick
+import QtQuick.Controls.Basic as Controls
+import QtQuick.Layouts
+import Gittyup
+
+// The application settings. 'dialog' is the C++ SettingsDialog.
+Rectangle {
+    id: root
+
+    // Keep in sync with SettingsDialog::Index.
+    readonly property var sections: [
+        { title: qsTr("General"), icon: "sliders",
+          description: qsTr("Your identity, automatic actions and credentials. Repositories can override git settings.") },
+        { title: qsTr("Diff"), icon: "view-double",
+          description: qsTr("How changes are compared and shown.") },
+        { title: qsTr("Tools"), icon: "wrench",
+          description: qsTr("External programs that Gittyup starts.") },
+        { title: qsTr("Appearance"), icon: "palette",
+          description: qsTr("The theme, the window and the prompts.") },
+        { title: qsTr("Editor"), icon: "code",
+          description: qsTr("The font and the indentation of the text editor.") },
+        { title: qsTr("Updates"), icon: "download",
+          description: qsTr("Keep Gittyup up to date.") },
+        { title: qsTr("Plugins"), icon: "plug",
+          description: qsTr("Lua plugins that check your changes.") },
+        { title: qsTr("SSH"), icon: "key",
+          description: qsTr("The SSH configuration used for remotes.") },
+        { title: qsTr("Hotkeys"), icon: "keyboard",
+          description: qsTr("The keyboard shortcuts of the menu actions.") },
+        { title: qsTr("Terminal"), icon: "terminal",
+          description: qsTr("Start Gittyup from a terminal.") }
+    ]
+
+    implicitWidth: 880
+    implicitHeight: 620
+    color: Theme.panel
+    focus: true
+
+    Keys.onEscapePressed: dialog.close()
+
+    // Check boxes for settings.
+    component SettingCheck: CheckBox {
+        property string setting
+
+        checked: dialog.settingBool(setting)
+        onToggled: dialog.setSetting(setting, checked)
+    }
+
+    component PromptCheck: CheckBox {
+        property string kind
+
+        text: dialog.promptText(kind)
+        checked: dialog.prompt(kind)
+        onToggled: dialog.setPrompt(kind, checked)
+    }
+
+    component SettingField: TextField {
+        property string setting
+
+        Layout.fillWidth: true
+        text: dialog.settingString(setting)
+        onTextEdited: dialog.setSetting(setting, text)
+    }
+
+    RowLayout {
+        anchors.fill: parent
+        spacing: 0
+
+        // Navigation.
+        Rectangle {
+            Layout.preferredWidth: 210
+            Layout.fillHeight: true
+            color: Theme.sidebar
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 12
+                spacing: 2
+
+                Text {
+                    Layout.leftMargin: 8
+                    Layout.topMargin: 6
+                    Layout.bottomMargin: 12
+                    text: qsTr("Settings")
+                    color: Theme.text
+                    font.pixelSize: 18
+                    font.weight: Font.Bold
+                }
+
+                Repeater {
+                    model: root.sections
+
+                    delegate: Rectangle {
+                        id: navItem
+
+                        required property int index
+                        required property var modelData
+
+                        readonly property bool current: dialog.section === index
+
+                        Layout.fillWidth: true
+                        visible: index !== 9 || dialog.terminalVisible
+                        implicitHeight: 34
+                        radius: 6
+                        color: current ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.16)
+                                       : navMouse.containsMouse ? Theme.hover : "transparent"
+
+                        Rectangle {
+                            visible: navItem.current
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 3
+                            height: 16
+                            radius: 1.5
+                            color: Theme.accent
+                        }
+
+                        Row {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 12
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 10
+
+                            Icon {
+                                anchors.verticalCenter: parent.verticalCenter
+                                name: navItem.modelData.icon
+                                size: 16
+                                color: navItem.current ? Theme.accent : Theme.textMuted
+                            }
+
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: navItem.modelData.title
+                                color: navItem.current ? Theme.text : Theme.textMuted
+                                font.pixelSize: 13
+                                font.weight: navItem.current ? Font.DemiBold : Font.Normal
+                            }
+                        }
+
+                        MouseArea {
+                            id: navMouse
+
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: dialog.section = navItem.index
+                        }
+                    }
+                }
+
+                Item { Layout.fillHeight: true }
+
+                PushButton {
+                    Layout.fillWidth: true
+                    icon: "file"
+                    text: qsTr("Edit Git Config File")
+                    tip: qsTr("Open the global git configuration in the editor")
+                    onClicked: dialog.editConfigFile()
+                }
+            }
+        }
+
+        Rectangle {
+            Layout.fillHeight: true
+            width: 1
+            color: Theme.border
+        }
+
+        // Content.
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            spacing: 0
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: 28
+                Layout.rightMargin: 28
+                Layout.topMargin: 24
+                Layout.bottomMargin: 12
+                spacing: 4
+
+                Text {
+                    text: root.sections[dialog.section].title
+                    color: Theme.text
+                    font.pixelSize: 20
+                    font.weight: Font.Bold
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    text: root.sections[dialog.section].description
+                    wrapMode: Text.Wrap
+                    color: Theme.textMuted
+                    font.pixelSize: 12
+                }
+            }
+
+            Flickable {
+                id: flickable
+
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                contentHeight: loader.height + 32
+                boundsBehavior: Flickable.StopAtBounds
+
+                Controls.ScrollBar.vertical: ThinScrollBar {}
+
+                Loader {
+                    id: loader
+
+                    x: 28
+                    y: 8
+                    width: flickable.width - 56
+                    sourceComponent: [general, diff, tools, appearance, editor, updates,
+                                      plugins, ssh, hotkeys, terminal][dialog.section]
+                    onLoaded: flickable.contentY = 0
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                height: 1
+                color: Theme.border
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.margins: 14
+                Layout.leftMargin: 28
+                Layout.rightMargin: 20
+
+                Text {
+                    Layout.fillWidth: true
+                    text: qsTr("Changes are saved right away.")
+                    color: Theme.textMuted
+                    font.pixelSize: 12
+                }
+
+                PushButton {
+                    implicitHeight: 32
+                    minimumWidth: 88
+                    primary: true
+                    text: qsTr("Done")
+                    onClicked: dialog.close()
+                }
+            }
+        }
+    }
+
+    Component {
+        id: general
+
+        ColumnLayout {
+            spacing: 20
+
+            SettingSection {
+                title: qsTr("Identity")
+
+                SettingRow {
+                    label: qsTr("Name")
+                    hint: qsTr("The author of your commits")
+
+                    TextField {
+                        Layout.fillWidth: true
+                        text: dialog.gitConfig("user.name")
+                        onTextEdited: dialog.setGitConfig("user.name", text)
+                    }
+                }
+
+                SettingRow {
+                    label: qsTr("Email")
+
+                    TextField {
+                        Layout.fillWidth: true
+                        text: dialog.gitConfig("user.email")
+                        onTextEdited: dialog.setGitConfig("user.email", text)
+                    }
+                }
+            }
+
+            SettingSection {
+                title: qsTr("Automatic actions")
+
+                SettingRow {
+                    label: qsTr("Fetch")
+
+                    RowLayout {
+                        spacing: 10
+
+                        SettingCheck {
+                            id: fetchCheck
+
+                            setting: "FetchAutomatically"
+                            text: qsTr("Fetch every")
+                        }
+
+                        SpinBox {
+                            enabled: fetchCheck.checked
+                            from: 1
+                            to: 1440
+                            value: dialog.settingInt("AutomaticFetchPeriodInMinutes")
+                            onValueModified: dialog.setSetting("AutomaticFetchPeriodInMinutes", value)
+                        }
+
+                        Text {
+                            text: qsTr("minutes")
+                            color: Theme.textMuted
+                            font.pixelSize: 13
+                        }
+                    }
+                }
+
+                SettingRow {
+                    label: qsTr("After actions")
+
+                    SettingCheck {
+                        setting: "PushAfterEachCommit"
+                        text: qsTr("Push after each commit")
+                    }
+
+                    SettingCheck {
+                        setting: "UpdateSubmodulesAfterPullAndClone"
+                        text: qsTr("Update submodules after pull and clone")
+                    }
+
+                    SettingCheck {
+                        setting: "PruneAfterFetch"
+                        text: qsTr("Prune when fetching")
+                    }
+                }
+            }
+
+            SettingSection {
+                title: qsTr("Language")
+
+                SettingRow {
+                    label: qsTr("Language")
+                    hint: qsTr("Takes effect after a restart")
+
+                    SettingCheck {
+                        id: noTranslation
+
+                        setting: "DontTranslate"
+                        text: qsTr("Don't translate, use English")
+                    }
+
+                    ComboBox {
+                        Layout.fillWidth: true
+                        enabled: !noTranslation.checked
+                        model: dialog.languages
+                        textRole: "text"
+                        currentIndex: dialog.language()
+                        onActivated: (index) => dialog.setLanguage(index)
+                    }
+                }
+            }
+
+            SettingSection {
+                title: qsTr("Credentials")
+
+                SettingRow {
+                    label: qsTr("Secure storage")
+
+                    CheckBox {
+                        id: storeCheck
+
+                        text: qsTr("Store credentials in secure storage")
+                        checked: dialog.storeCredentials()
+                        onToggled: dialog.setStoreCredentials(checked, storeCombo.currentText)
+                    }
+
+                    ComboBox {
+                        id: storeCombo
+
+                        Layout.fillWidth: true
+                        enabled: storeCheck.checked
+                        model: dialog.credentialStores
+                        currentIndex: Math.max(0, dialog.credentialStores.indexOf(dialog.credentialStore()))
+                        onActivated: dialog.setStoreCredentials(true, currentText)
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: dialog.credentialStoresInfo
+                        textFormat: Text.StyledText
+                        wrapMode: Text.Wrap
+                        color: Theme.textMuted
+                        font.pixelSize: 12
+                    }
+
+                    Text {
+                        text: qsTr("<a href=\"privacy\">View the privacy policy</a>")
+                        textFormat: Text.StyledText
+                        linkColor: Theme.accent
+                        font.pixelSize: 12
+                        onLinkActivated: dialog.showPrivacyPolicy()
+
+                        HoverHandler {
+                            cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
+                        }
+                    }
+                }
+            }
+
+            SettingSection {
+                visible: dialog.singleInstanceVisible
+                title: qsTr("Application")
+
+                SettingRow {
+                    label: qsTr("Instances")
+
+                    SettingCheck {
+                        setting: "AllowSingleInstanceOnly"
+                        text: qsTr("Only allow a single running instance")
+                    }
+                }
+            }
+        }
+    }
+
+    Component {
+        id: diff
+
+        ColumnLayout {
+            spacing: 20
+
+            SettingSection {
+                title: qsTr("Content")
+
+                SettingRow {
+                    label: qsTr("Context lines")
+                    hint: qsTr("Unchanged lines around each change")
+
+                    SpinBox {
+                        from: 0
+                        to: 100
+                        value: dialog.diffContext()
+                        onValueModified: dialog.setDiffContext(value)
+                    }
+                }
+
+                SettingRow {
+                    label: qsTr("Whitespace")
+
+                    CheckBox {
+                        text: qsTr("Ignore whitespace (-w)")
+                        checked: dialog.ignoreWhitespace()
+                        onToggled: dialog.setIgnoreWhitespace(checked)
+                    }
+                }
+
+                SettingRow {
+                    label: qsTr("Character encoding")
+
+                    ComboBox {
+                        Layout.fillWidth: true
+                        model: dialog.encodings
+                        currentIndex: dialog.encoding()
+                        onActivated: (index) => dialog.setEncoding(index)
+                    }
+                }
+            }
+
+            SettingSection {
+                title: qsTr("Display")
+
+                SettingRow {
+                    label: qsTr("Long lines")
+
+                    CheckBox {
+                        text: qsTr("Wrap lines in the editor")
+                        checked: dialog.wrapLines()
+                        onToggled: dialog.setWrapLines(checked)
+                    }
+                }
+
+                SettingRow {
+                    label: qsTr("Collapse")
+                    hint: qsTr("Files that start collapsed")
+
+                    SettingCheck {
+                        setting: "AutoCollapseAddedFiles"
+                        text: qsTr("Added files")
+                    }
+
+                    SettingCheck {
+                        setting: "AutoCollapseDeletedFiles"
+                        text: qsTr("Deleted files")
+                    }
+                }
+            }
+        }
+    }
+
+    component ToolRow: SettingRow {
+        id: toolRow
+
+        property string type
+
+        RowLayout {
+            spacing: 8
+
+            ComboBox {
+                id: toolCombo
+
+                Layout.fillWidth: true
+                model: dialog.tools(toolRow.type)
+                currentIndex: model.indexOf(dialog.tool(toolRow.type))
+                displayText: currentIndex < 0 ? qsTr("None") : currentText
+                onActivated: dialog.setTool(toolRow.type, currentText)
+
+                Connections {
+                    target: dialog
+
+                    function onConfigChanged() {
+                        toolCombo.model = dialog.tools(toolRow.type)
+                        toolCombo.currentIndex = toolCombo.model.indexOf(dialog.tool(toolRow.type))
+                    }
+                }
+            }
+
+            PushButton {
+                implicitHeight: 32
+                text: qsTr("Configure")
+                onClicked: dialog.configureTools(toolRow.type)
+            }
+        }
+    }
+
+    Component {
+        id: tools
+
+        ColumnLayout {
+            spacing: 20
+
+            SettingSection {
+                title: qsTr("Git tools")
+
+                SettingRow {
+                    label: qsTr("External editor")
+                    hint: qsTr("Opens files for editing")
+
+                    TextField {
+                        Layout.fillWidth: true
+                        placeholderText: qsTr("code --wait")
+                        text: dialog.gitConfig("gui.editor")
+                        onTextEdited: dialog.setGitConfig("gui.editor", text)
+                    }
+                }
+
+                ToolRow {
+                    label: qsTr("Diff tool")
+                    type: "diff"
+                }
+
+                ToolRow {
+                    label: qsTr("Merge tool")
+                    type: "merge"
+                }
+
+                SettingRow {
+                    label: qsTr("Backup files")
+
+                    CheckBox {
+                        text: qsTr("Keep backups of merged files (.orig)")
+                        checked: dialog.gitConfigBool("mergetool.keepBackup")
+                        onToggled: dialog.setGitConfig("mergetool.keepBackup", checked)
+                    }
+                }
+            }
+
+            SettingSection {
+                title: qsTr("System")
+
+                SettingRow {
+                    label: qsTr("Terminal")
+                    hint: qsTr("The command that opens a terminal")
+
+                    SettingField {
+                        setting: "TerminalCommand"
+                    }
+                }
+
+                SettingRow {
+                    label: qsTr("File manager")
+                    hint: qsTr("%1 is replaced by the repository path").arg("\"%1\"")
+
+                    SettingField {
+                        setting: "FilemanagerCommand"
+                    }
+                }
+            }
+        }
+    }
+
+    Component {
+        id: appearance
+
+        ColumnLayout {
+            spacing: 20
+
+            SettingSection {
+                title: qsTr("Theme")
+
+                SettingRow {
+                    label: qsTr("Color theme")
+                    hint: qsTr("Takes effect after a restart")
+
+                    RowLayout {
+                        spacing: 8
+
+                        ComboBox {
+                            Layout.fillWidth: true
+                            model: dialog.themes
+                            currentIndex: dialog.themes.indexOf(dialog.theme)
+                            onActivated: dialog.setTheme(currentText)
+                        }
+
+                        PushButton {
+                            implicitHeight: 32
+                            enabled: dialog.themeEditable
+                            icon: "pencil"
+                            text: qsTr("Edit")
+                            tip: qsTr("Only your own themes can be edited")
+                            onClicked: dialog.editTheme()
+                        }
+                    }
+
+                    RowLayout {
+                        spacing: 8
+
+                        TextField {
+                            id: themeName
+
+                            Layout.fillWidth: true
+                            placeholderText: qsTr("Name of a new theme")
+                        }
+
+                        PushButton {
+                            implicitHeight: 32
+                            enabled: themeName.text !== ""
+                            icon: "plus"
+                            text: qsTr("Create Theme")
+                            onClicked: dialog.addTheme(themeName.text)
+                        }
+                    }
+                }
+            }
+
+            SettingSection {
+                title: qsTr("Window")
+
+                SettingRow {
+                    label: qsTr("Window")
+
+                    SettingCheck {
+                        setting: "ShowFullRepoPath"
+                        text: qsTr("Show the full repository path in the title")
+                    }
+
+                    SettingCheck {
+                        setting: "ShowMaximized"
+                        text: qsTr("Maximize windows when they open")
+                    }
+
+                    SettingCheck {
+                        setting: "HideMenuBar"
+                        text: qsTr("Hide the menu bar")
+                    }
+
+                    SettingCheck {
+                        setting: "ShowAvatars"
+                        text: qsTr("Show avatars")
+                    }
+                }
+
+                SettingRow {
+                    label: qsTr("Tabs")
+
+                    SettingCheck {
+                        setting: "OpenAllReposInTabs"
+                        text: qsTr("Open all repositories in tabs")
+                    }
+
+                    SettingCheck {
+                        setting: "OpenSubmodulesInTabs"
+                        text: qsTr("Open submodules in tabs")
+                    }
+
+                    SettingCheck {
+                        setting: "AutoHideRepoSiderbar"
+                        text: qsTr("Hide the repository sidebar after opening a repository")
+                    }
+                }
+
+                SettingRow {
+                    label: qsTr("Activity log")
+
+                    SettingCheck {
+                        setting: "HideLogAutomatically"
+                        text: qsTr("Hide the log automatically")
+                    }
+                }
+            }
+
+            SettingSection {
+                title: qsTr("Prompts")
+
+                SettingRow {
+                    label: qsTr("Ask before")
+
+                    PromptCheck { kind: "Merge" }
+                    PromptCheck { kind: "Revert" }
+                    PromptCheck { kind: "CherryPick" }
+                    PromptCheck { kind: "Stash" }
+                    PromptCheck { kind: "Directories" }
+                    PromptCheck { kind: "LargeFiles" }
+                }
+            }
+        }
+    }
+
+    Component {
+        id: editor
+
+        ColumnLayout {
+            spacing: 20
+
+            SettingSection {
+                title: qsTr("Font")
+
+                SettingRow {
+                    label: qsTr("Font")
+
+                    ComboBox {
+                        Layout.fillWidth: true
+                        model: dialog.fonts
+                        currentIndex: dialog.fonts.indexOf(dialog.settingString("FontFamily"))
+                        onActivated: dialog.setSetting("FontFamily", currentText)
+                    }
+                }
+
+                SettingRow {
+                    label: qsTr("Size")
+
+                    SpinBox {
+                        from: 4
+                        to: 72
+                        value: dialog.settingInt("FontSize")
+                        onValueModified: dialog.setSetting("FontSize", value)
+                    }
+                }
+            }
+
+            SettingSection {
+                title: qsTr("Indentation")
+
+                SettingRow {
+                    label: qsTr("Indent using")
+
+                    SegmentedControl {
+                        model: [qsTr("Tabs"), qsTr("Spaces")]
+                        currentIndex: dialog.settingBool("UseTabsForIndent") ? 0 : 1
+                        onActivated: (index) => dialog.setSetting("UseTabsForIndent", index === 0)
+                    }
+                }
+
+                SettingRow {
+                    label: qsTr("Indent width")
+
+                    SpinBox {
+                        from: 1
+                        to: 16
+                        value: dialog.settingInt("IndentWidth")
+                        onValueModified: dialog.setSetting("IndentWidth", value)
+                    }
+                }
+
+                SettingRow {
+                    label: qsTr("Tab width")
+
+                    SpinBox {
+                        from: 1
+                        to: 16
+                        value: dialog.settingInt("TabWidth")
+                        onValueModified: dialog.setSetting("TabWidth", value)
+                    }
+                }
+            }
+
+            SettingSection {
+                title: qsTr("Display")
+
+                SettingRow {
+                    label: qsTr("Editor")
+
+                    SettingCheck {
+                        setting: "ShowWhitespaceInEditor"
+                        text: qsTr("Show whitespace")
+                    }
+
+                    SettingCheck {
+                        setting: "ShowHeatmapInBlameMargin"
+                        text: qsTr("Show a heat map in the blame margin")
+                    }
+                }
+            }
+        }
+    }
+
+    Component {
+        id: updates
+
+        ColumnLayout {
+            spacing: 20
+
+            SettingSection {
+                title: qsTr("Software update")
+
+                SettingRow {
+                    label: qsTr("Updates")
+
+                    SettingCheck {
+                        setting: "CheckForUpdatesAutomatically"
+                        text: qsTr("Check for updates automatically")
+                    }
+
+                    SettingCheck {
+                        visible: dialog.updateDownloadVisible
+                        setting: "InstallUpdatesAutomatically"
+                        text: qsTr("Download and install updates automatically")
+                    }
+
+                    PushButton {
+                        implicitHeight: 32
+                        icon: "refresh"
+                        text: qsTr("Check Now")
+                        onClicked: dialog.checkForUpdates()
+                    }
+                }
+            }
+        }
+    }
+
+    Component {
+        id: plugins
+
+        ColumnLayout {
+            spacing: 20
+
+            SettingSection {
+                title: qsTr("Plugins")
+
+                SettingRow {
+                    label: qsTr("Plugins")
+                    hint: qsTr("Enable plugins and set their options")
+
+                    PushButton {
+                        implicitHeight: 32
+                        icon: "plug"
+                        text: qsTr("Configure Plugins...")
+                        onClicked: dialog.configurePlugins()
+                    }
+                }
+            }
+        }
+    }
+
+    Component {
+        id: ssh
+
+        ColumnLayout {
+            spacing: 20
+
+            SettingSection {
+                title: qsTr("SSH")
+
+                SettingRow {
+                    label: qsTr("Config file")
+
+                    SettingField {
+                        setting: "SshConfigFilePath"
+                        placeholderText: "~/.ssh/config"
+                    }
+                }
+
+                SettingRow {
+                    label: qsTr("Key file")
+                    hint: qsTr("The default or fallback key")
+
+                    SettingField {
+                        setting: "SshKeyFilePath"
+                        placeholderText: "~/.ssh/id_ed25519"
+                    }
+                }
+            }
+        }
+    }
+
+    Component {
+        id: hotkeys
+
+        ColumnLayout {
+            spacing: 20
+
+            SettingSection {
+                title: qsTr("Hotkeys")
+
+                SettingRow {
+                    label: qsTr("Shortcuts")
+                    hint: qsTr("Change the keys of the menu actions")
+
+                    PushButton {
+                        implicitHeight: 32
+                        icon: "keyboard"
+                        text: qsTr("Edit Hotkeys...")
+                        onClicked: dialog.configureHotkeys()
+                    }
+                }
+            }
+        }
+    }
+
+    Component {
+        id: terminal
+
+        ColumnLayout {
+            spacing: 20
+
+            SettingSection {
+                title: qsTr("Command line tool")
+
+                SettingRow {
+                    label: qsTr("Name")
+
+                    SettingField {
+                        setting: "TerminalName"
+                        onTextEdited: dialog.terminalChanged()
+                    }
+                }
+
+                SettingRow {
+                    label: qsTr("Location")
+
+                    SettingField {
+                        setting: "TerminalPath"
+                        onTextEdited: dialog.terminalChanged()
+                    }
+
+                    PushButton {
+                        implicitHeight: 32
+                        enabled: dialog.terminalInstallEnabled
+                        text: dialog.terminalInstallText
+                        onClicked: dialog.toggleTerminalInstall()
+                    }
+                }
+            }
+        }
+    }
+}
