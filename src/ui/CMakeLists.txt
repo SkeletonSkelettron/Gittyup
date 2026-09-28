@@ -1,7 +1,6 @@
 add_library(
   ui
   AdvancedSearchWidget.cpp
-  Badge.cpp
   BlameEditor.cpp
   BlameMargin.cpp
   ChangedFilesModel.cpp
@@ -11,7 +10,6 @@ add_library(
   DiffLines.cpp
   DiffModel.cpp
   EditorWindow.cpp
-  ExpandButton.cpp
   FileContextMenu.cpp
   FindWidget.cpp
   Footer.cpp
