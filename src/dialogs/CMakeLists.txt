@@ -14,7 +14,6 @@ add_library(
   ExternalToolsDialog.cpp
   ExternalToolsModel.cpp
   HotkeysPanel.cpp
-  IconLabel.cpp
   MergeDialog.cpp
   NewBranchDialog.cpp
   PluginsPanel.cpp
