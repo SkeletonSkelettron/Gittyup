@@ -8,6 +8,7 @@
 //
 
 #include "CommitList.h"
+#include "InteractiveRebase.h"
 #include "qml/QmlSupport.h"
 #include "ConfigKeys.h"
 #include "Debug.h"
@@ -1492,6 +1493,21 @@ void CommitList::showContextMenu(int row, qreal x, qreal y) {
 
       addMergeAction(tr("Merge..."), RepoView::Merge);
       addMergeAction(tr("Rebase..."), RepoView::Rebase);
+
+      // Pick, reword, squash, drop and reorder the commits of the current
+      // branch after this one, like GitKraken.
+      git::Reference current = view->repo().head();
+      if (current.isValid() && current.isLocalBranch() &&
+          view->interactiveRebase()->canOpen(current.qualifiedName(),
+                                             commit)) {
+        QString text = tr("Interactive Rebase %1 onto %2...")
+                           .arg(current.name(), commit.shortId());
+        menu.addAction(text, [view, current, commit] {
+          view->interactiveRebase()->open(current.qualifiedName(), commit,
+                                          commit.shortId());
+        });
+      }
+
       addMergeAction(tr("Squash..."), RepoView::Squash);
 
       menu.addSeparator();

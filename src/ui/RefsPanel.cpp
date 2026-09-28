@@ -6,6 +6,7 @@
 //
 
 #include "RefsPanel.h"
+#include "InteractiveRebase.h"
 #include "qml/QmlSupport.h"
 #include "CommitList.h"
 #include "ConfigKeys.h"
@@ -596,6 +597,19 @@ void RefsPanel::showContextMenu(int row, qreal x, qreal y) {
       addMergeAction(tr("Merge into Current Branch..."), RepoView::Merge);
       addMergeAction(tr("Rebase Current Branch onto This..."),
                      RepoView::Rebase);
+
+      // Rebase the current branch interactively, like GitKraken.
+      git::Reference head = mRepo.head();
+      QAction *interactive = menu.addAction(
+          tr("Interactive Rebase Current Branch onto This..."),
+          [view, head, ref] {
+            view->interactiveRebase()->open(head.qualifiedName(), ref.target(),
+                                            ref.name());
+          });
+      interactive->setEnabled(
+          head.isValid() && head.isLocalBranch() &&
+          view->interactiveRebase()->canOpen(head.qualifiedName(),
+                                             ref.target()));
       addMergeAction(tr("Squash into Current Branch..."), RepoView::Squash);
       break;
     }

@@ -14,6 +14,10 @@
 
 class RepoView;
 
+namespace git {
+class Reference;
+}
+
 // Branches dragged onto other branches or remotes in the references panel
 // or the commit graph, like in GitKraken. Dropping shows a menu to merge,
 // rebase, fast-forward or push. QML pages see it as 'refDrop'.
@@ -66,6 +70,8 @@ signals:
   void released();
 
 private:
+  void addInteractive(QList<Choice> &choices, const QString &source,
+                      const git::Reference &target) const;
   void showMenu(const QString &source, const QString &target,
                 const QPointF &pos);
 

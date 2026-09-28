@@ -49,13 +49,14 @@ FocusScope {
 
             GraphView {
                 anchors.fill: parent
-                visible: detailView.selectedFile === ""
+                visible: detailView.selectedFile === "" && !interactiveRebase.active
             }
 
             DiffPanel {
                 anchors.fill: parent
                 visible: detailView.selectedFile !== "" && detailView.viewMode !== 1
                          && !(detailView.diff.conflicted && detailView.mergeEditor)
+                         && !interactiveRebase.active
             }
 
             // Conflicts in the merge editor, when it's switched on.
@@ -63,11 +64,19 @@ FocusScope {
                 anchors.fill: parent
                 visible: detailView.selectedFile !== "" && detailView.viewMode !== 1
                          && detailView.diff.conflicted && detailView.mergeEditor
+                         && !interactiveRebase.active
             }
 
             FileView {
                 anchors.fill: parent
                 visible: detailView.selectedFile !== "" && detailView.viewMode === 1
+                         && !interactiveRebase.active
+            }
+
+            // The commits of an interactive rebase, like GitKraken shows them.
+            RebasePanel {
+                anchors.fill: parent
+                visible: interactiveRebase.active
             }
         }
 

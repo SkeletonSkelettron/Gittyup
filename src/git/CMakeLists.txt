@@ -21,6 +21,7 @@ add_library(
   Repository.cpp
   Result.cpp
   RevWalk.cpp
+  Rewrite.cpp
   Signature.cpp
   Submodule.cpp
   Tag.cpp

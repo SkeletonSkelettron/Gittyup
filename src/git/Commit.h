@@ -100,6 +100,7 @@ private:
   friend class Reference;
   friend class Repository;
   friend class RevWalk;
+  friend class Rewrite;
 };
 
 } // namespace git

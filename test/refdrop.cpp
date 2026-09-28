@@ -96,7 +96,8 @@ void TestRefDrop::rebase() {
 
   QCOMPARE(texts(branch("topic"), branch(mMain)),
            QStringList({QString("Merge topic into %1").arg(mMain),
-                        QString("Rebase topic onto %1").arg(mMain)}));
+                        QString("Rebase topic onto %1").arg(mMain),
+                        QString("Interactive Rebase topic onto %1").arg(mMain)}));
 
   // Rebasing checks out the dragged branch first.
   QVERIFY(run(branch("topic"), branch(mMain), "Rebase"));

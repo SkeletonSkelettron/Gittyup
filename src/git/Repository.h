@@ -309,6 +309,7 @@ private:
   friend class RefState;
   friend class Reference;
   friend class Remote;
+  friend class Rewrite;
   friend class Submodule;
   friend class TagRef;
 };

@@ -14,6 +14,7 @@
 #include "FileEditor.h"
 #include "FileContextMenu.h"
 #include "History.h"
+#include "InteractiveRebase.h"
 #include "MainWindow.h"
 #include "MenuBar.h"
 #include "qtsupport.h"
@@ -277,8 +278,9 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
 
   mDetails = new DetailView(repo, this);
 
-  // Drag and drop branches onto others.
+  // Drag and drop branches onto others, and rebase them interactively.
   mRefDrop = new RefDrop(this);
+  mInteractiveRebase = new InteractiveRebase(this);
 
   // Create log.
   mLogRoot = new LogEntry(this);
@@ -293,7 +295,9 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
        {"commitList", QVariant::fromValue<QObject *>(mCommits)},
        {"detailView", QVariant::fromValue<QObject *>(mDetails)},
        {"logPanel", QVariant::fromValue<QObject *>(mLogPanel)},
-       {"refDrop", QVariant::fromValue<QObject *>(mRefDrop)}},
+       {"refDrop", QVariant::fromValue<QObject *>(mRefDrop)},
+       {"interactiveRebase",
+        QVariant::fromValue<QObject *>(mInteractiveRebase)}},
       this, &mPageContext);
 
   // Respond to diff/tree mode change.

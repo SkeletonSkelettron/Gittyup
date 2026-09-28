@@ -15,6 +15,7 @@ add_library(
   FindController.cpp
   History.cpp
   IgnoreDialog.cpp
+  InteractiveRebase.cpp
   HotkeyManager.cpp
   Location.cpp
   LogPanel.cpp

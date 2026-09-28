@@ -6,6 +6,7 @@
 //
 
 #include "RefDrop.h"
+#include "InteractiveRebase.h"
 #include "RepoView.h"
 #include "git/Branch.h"
 #include "git/Commit.h"
@@ -148,6 +149,7 @@ QList<RefDrop::Choice> RefDrop::choices(const QString &source,
                          view->merge(RepoView::Rebase,
                                      view->repo().lookupRef(target));
                      }});
+      addInteractive(result, source, dst);
     }
 
     return result;
@@ -190,9 +192,26 @@ QList<RefDrop::Choice> RefDrop::choices(const QString &source,
                        view->merge(RepoView::Rebase,
                                    view->repo().lookupRef(target));
                    }});
+    addInteractive(result, source, dst);
   }
 
   return result;
+}
+
+void RefDrop::addInteractive(QList<Choice> &choices, const QString &source,
+                             const git::Reference &target) const {
+  InteractiveRebase *rebase = mView->interactiveRebase();
+  git::Commit onto = target.target();
+  if (!rebase->canOpen(source, onto))
+    return;
+
+  RepoView *view = mView;
+  QString name = target.name();
+  QString text = tr("Interactive Rebase %1 onto %2")
+                     .arg(mView->repo().lookupRef(source).name(), name);
+  choices.append({text, [view, source, onto, name] {
+                    view->interactiveRebase()->open(source, onto, name);
+                  }});
 }
 
 void RefDrop::showMenu(const QString &source, const QString &target,

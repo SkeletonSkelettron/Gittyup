@@ -34,6 +34,7 @@ class DetailView;
 class EditorWindow;
 class History;
 class Index;
+class InteractiveRebase;
 class Location;
 class LogEntry;
 class LogPanel;
@@ -97,6 +98,8 @@ public:
   UndoHistory *undoHistory() const { return mUndo; }
   // Branches dragged and dropped onto other branches.
   RefDrop *refDrop() const { return mRefDrop; }
+  // The editor of interactive rebases.
+  InteractiveRebase *interactiveRebase() const { return mInteractiveRebase; }
   Index *index() const { return mIndex; }
 
   Repository *remoteRepo();
@@ -443,6 +446,7 @@ private:
   History *mHistory;
   UndoHistory *mUndo = nullptr;
   RefDrop *mRefDrop = nullptr;
+  InteractiveRebase *mInteractiveRebase = nullptr;
 
   Repository *mRemoteRepo;
   bool mRemoteRepoCached = false;
