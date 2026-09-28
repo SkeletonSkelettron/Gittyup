@@ -35,6 +35,9 @@ public:
   // The format of a style returned by the last call to style().
   Format format(int style) const;
 
+  // The hidden editor, for example to run plugins on text.
+  TextEditor *editor() const { return mEditor; }
+
 private:
   TextEditor *mEditor;
   mutable QHash<int, Format> mFormats;

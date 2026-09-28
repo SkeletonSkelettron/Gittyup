@@ -6,11 +6,13 @@
 //
 
 #include "DiffModel.h"
+#include "editor/TextEditor.h"
 #include "qml/QmlSupport.h"
 #include "dialogs/ConfirmDialog.h"
 #include "RepoView.h"
 #include "app/Application.h"
 #include "app/Theme.h"
+#include "conf/Constants.h"
 #include "git/Blob.h"
 #include "git/Commit.h"
 #include "git/Index.h"
@@ -19,6 +21,8 @@
 #include "git/Tree.h"
 #include "git2/diff.h"
 #include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QImage>
 #include <QLocale>
 #include <QMenu>
@@ -102,7 +106,8 @@ QString DiffModel::status() const {
   if (mPatch.isConflicted())
     return "!";
 
-  return QString(git::Diff::statusChar(mPatch.status()));
+  return QString(git::Diff::statusChar(mUntracked ? GIT_DELTA_UNTRACKED
+                                                  : mPatch.status()));
 }
 
 bool DiffModel::isEditable() const {
@@ -139,12 +144,15 @@ void DiffModel::load() {
 
   mPatch = git::Patch();
   mStaged = git::Patch();
+  mContent.clear();
   mHunks.clear();
   mRows.clear();
   mStyles.clear();
+  mDiagnostics.clear();
   mNotice.clear();
   clearImages();
   mCanLoadAnyway = false;
+  mUntracked = false;
   mAdditions = 0;
   mDeletions = 0;
   mLineNumberWidth = 2;
@@ -152,16 +160,40 @@ void DiffModel::load() {
 
   if (!mPath.isEmpty()) {
     mPatch = mDiff.patch(mDiff.indexOf(mPath));
+    mUntracked = mPatch.isUntracked();
+
+    // The diff has no content for untracked files. Show them in full, but
+    // gate large ones on their size.
+    bool binary = mPatch.isBinary();
+    qint64 size = -1;
+    if (mUntracked) {
+      QFile file(mView->repo().workdir().filePath(mPath));
+      if (QFileInfo(file).isFile() && file.open(QFile::ReadOnly)) {
+        size = file.size();
+        bool load = mLoadAnyway || size <= qint64(kMaxAutoLoadDiffSize);
+        mContent = load ? file.readAll() : file.read(kMaxReadBinary);
+        binary = git::Blob::isBinary(mContent.left(kMaxReadBinary));
+        // The patch refers to the content, keep it until the patch is reset.
+        if (load && !binary)
+          mPatch = git::Patch::fromBuffers(QByteArray(), mContent, mPath, mPath);
+        else if (!binary)
+          mCanLoadAnyway = true;
+      }
+    }
+
     git::Patch::LineStats stats = mPatch.lineStats();
     mAdditions = stats.additions;
     mDeletions = stats.deletions;
 
-    if (mPatch.isBinary()) {
+    if (binary) {
       mNotice = tr("Binary file");
       loadImages(false);
     } else if (mPatch.isLfsPointer()) {
       mNotice = tr("Git LFS object");
       loadImages(true);
+    } else if (mCanLoadAnyway) {
+      mNotice = tr("This file is %1 and wasn't loaded.")
+                    .arg(QLocale().formattedDataSize(size));
     } else if (!mLoadAnyway && stats.additions + stats.deletions > kMaxLines) {
       mNotice = tr("This diff has %1 changed lines and wasn't loaded.")
                     .arg(stats.additions + stats.deletions);
@@ -188,12 +220,14 @@ void DiffModel::load() {
 
       mLineNumberWidth = qMax(2, static_cast<int>(QString::number(maxLine).size()));
       highlight();
+      lint();
 
       if (mHunks.isEmpty())
-        mNotice = mPatch.status() == GIT_DELTA_UNTRACKED && QFileInfo(
+        mNotice = mUntracked && QFileInfo(
                       mView->repo().workdir().filePath(mPath)).isDir()
                       ? tr("Untracked directory")
-                      : tr("No changes to show");
+                  : mUntracked ? tr("Empty file")
+                               : tr("No changes to show");
     }
   }
 
@@ -331,6 +365,62 @@ void DiffModel::highlight() {
       hunkStyles.append(styles.mid(span.first, span.second));
     mStyles.append(hunkStyles);
   }
+}
+
+void DiffModel::lint() {
+  if (mHunks.isEmpty() || !mHighlighter)
+    return;
+
+  if (!mPluginsLoaded) {
+    mPluginsLoaded = true;
+    mPlugins = Plugin::plugins(mView->repo());
+  }
+
+  QList<PluginRef> plugins;
+  for (const PluginRef &plugin : mPlugins) {
+    if (plugin->isValid() && plugin->isEnabled())
+      plugins.append(plugin);
+  }
+
+  if (plugins.isEmpty())
+    return;
+
+  // Run the plugins on each hunk like the text editor of the widget diff.
+  TextEditor *editor = mHighlighter->editor();
+  for (const QList<DiffLines::Line> &lines : mHunks) {
+    QByteArray text;
+    for (const DiffLines::Line &line : lines)
+      text += chomp(line.content) + '\n';
+
+    editor->setLexer(mPath);
+    editor->setText(text.constData());
+    editor->clearDiagnostics();
+    for (int i = 0; i < lines.size(); ++i) {
+      char origin = lines.at(i).origin;
+      editor->markerAdd(i, origin == '+'   ? TextEditor::Addition
+                           : origin == '-' ? TextEditor::Deletion
+                                           : TextEditor::Context);
+    }
+    editor->colourise(0, -1);
+
+    for (const PluginRef &plugin : plugins)
+      plugin->hunk(editor);
+
+    QList<QVariantList> hunkDiagnostics;
+    for (int i = 0; i < lines.size(); ++i) {
+      QVariantList diagnostics;
+      for (const TextEditor::Diagnostic &diag : editor->diagnostics(i)) {
+        diagnostics.append(QVariantMap{{"kind", diag.kind},
+                                       {"message", diag.message},
+                                       {"description", diag.description}});
+      }
+      hunkDiagnostics.append(diagnostics);
+    }
+    mDiagnostics.append(hunkDiagnostics);
+  }
+
+  editor->setText("");
+  editor->clearDiagnostics();
 }
 
 QString DiffModel::html(int hunk, int line) const {
@@ -508,7 +598,7 @@ void DiffModel::discardHunk(int hunk) {
     return;
 
   QString text =
-      mPatch.isUntracked()
+      mUntracked
           ? tr("Are you sure you want to remove '%1'?").arg(mPath)
           : tr("Are you sure you want to discard this hunk of '%1'?").arg(mPath);
   ConfirmDialog *dialog = new ConfirmDialog(mView);
@@ -555,7 +645,7 @@ void DiffModel::discardLines(int first, int last) {
 
 void DiffModel::discard(int hunk, const QList<bool> &lines) {
   git::Repository repo = mView->repo();
-  if (mPatch.isUntracked()) {
+  if (mUntracked) {
     repo.workdir().remove(mPath);
     mView->refresh();
     return;
@@ -748,6 +838,8 @@ QVariant DiffModel::data(const QModelIndex &index, int role) const {
         return false;
       case ChosenRole:
         return true;
+      case DiagnosticsRole:
+        return QVariantList();
     }
 
     return QVariant();
@@ -779,6 +871,11 @@ QVariant DiffModel::data(const QModelIndex &index, int role) const {
         return line.origin != 'O';
       return true;
     }
+    case DiagnosticsRole:
+      if (row.hunk < mDiagnostics.size() &&
+          row.line < mDiagnostics.at(row.hunk).size())
+        return mDiagnostics.at(row.hunk).at(row.line);
+      return QVariantList();
   }
 
   return QVariant();
@@ -790,5 +887,6 @@ QHash<int, QByteArray> DiffModel::roleNames() const {
           {NewLineRole, "newLine"},   {HtmlRole, "html"},
           {StagedRole, "staged"},     {StageableRole, "stageable"},
           {HeaderRole, "header"},     {HunkStateRole, "hunkState"},
-          {ResolutionRole, "resolution"}, {ChosenRole, "chosen"}};
+          {ResolutionRole, "resolution"}, {ChosenRole, "chosen"},
+          {DiagnosticsRole, "diagnostics"}};
 }

@@ -486,6 +486,16 @@ QList<TextEditor::Diagnostic> TextEditor::diagnostics(int line) {
   return mDiagnostics.value(line);
 }
 
+void TextEditor::clearDiagnostics() {
+  mDiagnostics.clear();
+  for (int indicator : {NoteIndicator, WarningIndicator, ErrorIndicator}) {
+    setIndicatorCurrent(indicator);
+    indicatorClearRange(0, length());
+  }
+  for (int marker : {NoteMarker, WarningMarker, ErrorMarker})
+    markerDeleteAll(marker);
+}
+
 void TextEditor::addDiagnostic(int line, const Diagnostic &diag) {
   int marker = 0;
   int indicator = 0;

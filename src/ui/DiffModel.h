@@ -10,6 +10,7 @@
 
 #include "DiffLines.h"
 #include "SyntaxHighlighter.h"
+#include "plugins/Plugin.h"
 #include "git/Diff.h"
 #include "git/Patch.h"
 #include <QAbstractListModel>
@@ -56,7 +57,8 @@ public:
     HeaderRole,
     HunkStateRole,
     ResolutionRole,
-    ChosenRole
+    ChosenRole,
+    DiagnosticsRole
   };
 
   DiffModel(RepoView *view, QObject *parent = nullptr);
@@ -128,6 +130,7 @@ private:
   void loadStaged();
   void updateIndex(const QStringList &paths);
   void highlight();
+  void lint();
   void loadImages(bool lfs);
   void clearImages();
   QString html(int hunk, int line) const;
@@ -137,6 +140,9 @@ private:
   RepoView *mView;
   git::Diff mDiff;
   QString mPath;
+  // The content of an untracked file that 'mPatch' was made from. It's
+  // declared first so that it outlives the patch.
+  QByteArray mContent;
   git::Patch mPatch;
   git::Patch mStaged;
 
@@ -147,12 +153,18 @@ private:
   QScopedPointer<SyntaxHighlighter> mHighlighter;
   QList<QList<QByteArray>> mStyles;
 
+  // The diagnostics of plugins for each line of each hunk.
+  QList<PluginRef> mPlugins;
+  bool mPluginsLoaded = false;
+  QList<QList<QVariantList>> mDiagnostics;
+
   QString mNotice;
   QString mOldImage;
   QString mNewImage;
   QString mOldImageInfo;
   QString mNewImageInfo;
   bool mCanLoadAnyway = false;
+  bool mUntracked = false;
   bool mLoadAnyway = false;
   int mAdditions = 0;
   int mDeletions = 0;

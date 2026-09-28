@@ -17,7 +17,7 @@ Rectangle {
 
     readonly property int lineHeight: 20
     readonly property int numberWidth: charWidth * diff.lineNumberWidth + 12
-    readonly property int gutterWidth: numberWidth * 2 + (diff.editable ? 22 : 0) + 16
+    readonly property int gutterWidth: numberWidth * 2 + (diff.editable ? 22 : 0) + 34
     readonly property real charWidth: metrics.averageCharacterWidth
 
     // Row of the last line that was clicked, to stage ranges with Shift.
@@ -320,6 +320,7 @@ Rectangle {
                 required property int hunkState
                 required property int resolution
                 required property bool chosen
+                required property var diagnostics
 
                 readonly property bool isHunk: kind === root.hunkRow
                 readonly property color background: {
@@ -502,6 +503,45 @@ Rectangle {
                                     }
                                     root.anchorRow = row.index
                                 }
+                            }
+                        }
+
+                        // The diagnostics of plugins.
+                        Item {
+                            id: diagnosticItem
+
+                            readonly property int worst: {
+                                let kind = -1
+                                for (const diag of row.diagnostics)
+                                    kind = Math.max(kind, diag.kind)
+                                return kind
+                            }
+
+                            width: 18
+                            height: parent.height
+
+                            Icon {
+                                visible: diagnosticItem.worst >= 0
+                                anchors.centerIn: parent
+                                name: diagnosticItem.worst === 0 ? "info" : "warning"
+                                size: 13
+                                color: diagnosticItem.worst === 2 ? Theme.deleted
+                                       : diagnosticItem.worst === 1 ? Theme.modified : Theme.accent
+                            }
+
+                            MouseArea {
+                                id: diagnosticMouse
+
+                                anchors.fill: parent
+                                enabled: diagnosticItem.worst >= 0
+                                hoverEnabled: true
+                            }
+
+                            HoverTip {
+                                target: diagnosticItem
+                                text: row.diagnostics.map(diag => diag.message
+                                    + (diag.description ? " - " + diag.description : "")).join("\n")
+                                hovered: diagnosticMouse.containsMouse
                             }
                         }
 
