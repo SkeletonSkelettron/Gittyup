@@ -48,7 +48,7 @@ void TestReferenceList::test() {
   d->setField("name", "GittyupTestRepo");
   d->setField("path", repoPath);
   d->setField("bare", "false");
-  d->page(2)->initializePage(); // start clone
+  d->startClone();
 
   {
     auto timeout = Timeout(1000e3, "Failed to clone");

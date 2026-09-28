@@ -13,11 +13,10 @@
 
 class LogEntry;
 class LogModel;
-class RepoView;
 class QAbstractItemModel;
 
-// Controller of the activity log at the bottom of the repository page.
-// qrc:/qml/LogPanel.qml draws it.
+// Controller of the activity log at the bottom of the repository page and
+// of the clone progress. qrc:/qml/LogPanel.qml draws it.
 class LogPanel : public QObject {
   Q_OBJECT
 
@@ -27,8 +26,7 @@ class LogPanel : public QObject {
                  collapseEnabledChanged)
 
 public:
-  // Keep in sync with LogPanel.qml.
-  LogPanel(LogEntry *root, RepoView *view);
+  LogPanel(LogEntry *root, QObject *parent = nullptr);
 
   QAbstractItemModel *model() const;
 
@@ -62,7 +60,6 @@ signals:
 private:
   void copyIndexes(const QModelIndexList &indexes);
 
-  RepoView *mView;
   LogModel *mModel;
   bool mVisible = false;
   bool mCollapse = true;

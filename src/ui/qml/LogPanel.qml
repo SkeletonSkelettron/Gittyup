@@ -16,6 +16,7 @@ Rectangle {
     readonly property int errorKind: 4
 
     property int currentRow: -1
+    property bool showHeader: true
 
     color: Theme.panel
 
@@ -78,6 +79,7 @@ Rectangle {
         // Header.
         Rectangle {
             Layout.fillWidth: true
+            visible: root.showHeader
             implicitHeight: 32
             color: Theme.panel
 

@@ -22,8 +22,16 @@ Rectangle {
     // Buttons on the left of the footer.
     property alias extraButtons: extra.data
 
+    // Handle the accept button instead of accepting the dialog.
+    property bool customAccept: false
+    signal acceptRequested()
+
     function accept() {
-        if (root.acceptVisible && root.acceptEnabled)
+        if (!root.acceptVisible || !root.acceptEnabled)
+            return
+        if (root.customAccept)
+            root.acceptRequested()
+        else
             dialog.accept()
     }
 

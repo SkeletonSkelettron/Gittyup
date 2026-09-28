@@ -6,12 +6,13 @@
 //
 
 #include "LogPanel.h"
-#include "RepoView.h"
 #include "log/LogEntry.h"
 #include "log/LogModel.h"
 #include <QApplication>
 #include <QClipboard>
+#include <QCursor>
 #include <QMenu>
+#include <QMetaMethod>
 #include <QMimeData>
 #include <QRegularExpression>
 
@@ -27,8 +28,8 @@ void collect(const QAbstractItemModel *model, const QModelIndex &index,
 
 } // namespace
 
-LogPanel::LogPanel(LogEntry *root, RepoView *view)
-    : QObject(view), mView(view),
+LogPanel::LogPanel(LogEntry *root, QObject *parent)
+    : QObject(parent),
       mModel(new LogModel(root, QApplication::style(), this)) {}
 
 QAbstractItemModel *LogPanel::model() const { return mModel; }
@@ -93,14 +94,19 @@ void LogPanel::copyAll() {
 }
 
 void LogPanel::showMenu(const QModelIndex &index, qreal x, qreal y) {
+  Q_UNUSED(x)
+  Q_UNUSED(y)
+
   QMenu menu;
   QAction *copyAction =
       menu.addAction(tr("Copy"), this, [this, index] { copy(index); });
   copyAction->setEnabled(index.isValid());
   menu.addAction(tr("Copy All"), this, &LogPanel::copyAll);
-  menu.addSeparator();
-  menu.addAction(tr("Hide Log"), this, &LogPanel::close);
-  menu.exec(mView->mapFromPage(x, y));
+  if (isSignalConnected(QMetaMethod::fromSignal(&LogPanel::closeRequested))) {
+    menu.addSeparator();
+    menu.addAction(tr("Hide Log"), this, &LogPanel::close);
+  }
+  menu.exec(QCursor::pos());
 }
 
 void LogPanel::close() { emit closeRequested(); }

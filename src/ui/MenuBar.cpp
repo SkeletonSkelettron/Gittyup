@@ -28,7 +28,6 @@
 #include "dialogs/MergeDialog.h"
 #include "dialogs/RemoteDialog.h"
 #include "dialogs/SettingsDialog.h"
-#include "dialogs/StartDialog.h"
 #include "dialogs/UpdateSubmodulesDialog.h"
 #include "editor/TextEditor.h"
 #include "git/Reference.h"
@@ -241,7 +240,7 @@ static Hotkey nextTabHotkey = HotkeyManager::registerHotkey(
     QKeySequence::NextChild, "window/nextTab", "Window/Show Next Tab");
 
 static Hotkey chooserHotkey = HotkeyManager::registerHotkey(
-    "Ctrl+Shift+O", "window/chooser", "Window/Show Repository Chooser");
+    "Ctrl+Shift+O", "window/chooser", "Window/New Tab");
 
 static Hotkey preferencesHotkey = HotkeyManager::registerHotkey(
     nullptr, "tools/preferences", "Tools/Options");
@@ -815,9 +814,18 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
 
   windowMenu->addSeparator();
 
-  QAction *chooser = windowMenu->addAction(tr("Show Repository Chooser..."));
+  // Open a repository from the welcome page in a new tab.
+  QAction *chooser = windowMenu->addAction(tr("New Tab"));
   chooserHotkey.use(chooser);
-  connect(chooser, &QAction::triggered, &StartDialog::openSharedInstance);
+  connect(chooser, &QAction::triggered, [] {
+    if (MainWindow *window = MainWindow::activeWindow()) {
+      window->tabWidget()->setWelcomeVisible(true);
+      window->raise();
+      window->activateWindow();
+    } else {
+      MainWindow::open();
+    }
+  });
 
   // Tools
   QMenu *tools = addMenu(tr("Tools"));

@@ -21,7 +21,6 @@
 
 #include <QToolButton>
 #include <QMenu>
-#include <QWizard>
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QPushButton>
@@ -81,7 +80,7 @@ void TestSubmodule::updateSubmoduleClone() {
   d->setField("name", "TestrepoSubmodule");
   d->setField("path", tempdir.path());
   d->setField("bare", "false");
-  d->page(2)->initializePage(); // start clone
+  d->startClone();
 
   {
     auto timeout = Timeout(10e3, "Failed to clone");
@@ -133,7 +132,7 @@ void TestSubmodule::noUpdateSubmoduleClone() {
   d->setField("name", "TestrepoSubmodule");
   d->setField("path", tempdir.path());
   d->setField("bare", "false");
-  d->page(2)->initializePage(); // start clone
+  d->startClone();
 
   {
     auto timeout = Timeout(10e3, "Failed to clone");

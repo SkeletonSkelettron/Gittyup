@@ -28,7 +28,6 @@ add_library(
   RemoteTableModel.cpp
   RenameBranchDialog.cpp
   SettingsDialog.cpp
-  StartDialog.cpp
   SubmoduleDelegate.cpp
   SubmoduleTableModel.cpp
   TagDialog.cpp
