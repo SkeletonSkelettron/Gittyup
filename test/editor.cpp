@@ -12,6 +12,7 @@
 #include "ui/BlameEditor.h"
 #include "ui/EditorWindow.h"
 #include "ui/FindWidget.h"
+#include <QQuickWidget>
 #include "ui/MenuBar.h"
 #include <QDialogButtonBox>
 #include <QLabel>
@@ -67,12 +68,11 @@ void TestEditor::find() {
   FindWidget *find = mBlameEditor->findChild<FindWidget *>();
   QVERIFY(find);
 
-  QLineEdit *field = find->findChild<QLineEdit *>();
+  QQuickWidget *field = find->findChild<QQuickWidget *>();
   QVERIFY(field && field->hasFocus());
 
   keyClicks(field, "test");
-  QLabel *label = find->findChild<QLabel *>();
-  QCOMPARE(label->text(), QString("2 matches"));
+  QCOMPARE(find->hitsText(), QString("2 matches"));
 }
 
 void TestEditor::cleanupTestCase() {

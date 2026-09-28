@@ -10,12 +10,10 @@
 #ifndef FINDWIDGET_H
 #define FINDWIDGET_H
 
-#include <QToolButton>
 #include <QWidget>
 
 class TextEditor;
-class QLabel;
-class QLineEdit;
+class QQuickWidget;
 
 class EditorProvider {
 public:
@@ -23,8 +21,13 @@ public:
   virtual void ensureVisible(TextEditor *editor, int pos) = 0;
 };
 
+// The bar to find text in editors. qrc:/qml/FindBar.qml draws it.
 class FindWidget : public QWidget {
   Q_OBJECT
+
+  Q_PROPERTY(QString searchText READ text NOTIFY searchTextChanged)
+  Q_PROPERTY(QString hitsText READ hitsText NOTIFY hitsChanged)
+  Q_PROPERTY(bool hasMatches READ hasMatches NOTIFY hitsChanged)
 
 public:
   // The difference between Forward and Advance is that Forward doesn't
@@ -32,11 +35,15 @@ public:
   enum Direction { Backward, Forward, Advance };
 
   FindWidget(EditorProvider *provider, QWidget *parent = nullptr);
+  ~FindWidget() override;
 
   void reset();
 
   static QString text() { return sText; }
   static void setText(const QString &text) { sText = text; }
+
+  QString hitsText() const { return mHits; }
+  bool hasMatches() const { return mMatches > 0; }
 
   void clearHighlights();
   void highlightAll();
@@ -44,43 +51,27 @@ public:
 
   void showAndSetFocus();
 
+  Q_INVOKABLE void search(const QString &text);
+  Q_INVOKABLE void next() { find(); }
+  Q_INVOKABLE void previous() { find(Backward); }
+
+signals:
+  void searchTextChanged();
+  void hitsChanged();
+  // Focus and select the search field.
+  void focusRequested();
+
 protected:
-  void paintEvent(QPaintEvent *event) override;
   void hideEvent(QHideEvent *event) override;
   void showEvent(QShowEvent *event) override;
 
 private:
-  class SegmentedButton : public QWidget {
-  public:
-    SegmentedButton(QWidget *parent = nullptr);
-
-    QToolButton *prev() const { return mPrev; }
-    QToolButton *next() const { return mNext; }
-
-  private:
-    class Segment : public QToolButton {
-    public:
-      enum Kind { Prev, Next };
-
-      Segment(Kind kind, QWidget *parent = nullptr);
-
-    protected:
-      void paintEvent(QPaintEvent *event) override;
-
-    private:
-      Kind mKind;
-    };
-
-    Segment *mPrev;
-    Segment *mNext;
-  };
-
   int mEditorIndex = 0;
   EditorProvider *mEditorProvider;
 
-  QLabel *mHits;
-  QLineEdit *mField;
-  SegmentedButton *mButtons;
+  QQuickWidget *mView;
+  QString mHits;
+  int mMatches = 0;
 
   static QString sText;
 };

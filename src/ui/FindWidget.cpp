@@ -10,132 +10,46 @@
 #include "FindWidget.h"
 #include "MenuBar.h"
 #include "editor/TextEditor.h"
-#include <QHBoxLayout>
+#include "qml/QmlSupport.h"
 #include <QHideEvent>
-#include <QLabel>
-#include <QLineEdit>
-#include <QPainter>
-#include <QPainterPath>
-#include <QShortcut>
+#include <QQuickWidget>
 #include <QShowEvent>
-#include <QStyleOption>
+#include <QVBoxLayout>
 
 namespace {
 
-const QString kPrevButtonStyle = "QToolButton {"
-                                 "  border-top-right-radius: 0px;"
-                                 "  border-bottom-right-radius: 0px"
-                                 "}";
-
-const QString kNextButtonStyle = "QToolButton {"
-                                 "  border-left: none;"
-                                 "  border-top-left-radius: 0px;"
-                                 "  border-bottom-left-radius: 0px"
-                                 "}";
-
-const QString kFieldStyle = "QLineEdit {"
-                            "  border-radius: 4px;"
-                            "  padding: 0px 4px 0px 4px"
-                            "}";
+const int kHeight = 44;
 
 } // namespace
 
 QString FindWidget::sText;
 
-FindWidget::SegmentedButton::SegmentedButton(QWidget *parent)
-    : QWidget(parent), mPrev(nullptr), mNext(nullptr) {
-  QHBoxLayout *layout = new QHBoxLayout(this);
-  layout->setContentsMargins(0, 0, 0, 0);
-  layout->setSpacing(0);
-
-  mPrev = new Segment(Segment::Prev, this);
-  mPrev->setObjectName("PreviousArrow");
-  mPrev->setStyleSheet(kPrevButtonStyle);
-  layout->addWidget(mPrev);
-
-  mNext = new Segment(Segment::Next, this);
-  mNext->setStyleSheet(kNextButtonStyle);
-  layout->addWidget(mNext);
-}
-
-FindWidget::SegmentedButton::Segment::Segment(Kind kind, QWidget *parent)
-    : QToolButton(parent), mKind(kind) {}
-
-void FindWidget::SegmentedButton::Segment::paintEvent(QPaintEvent *event) {
-  // Draw background.
-  QToolButton::paintEvent(event);
-
-  // Draw arrow.
-  QPainterPath path;
-  qreal size = 2.5;
-  qreal x = width() / 2.0;
-  qreal y = height() / 2.0;
-  bool prev = (mKind == Prev);
-  path.moveTo(x + (prev ? size : -size), y - size - 0.5);
-  path.lineTo(x + (prev ? -size : size), y);
-  path.lineTo(x + (prev ? size : -size), y + size + 0.5);
-
-  QPainter painter(this);
-  painter.setRenderHints(QPainter::Antialiasing);
-  painter.setPen(QPen(painter.pen().color(), 1.2));
-  painter.drawPath(path);
-}
-
 FindWidget::FindWidget(EditorProvider *provider, QWidget *parent)
     : QWidget(parent), mEditorProvider(provider) {
-  QHBoxLayout *layout = new QHBoxLayout(this);
-  layout->setContentsMargins(8, 4, 8, 4);
-  layout->setSpacing(8);
-  layout->addStretch();
+  setFixedHeight(kHeight);
 
-  mHits = new QLabel(this);
-  mHits->setVisible(false);
-  layout->addWidget(mHits);
+  mView = QmlSupport::createView(
+      "FindBar", {{"findBar", QVariant::fromValue<QObject *>(this)}}, this);
+  QVBoxLayout *layout = new QVBoxLayout(this);
+  layout->setContentsMargins(0, 0, 0, 0);
+  layout->addWidget(mView);
+}
 
-  mButtons = new SegmentedButton(this);
-  mButtons->setEnabled(false);
-  layout->addWidget(mButtons);
+FindWidget::~FindWidget() {
+  // The QML view references this object, so it has to go first.
+  delete mView;
+}
 
-  mField = new QLineEdit(this);
-  mField->setStyleSheet(kFieldStyle);
-  mField->setClearButtonEnabled(true);
-  mField->setPlaceholderText(tr("Search"));
-  mField->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
-  layout->addWidget(mField);
+void FindWidget::search(const QString &text) {
+  if (text == sText)
+    return;
 
-  QToolButton *done = new QToolButton(this);
-  done->setText(tr("Done"));
-  layout->addWidget(done);
+  sText = text;
+  emit searchTextChanged();
+  highlightAll();
 
-  // Adjust minimum height of all buttons.
-  int height = mField->sizeHint().height();
-  done->setMinimumHeight(height);
-  mButtons->prev()->setMinimumHeight(height);
-  mButtons->next()->setMinimumHeight(height);
-
-  // Show hit count whenever text is not empty.
-  connect(mField, &QLineEdit::textChanged, [this](const QString &text) {
-    sText = text;
-    highlightAll();
-
-    if (MenuBar *menuBar = MenuBar::instance(this))
-      menuBar->updateFind();
-  });
-
-  // Connect previous button.
-  connect(mButtons->prev(), &QToolButton::clicked,
-          [this]() { find(FindWidget::Backward); });
-
-  // Connect return and next button.
-  auto next = [this]() { find(); };
-  connect(mButtons->next(), &QToolButton::clicked, next);
-  connect(mField, &QLineEdit::returnPressed, next);
-
-  // Connect hide actions.
-  QShortcut *esc = new QShortcut(tr("Esc"), this);
-  esc->setContext(Qt::WidgetWithChildrenShortcut);
-  connect(esc, &QShortcut::activated, this, &FindWidget::hide);
-  connect(done, &QToolButton::clicked, this, &FindWidget::hide);
+  if (MenuBar *menuBar = MenuBar::instance(this))
+    menuBar->updateFind();
 }
 
 void FindWidget::reset() { mEditorIndex = 0; }
@@ -165,9 +79,9 @@ void FindWidget::highlightAll() {
       break;
   }
 
-  mHits->setText(text);
-  mHits->setVisible(!sText.isEmpty());
-  mButtons->setEnabled(matches);
+  mHits = sText.isEmpty() ? QString() : text;
+  mMatches = matches;
+  emit hitsChanged();
 
   // Go to the first match.
   if (matches)
@@ -220,16 +134,9 @@ void FindWidget::find(Direction direction) {
 
 void FindWidget::showAndSetFocus() {
   show();
-  mField->setText(sText);
-  mField->selectAll();
-  mField->setFocus();
-}
-
-void FindWidget::paintEvent(QPaintEvent *) {
-  QStyleOption opt;
-  opt.initFrom(this);
-  QPainter painter(this);
-  style()->drawPrimitive(QStyle::PE_Widget, &opt, &painter, this);
+  emit searchTextChanged();
+  mView->setFocus();
+  emit focusRequested();
 }
 
 void FindWidget::hideEvent(QHideEvent *event) {
