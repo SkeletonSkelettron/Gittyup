@@ -12,6 +12,9 @@ Rectangle {
     property int numberWidth
     // The commit of the lines under the mouse, shared by the rows.
     property string hoveredCommit
+    // The height of the first line of text, which is less than the height
+    // of a wrapped line.
+    property real textHeight: height
 
     property int number
     property string blameId
@@ -56,7 +59,10 @@ Rectangle {
 
         RowLayout {
             visible: root.blameFirst || (root.blameOffset === 1 && root.blameCommitted)
-            anchors.fill: parent
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            height: root.textHeight
             anchors.leftMargin: 14
             anchors.rightMargin: 8
             spacing: 8
@@ -119,7 +125,7 @@ Rectangle {
     Text {
         x: root.blameWidth
         width: root.numberWidth
-        height: parent.height
+        height: root.textHeight
         rightPadding: 8
         horizontalAlignment: Text.AlignRight
         verticalAlignment: Text.AlignVCenter

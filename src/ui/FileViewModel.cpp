@@ -286,6 +286,33 @@ void FileViewModel::showCommit(const QString &id) {
   emit linkActivated(url.toString());
 }
 
+QVariantMap FileViewModel::line(int row) const {
+  // Rows after the last line, like the empty line after the last line
+  // ending, are numbered but have no commit.
+  QModelIndex index = this->index(row);
+  if (!index.isValid())
+    return QVariantMap{{"number", row + 1},
+                       {"blameId", QString()},
+                       {"blameFirst", false},
+                       {"blameLast", false},
+                       {"blameOffset", -1},
+                       {"blameCommitted", false},
+                       {"blameSummary", QString()},
+                       {"blameAuthor", QString()},
+                       {"blameDate", QString()},
+                       {"blameColor", QString()},
+                       {"blameTip", QString()}};
+
+  QVariantMap line;
+  QHash<int, QByteArray> roles = roleNames();
+  for (auto it = roles.cbegin(); it != roles.cend(); ++it) {
+    if (it.key() != HtmlRole && it.key() != MatchesRole)
+      line.insert(QString::fromUtf8(it.value()), data(index, it.key()));
+  }
+
+  return line;
+}
+
 int FileViewModel::rowCount(const QModelIndex &parent) const {
   return parent.isValid() ? 0 : mLines.size();
 }

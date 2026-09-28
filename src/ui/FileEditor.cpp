@@ -125,6 +125,10 @@ bool FileEditor::isModified() const {
 
 int FileEditor::tabWidth() const { return SyntaxHighlighter::tabWidth(); }
 
+bool FileEditor::wrapLines() const {
+  return Settings::instance()->isTextEditorWrapLines();
+}
+
 QObject *FileEditor::blame() const { return mBlame; }
 
 QObject *FileEditor::finder() const { return mFinder; }
@@ -225,6 +229,15 @@ int FileEditor::position(int row, int column) const {
 
   QTextBlock block = mDocument->findBlockByNumber(row);
   return block.isValid() ? block.position() + column : 0;
+}
+
+int FileEditor::row(int position) const {
+  if (!mDocument)
+    return 0;
+
+  QTextBlock block = mDocument->findBlock(position);
+  return block.isValid() ? block.blockNumber()
+                         : qMax(0, mDocument->blockCount() - 1);
 }
 
 int FileEditor::findRowCount() const {

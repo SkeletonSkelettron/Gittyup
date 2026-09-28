@@ -32,6 +32,7 @@ class FileEditor : public QObject, public FindTarget {
   Q_PROPERTY(bool readOnly READ isReadOnly NOTIFY fileChanged)
   Q_PROPERTY(bool modified READ isModified NOTIFY modifiedChanged)
   Q_PROPERTY(int tabWidth READ tabWidth NOTIFY settingsChanged)
+  Q_PROPERTY(bool wrapLines READ wrapLines NOTIFY settingsChanged)
   Q_PROPERTY(QObject *blame READ blame CONSTANT)
   Q_PROPERTY(QObject *finder READ finder CONSTANT)
 
@@ -51,6 +52,7 @@ public:
   bool isReadOnly() const { return mReadOnly; }
   bool isModified() const;
   int tabWidth() const;
+  bool wrapLines() const;
 
   QObject *blame() const;
   QObject *finder() const;
@@ -71,6 +73,8 @@ public:
 
   // The position in the document of 'column' of 'row', from 0.
   Q_INVOKABLE int position(int row, int column) const;
+  // The row of 'position' in the document.
+  Q_INVOKABLE int row(int position) const;
 
   int findRowCount() const override;
   QString findRowText(int row) const override;

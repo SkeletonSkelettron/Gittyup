@@ -13,14 +13,29 @@ Rectangle {
     readonly property int numberWidth: charWidth * Math.max(2, String(area.lineCount).length) + 16
     readonly property bool showBlame: blame.hasBlame || blame.blameLoading
     readonly property int blameWidth: showBlame ? 300 : 0
-    // All lines of the text area have the same height.
-    readonly property real lineHeight: area.lineCount > 0
-                                       ? (area.contentHeight - area.topPadding
-                                          - area.bottomPadding) / area.lineCount
-                                       : metrics.height
 
     // The commit of the lines under the mouse.
     property string hoveredCommit
+    // Changes when the lines of the blame change.
+    property int blameRevision: 0
+
+    // The top of 'row' in the text area.
+    function rowY(row) {
+        // Follow the layout of the text.
+        area.contentHeight
+        area.width
+        if (row > editor.row(area.length))
+            return area.contentHeight
+        return area.positionToRectangle(editor.position(row, 0)).y
+    }
+
+    Connections {
+        target: root.blame
+
+        function onModelReset() { root.blameRevision++ }
+        function onDataChanged() { root.blameRevision++ }
+        function onBlameChanged() { root.blameRevision++ }
+    }
 
     // Scroll the cursor into view, near the top when jumping to a line.
     function showCursor(top) {
@@ -82,36 +97,63 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
-            // The gutter follows the text.
-            ListView {
+            // The gutter of the lines on the screen, placed like the lines of
+            // the text area, which may wrap.
+            Item {
                 id: gutter
+
+                readonly property int firstRow: {
+                    area.contentHeight
+                    return editor.row(area.positionAt(0, flick.contentY))
+                }
+                readonly property int lastRow: {
+                    area.contentHeight
+                    return editor.row(area.positionAt(0, flick.contentY + flick.height))
+                }
 
                 width: root.blameWidth + root.numberWidth
                 height: parent.height
                 clip: true
-                interactive: false
-                model: root.blame
-                onCountChanged: contentY = flick.contentY
 
-                delegate: BlameGutter {
-                    required number
-                    required blameId
-                    required blameFirst
-                    required blameLast
-                    required blameOffset
-                    required blameCommitted
-                    required blameSummary
-                    required blameAuthor
-                    required blameDate
-                    required blameColor
-                    required blameTip
+                Rectangle {
+                    anchors.fill: parent
+                    color: Theme.base
+                }
 
-                    height: root.lineHeight
-                    blame: root.blame
-                    blameWidth: root.blameWidth
-                    numberWidth: root.numberWidth
-                    hoveredCommit: root.hoveredCommit
-                    onHoverRequested: (id) => root.hoveredCommit = id
+                Repeater {
+                    model: Math.max(0, gutter.lastRow - gutter.firstRow + 1)
+
+                    delegate: BlameGutter {
+                        id: cell
+
+                        required property int index
+                        readonly property int row: gutter.firstRow + index
+                        readonly property var line: {
+                            root.blameRevision
+                            return root.blame.line(row)
+                        }
+                        readonly property real rowTop: root.rowY(row)
+
+                        y: rowTop - flick.contentY
+                        height: Math.max(1, root.rowY(row + 1) - rowTop)
+                        textHeight: area.cursorRectangle.height
+                        blame: root.blame
+                        blameWidth: root.blameWidth
+                        numberWidth: root.numberWidth
+                        hoveredCommit: root.hoveredCommit
+                        number: line.number
+                        blameId: line.blameId
+                        blameFirst: line.blameFirst
+                        blameLast: line.blameLast
+                        blameOffset: line.blameOffset
+                        blameCommitted: line.blameCommitted
+                        blameSummary: line.blameSummary
+                        blameAuthor: line.blameAuthor
+                        blameDate: line.blameDate
+                        blameColor: line.blameColor
+                        blameTip: line.blameTip
+                        onHoverRequested: (id) => root.hoveredCommit = id
+                    }
                 }
 
                 // Scroll wheel over the gutter scrolls the text.
@@ -133,7 +175,6 @@ Rectangle {
                 anchors.bottom: parent.bottom
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
-                onContentYChanged: gutter.contentY = contentY
 
                 Controls.ScrollBar.vertical: ThinScrollBar {}
 
@@ -143,7 +184,7 @@ Rectangle {
                     id: area
 
                     textFormat: TextEdit.PlainText
-                    wrapMode: TextEdit.NoWrap
+                    wrapMode: editor.wrapLines ? TextEdit.Wrap : TextEdit.NoWrap
                     readOnly: editor.readOnly
                     selectByMouse: true
                     persistentSelection: true

@@ -85,6 +85,10 @@ public:
   // Show the commit in the history.
   Q_INVOKABLE void showCommit(const QString &id);
 
+  // The data of 'row' by role name, without the text, for views that draw
+  // the text themselves.
+  Q_INVOKABLE QVariantMap line(int row) const;
+
   int rowCount(const QModelIndex &parent = QModelIndex()) const override;
   QVariant data(const QModelIndex &index, int role) const override;
   QHash<int, QByteArray> roleNames() const override;
