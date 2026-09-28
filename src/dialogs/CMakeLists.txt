@@ -4,8 +4,6 @@ add_library(
   AccountDialog.cpp
   AddRemoteDialog.cpp
   AmendDialog.cpp
-  BranchDelegate.cpp
-  BranchTableModel.cpp
   CheckoutDialog.cpp
   CloneDialog.cpp
   CommitDialog.cpp
@@ -13,7 +11,6 @@ add_library(
   ConfigDialog.cpp
   DeleteBranchDialog.cpp
   DeleteTagDialog.cpp
-  DiffPanel.cpp
   ExternalToolsDialog.cpp
   ExternalToolsModel.cpp
   HotkeysPanel.cpp
@@ -25,11 +22,8 @@ add_library(
   QmlDialog.cpp
   ReferenceItems.cpp
   RemoteDialog.cpp
-  RemoteTableModel.cpp
   RenameBranchDialog.cpp
   SettingsDialog.cpp
-  SubmoduleDelegate.cpp
-  SubmoduleTableModel.cpp
   TagDialog.cpp
   ThemeDialog.cpp
   UpdateSubmodulesDialog.cpp)

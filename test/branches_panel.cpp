@@ -11,16 +11,11 @@
 #include "dialogs/NewBranchDialog.h"
 #include <QQuickWidget>
 #include "dialogs/ConfigDialog.h"
-#include "ui/Footer.h"
 #include "ui/MainWindow.h"
 #include "ui/RepoView.h"
-#include <QComboBox>
 #include <QDialog>
 #include <QMenu>
 #include <QPushButton>
-#include <QStackedWidget>
-#include <QTableView>
-#include <QToolButton>
 
 using namespace Test;
 using namespace QTest;
@@ -64,19 +59,13 @@ void TestBranchesPanel::initTestCase() {
 }
 
 void TestBranchesPanel::createBranch() {
-  QStackedWidget *stack = mConfigDialog->findChild<QStackedWidget *>();
-  QVERIFY(stack);
+  QCOMPARE(mConfigDialog->section(), static_cast<int>(ConfigDialog::Branches));
 
-  // Click add branch icon
-  QWidget *panel = stack->currentWidget();
-  Footer *remotesFooter = panel->findChild<Footer *>();
-  QToolButton *addRemote = remotesFooter->findChild<QToolButton *>();
-  QVERIFY(addRemote);
-  mouseClick(addRemote, Qt::LeftButton, Qt::KeyboardModifiers(), QPoint(),
-             inputDelay);
+  // Add a branch.
+  mConfigDialog->newBranch();
 
   // The new branch dialog opens with the name field focused.
-  NewBranchDialog *dialog = panel->findChild<NewBranchDialog *>();
+  NewBranchDialog *dialog = mConfigDialog->findChild<NewBranchDialog *>();
   QVERIFY(dialog);
   QVERIFY(qWaitForWindowExposed(dialog));
   QQuickWidget *view = dialog->findChild<QQuickWidget *>();
@@ -102,10 +91,18 @@ void TestBranchesPanel::createBranch() {
   QVERIFY(branch.isValid());
   QCOMPARE(branch.upstream().name(), QString("origin/master"));
 
-  // Verify branch created
-  QTableView *branchTable = panel->findChild<QTableView *>();
-  QVERIFY(branchTable);
-  QVERIFY(branchTable->rowAt(0) != -1);
+  // The branch is listed with its upstream.
+  bool listed = false;
+  QStringList upstreamNames = mConfigDialog->upstreams();
+  for (const QVariant &var : mConfigDialog->branches()) {
+    QVariantMap map = var.toMap();
+    if (map.value("name") == "feature") {
+      listed = true;
+      QCOMPARE(upstreamNames.at(map.value("upstream").toInt()),
+               QString("origin/master"));
+    }
+  }
+  QVERIFY(listed);
 }
 
 void TestBranchesPanel::cleanupTestCase() {

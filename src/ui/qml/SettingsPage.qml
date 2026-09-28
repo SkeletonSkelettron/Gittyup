@@ -4,11 +4,11 @@ import QtQuick.Layouts
 import Gittyup
 
 // The application settings. 'dialog' is the C++ SettingsDialog.
-Rectangle {
+PreferencesPage {
     id: root
 
     // Keep in sync with SettingsDialog::Index.
-    readonly property var sections: [
+    sections: [
         { title: qsTr("General"), icon: "sliders",
           description: qsTr("Your identity, automatic actions and credentials. Repositories can override git settings.") },
         { title: qsTr("Diff"), icon: "view-double",
@@ -31,12 +31,16 @@ Rectangle {
           description: qsTr("Start Gittyup from a terminal.") }
     ]
 
-    implicitWidth: 880
-    implicitHeight: 620
-    color: Theme.panel
-    focus: true
-
-    Keys.onEscapePressed: dialog.close()
+    title: qsTr("Settings")
+    pages: [general, diff, tools, appearance, editor, updates, plugins, ssh, hotkeys, terminal]
+    current: dialog.section
+    hiddenSections: dialog.terminalVisible ? [] : [9]
+    sideButtonText: qsTr("Edit Git Config File")
+    sideButtonIcon: "file"
+    sideButtonTip: qsTr("Open the global git configuration in the editor")
+    onSectionSelected: (index) => dialog.section = index
+    onSideButtonClicked: dialog.editConfigFile()
+    onCloseRequested: dialog.close()
 
     // Check boxes for settings.
     component SettingCheck: CheckBox {
@@ -60,193 +64,6 @@ Rectangle {
         Layout.fillWidth: true
         text: dialog.settingString(setting)
         onTextEdited: dialog.setSetting(setting, text)
-    }
-
-    RowLayout {
-        anchors.fill: parent
-        spacing: 0
-
-        // Navigation.
-        Rectangle {
-            Layout.preferredWidth: 210
-            Layout.fillHeight: true
-            color: Theme.sidebar
-
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: 12
-                spacing: 2
-
-                Text {
-                    Layout.leftMargin: 8
-                    Layout.topMargin: 6
-                    Layout.bottomMargin: 12
-                    text: qsTr("Settings")
-                    color: Theme.text
-                    font.pixelSize: 18
-                    font.weight: Font.Bold
-                }
-
-                Repeater {
-                    model: root.sections
-
-                    delegate: Rectangle {
-                        id: navItem
-
-                        required property int index
-                        required property var modelData
-
-                        readonly property bool current: dialog.section === index
-
-                        Layout.fillWidth: true
-                        visible: index !== 9 || dialog.terminalVisible
-                        implicitHeight: 34
-                        radius: 6
-                        color: current ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.16)
-                                       : navMouse.containsMouse ? Theme.hover : "transparent"
-
-                        Rectangle {
-                            visible: navItem.current
-                            anchors.left: parent.left
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: 3
-                            height: 16
-                            radius: 1.5
-                            color: Theme.accent
-                        }
-
-                        Row {
-                            anchors.left: parent.left
-                            anchors.leftMargin: 12
-                            anchors.verticalCenter: parent.verticalCenter
-                            spacing: 10
-
-                            Icon {
-                                anchors.verticalCenter: parent.verticalCenter
-                                name: navItem.modelData.icon
-                                size: 16
-                                color: navItem.current ? Theme.accent : Theme.textMuted
-                            }
-
-                            Text {
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: navItem.modelData.title
-                                color: navItem.current ? Theme.text : Theme.textMuted
-                                font.pixelSize: 13
-                                font.weight: navItem.current ? Font.DemiBold : Font.Normal
-                            }
-                        }
-
-                        MouseArea {
-                            id: navMouse
-
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: dialog.section = navItem.index
-                        }
-                    }
-                }
-
-                Item { Layout.fillHeight: true }
-
-                PushButton {
-                    Layout.fillWidth: true
-                    icon: "file"
-                    text: qsTr("Edit Git Config File")
-                    tip: qsTr("Open the global git configuration in the editor")
-                    onClicked: dialog.editConfigFile()
-                }
-            }
-        }
-
-        Rectangle {
-            Layout.fillHeight: true
-            width: 1
-            color: Theme.border
-        }
-
-        // Content.
-        ColumnLayout {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            spacing: 0
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.leftMargin: 28
-                Layout.rightMargin: 28
-                Layout.topMargin: 24
-                Layout.bottomMargin: 12
-                spacing: 4
-
-                Text {
-                    text: root.sections[dialog.section].title
-                    color: Theme.text
-                    font.pixelSize: 20
-                    font.weight: Font.Bold
-                }
-
-                Text {
-                    Layout.fillWidth: true
-                    text: root.sections[dialog.section].description
-                    wrapMode: Text.Wrap
-                    color: Theme.textMuted
-                    font.pixelSize: 12
-                }
-            }
-
-            Flickable {
-                id: flickable
-
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                clip: true
-                contentHeight: loader.height + 32
-                boundsBehavior: Flickable.StopAtBounds
-
-                Controls.ScrollBar.vertical: ThinScrollBar {}
-
-                Loader {
-                    id: loader
-
-                    x: 28
-                    y: 8
-                    width: flickable.width - 56
-                    sourceComponent: [general, diff, tools, appearance, editor, updates,
-                                      plugins, ssh, hotkeys, terminal][dialog.section]
-                    onLoaded: flickable.contentY = 0
-                }
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                height: 1
-                color: Theme.border
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.margins: 14
-                Layout.leftMargin: 28
-                Layout.rightMargin: 20
-
-                Text {
-                    Layout.fillWidth: true
-                    text: qsTr("Changes are saved right away.")
-                    color: Theme.textMuted
-                    font.pixelSize: 12
-                }
-
-                PushButton {
-                    implicitHeight: 32
-                    minimumWidth: 88
-                    primary: true
-                    text: qsTr("Done")
-                    onClicked: dialog.close()
-                }
-            }
-        }
     }
 
     Component {
