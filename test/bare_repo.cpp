@@ -10,7 +10,6 @@
 #include "Test.h"
 #include "Debug.h"
 #include "dialogs/CloneDialog.h"
-#include "ui/Footer.h"
 #include "ui/MainWindow.h"
 #include "ui/RepoView.h"
 #include <QMenu>

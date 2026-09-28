@@ -12,7 +12,6 @@ add_library(
   EditorWindow.cpp
   FileContextMenu.cpp
   FindWidget.cpp
-  Footer.cpp
   History.cpp
   IgnoreDialog.cpp
   HotkeyManager.cpp

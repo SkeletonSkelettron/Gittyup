@@ -14,7 +14,6 @@
 #include "ui/CommitList.h"
 #include "ui/DetailView.h"
 #include "ui/DiffModel.h"
-#include "ui/Footer.h"
 #include "ui/MainWindow.h"
 #include "ui/RepoView.h"
 #include <QFile>
