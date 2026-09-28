@@ -13,6 +13,7 @@ add_library(
   DeleteTagDialog.cpp
   ExternalToolsDialog.cpp
   ExternalToolsModel.cpp
+  InputDialog.cpp
   MergeDialog.cpp
   NewBranchDialog.cpp
   PluginsDialog.cpp

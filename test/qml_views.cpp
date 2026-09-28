@@ -16,6 +16,7 @@
 #include "dialogs/ConfigDialog.h"
 #include "dialogs/ConfirmDialog.h"
 #include "dialogs/ExternalToolsDialog.h"
+#include "dialogs/InputDialog.h"
 #include "dialogs/MergeDialog.h"
 #include "dialogs/NewBranchDialog.h"
 #include "dialogs/PluginsDialog.h"
@@ -143,6 +144,9 @@ void TestQmlViews::dialogs() {
   check(new ExternalToolsDialog("diff", view), "ExternalToolsDialog");
   check(new UpdateDialog("linux", "99.0.0", "<p>Notes</p>", "", view),
         "UpdateDialog");
+  check(new InputDialog("Title", "Text",
+                        {{"Username", "name"}, {"Password", "", true}}, view),
+        "InputDialog");
 
   ConfirmDialog *confirm = new ConfirmDialog(view);
   confirm->setTitle("Title");

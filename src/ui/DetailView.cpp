@@ -18,6 +18,7 @@
 #include "TemplateButton.h"
 #include "TreeModel.h"
 #include "conf/Settings.h"
+#include "dialogs/InputDialog.h"
 #include "git/Branch.h"
 #include "git/Commit.h"
 #include "git/Config.h"
@@ -30,12 +31,7 @@
 #include <QApplication>
 #include <QClipboard>
 #include <QCryptographicHash>
-#include <QDialog>
-#include <QDialogButtonBox>
 #include <QFileInfo>
-#include <QFormLayout>
-#include <QLabel>
-#include <QLineEdit>
 #include <QMenu>
 #include <QtConcurrent>
 
@@ -735,35 +731,25 @@ void DetailView::selectParent(const QString &id) {
 void DetailView::copyId() { QApplication::clipboard()->setText(mId); }
 
 void DetailView::changeAuthor() {
-  QDialog *dialog = new QDialog(mView);
-  QFormLayout *layout = new QFormLayout(dialog);
-
-  layout->addRow(
-      new QLabel(tr("Here you can set the author used for committing\n"
-                    "These settings will not be saved permanently")));
-
-  QLineEdit *userEdit = new QLineEdit(mOverrideUser, dialog);
-  layout->addRow(tr("Author:"), userEdit);
-
-  QLineEdit *emailEdit = new QLineEdit(mOverrideEmail, dialog);
-  layout->addRow(tr("Email:"), emailEdit);
-
-  QDialogButtonBox *buttons = new QDialogButtonBox(dialog);
-  buttons->addButton(QDialogButtonBox::Ok);
-  buttons->addButton(QDialogButtonBox::Cancel);
-  connect(buttons, &QDialogButtonBox::accepted, dialog, &QDialog::accept);
-  connect(buttons, &QDialogButtonBox::rejected, dialog, &QDialog::reject);
-  layout->addRow(buttons);
-
-  connect(dialog, &QDialog::accepted, this, [this, userEdit, emailEdit]() {
-    mOverrideUser = userEdit->text();
-    mOverrideEmail = emailEdit->text();
+  // Empty fields keep the author from the configuration.
+  git::Config config = mRepo.gitConfig();
+  InputDialog *dialog = new InputDialog(
+      tr("Change Author"),
+      tr("Set the author of the next commits. The change isn't saved "
+         "permanently."),
+      {{tr("Name"), mOverrideUser, false, false,
+        config.value<QString>("user.name")},
+       {tr("Email"), mOverrideEmail, false, false,
+        config.value<QString>("user.email")}},
+      mView, tr("Change Author"));
+  dialog->setAttribute(Qt::WA_DeleteOnClose);
+  connect(dialog, &QDialog::accepted, this, [this, dialog] {
+    mOverrideUser = dialog->value(0);
+    mOverrideEmail = dialog->value(1);
     emit authorChanged();
   });
 
-  dialog->setModal(true);
-  dialog->setAttribute(Qt::WA_DeleteOnClose);
-  dialog->show();
+  dialog->open();
 }
 
 void DetailView::resetAuthor() {

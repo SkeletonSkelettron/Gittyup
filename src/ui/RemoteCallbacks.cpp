@@ -11,19 +11,16 @@
 #include "RemoteCallbacks.h"
 #include "conf/Settings.h"
 #include "cred/CredentialHelper.h"
+#include "dialogs/InputDialog.h"
 #include "git/Command.h"
 #include "git/Id.h"
 #include "git/RevWalk.h"
 #include "git2/sys/errors.h"
 #include "log/LogEntry.h"
 #include <libssh2.h>
-#include <QDialog>
-#include <QDialogButtonBox>
+#include <QApplication>
 #include <QEventLoop>
-#include <QFormLayout>
-#include <QLineEdit>
 #include <QProcess>
-#include <QPushButton>
 #include <QRegularExpression>
 #include <QTextStream>
 #include <QUrl>
@@ -290,47 +287,28 @@ void RemoteCallbacks::credentialsImpl(const QString &url, QString &username,
   }
 
   // Prompt for password.
-  QDialog dialog;
   QString scheme = QUrl(url).scheme().toLower();
   bool https = (scheme == "http" || scheme == "https");
-  dialog.setWindowTitle(https ? tr("HTTPS Credentials") : tr("SSH Passphrase"));
+  QList<InputDialog::Field> fields;
+  if (https)
+    fields.append({tr("Username"), username});
+  fields.append({https ? tr("Password") : tr("Passphrase"), QString(), true});
 
-  QLineEdit *usernameField = https ? new QLineEdit(username, &dialog) : nullptr;
-  QLineEdit *passwordField = new QLineEdit(&dialog);
-  passwordField->setEchoMode(QLineEdit::Password);
-
-  QDialogButtonBox *buttons = new QDialogButtonBox(
-      QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
-  QObject::connect(buttons, &QDialogButtonBox::accepted, &dialog,
-                   &QDialog::accept);
-  QObject::connect(buttons, &QDialogButtonBox::rejected, &dialog,
-                   &QDialog::reject);
-
-  QFormLayout *layout = new QFormLayout(&dialog);
-  if (usernameField)
-    layout->addRow(tr("Username:"), usernameField);
-  layout->addRow(https ? tr("Password:") : tr("Passphrase:"), passwordField);
-  layout->addRow(buttons);
-
-  auto updateButtons = [usernameField, passwordField, buttons] {
-    bool password = !passwordField->text().isEmpty();
-    bool username = (!usernameField || !usernameField->text().isEmpty());
-    buttons->button(QDialogButtonBox::Ok)->setEnabled(username && password);
-  };
-
-  updateButtons();
-  if (usernameField)
-    QObject::connect(usernameField, &QLineEdit::textChanged, updateButtons);
-  QObject::connect(passwordField, &QLineEdit::textChanged, updateButtons);
-
+  QString host = QUrl(url).host();
+  InputDialog dialog(
+      https ? tr("HTTPS Credentials") : tr("SSH Passphrase"),
+      https ? tr("Sign in to %1.").arg(host.isEmpty() ? url : host)
+            : tr("Enter the passphrase of your SSH key for %1.").arg(url),
+      fields, QApplication::activeWindow(),
+      https ? tr("Sign In") : tr("Unlock"));
   if (!dialog.exec()) {
     error = tr("authentication canceled");
     return;
   }
 
-  if (usernameField)
-    username = usernameField->text();
-  password = passwordField->text();
+  if (https)
+    username = dialog.value(0);
+  password = dialog.values().last();
 
   // Remember in keychain.
   mDeferredUrl = url;
@@ -342,42 +320,20 @@ void RemoteCallbacks::interactiveAuthImpl(
     const QString &name, const QString &instruction,
     const QVector<git::Remote::SshInteractivePrompt> &prompts,
     QVector<QString> &responses, QString &error) {
-  QDialog dialog;
-  dialog.setWindowTitle("SSH interactive authentication");
+  QList<InputDialog::Field> fields;
+  for (const git::Remote::SshInteractivePrompt &prompt : prompts)
+    fields.append({prompt.text, QString(), !prompt.echo, false});
 
-  QDialogButtonBox *buttons = new QDialogButtonBox(&dialog);
-  buttons->addButton(QDialogButtonBox::Ok);
-  buttons->addButton(QDialogButtonBox::Cancel);
-  QObject::connect(buttons, &QDialogButtonBox::accepted, &dialog,
-                   &QDialog::accept);
-  QObject::connect(buttons, &QDialogButtonBox::rejected, &dialog,
-                   &QDialog::reject);
-
-  QVector<QLineEdit *> inputs(prompts.length());
-  QFormLayout *form = new QFormLayout(&dialog);
-
-  for (int i = 0; i < prompts.length(); ++i) {
-    QLineEdit *edit = new QLineEdit(&dialog);
-
-    if (!prompts[i].echo)
-      edit->setEchoMode(QLineEdit::EchoMode::Password);
-
-    form->addRow(prompts[i].text, edit);
-    inputs[i] = edit;
-  }
-
-  form->addRow(buttons);
-
-  if (inputs.length() > 0)
-    inputs[0]->setFocus();
-
+  QString text = instruction.isEmpty() ? name : instruction;
+  InputDialog dialog(tr("SSH Authentication"), text, fields,
+                     QApplication::activeWindow());
   if (!dialog.exec()) {
     error = tr("authentication canceled");
     return;
   }
 
   for (int i = 0; i < prompts.length(); ++i)
-    responses[i] = inputs[i]->text();
+    responses[i] = dialog.value(i);
 }
 
 void RemoteCallbacks::sidebandImpl(const QString &text, const QString &fmt) {
