@@ -15,7 +15,7 @@
 #include "DiffModel.h"
 #include "FileContextMenu.h"
 #include "MenuBar.h"
-#include "TemplateButton.h"
+#include "CommitTemplates.h"
 #include "TreeModel.h"
 #include "conf/Settings.h"
 #include "dialogs/InputDialog.h"
@@ -58,10 +58,8 @@ DetailView::DetailView(const git::Repository &repo, RepoView *view)
       mUnstagedFiles(new ChangedFilesModel(ChangedFilesModel::Unstaged, this)),
       mTree(new TreeModel(repo, this)), mDiffModel(new DiffModel(view, this)),
       mSpellCheck(new SpellCheck(repo, view)) {
-  // The template button is only used for its menu of message templates.
-  // It has no parent, RepoView would add it as a pane of the splitter.
-  mTemplates = new TemplateButton;
-  connect(mTemplates, &TemplateButton::templateChanged, this,
+  mTemplates = new CommitTemplates(this);
+  connect(mTemplates, &CommitTemplates::templateChanged, this,
           [this](const QString &text) {
             applyTemplate(text, stagedFileNames());
           });
@@ -115,7 +113,7 @@ DetailView::DetailView(const git::Repository &repo, RepoView *view)
   mCommitText = tr("Commit");
 }
 
-DetailView::~DetailView() { delete mTemplates; }
+DetailView::~DetailView() {}
 
 QAbstractItemModel *DetailView::files() const { return mFiles; }
 
@@ -428,7 +426,7 @@ QStringList DetailView::stagedFileNames() const {
 
 void DetailView::populateMessage(const QStringList &files) {
   QString msg;
-  QList<TemplateButton::Template> templates = mTemplates->templates();
+  QList<CommitTemplates::Template> templates = mTemplates->templates();
   if (!templates.isEmpty()) {
     msg = CommitMessage::applyTemplate(templates.first().value, files).text;
   } else {
@@ -714,7 +712,7 @@ void DetailView::showOptionsMenu(qreal x, qreal y) {
 }
 
 void DetailView::showTemplateMenu(qreal x, qreal y) {
-  mTemplates->menu()->exec(mView->mapFromPage(x, y));
+  mTemplates->showMenu(mView->mapFromPage(x, y), mView);
 }
 
 void DetailView::setListMode(bool list) {

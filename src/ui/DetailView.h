@@ -19,7 +19,7 @@
 class ChangedFilesModel;
 class DiffModel;
 class SpellCheck;
-class TemplateButton;
+class CommitTemplates;
 class TreeModel;
 
 namespace git {
@@ -221,7 +221,7 @@ private:
   TreeModel *mTree;
   DiffModel *mDiffModel;
   SpellCheck *mSpellCheck;
-  TemplateButton *mTemplates;
+  CommitTemplates *mTemplates;
 
   QString mSummary;
   QString mBody;

@@ -17,7 +17,7 @@ const QString kTemplateFileExtension =
 
 } // namespace
 
-TemplateDialog::TemplateDialog(QList<TemplateButton::Template> &templates,
+TemplateDialog::TemplateDialog(QList<CommitTemplates::Template> &templates,
                                QWidget *parent)
     : QmlDialog(parent), mTemplates(templates), mNew(templates) {
   setWindowTitle(tr("Commit Message Templates"));
@@ -29,7 +29,7 @@ TemplateDialog::TemplateDialog(QList<TemplateButton::Template> &templates,
 
 QStringList TemplateDialog::names() const {
   QStringList names;
-  for (const TemplateButton::Template &tmpl : mNew)
+  for (const CommitTemplates::Template &tmpl : mNew)
     names.append(tmpl.name);
   return names;
 }
@@ -60,7 +60,7 @@ void TemplateDialog::setTemplateText(const QString &text) {
 QString TemplateDialog::cursorHint() const {
   return tr("Use %1 to place the cursor and ${files:x} to add the names of "
             "up to x changed files.")
-      .arg(TemplateButton::cursorPositionString);
+      .arg(CommitTemplates::cursorPositionString);
 }
 
 void TemplateDialog::addTemplate() {
@@ -77,7 +77,7 @@ void TemplateDialog::addTemplate() {
     }
   }
 
-  TemplateButton::Template tmpl;
+  CommitTemplates::Template tmpl;
   tmpl.name = mName;
   tmpl.value = mTemplate;
   mNew.append(tmpl);
@@ -139,7 +139,7 @@ void TemplateDialog::importTemplates(QString filename) {
       QString value = line.sliced(index + 1);
       value = value.replace(QStringLiteral("\\n"), QStringLiteral("\n"));
       value = value.replace(QStringLiteral("\\t"), QStringLiteral("\t"));
-      TemplateButton::Template t;
+      CommitTemplates::Template t;
       t.name = name;
       t.value = value;
       mNew.append(t);

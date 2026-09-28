@@ -6,7 +6,7 @@
 //
 
 #include "CommitMessage.h"
-#include "TemplateButton.h"
+#include "CommitTemplates.h"
 #include <QCoreApplication>
 #include <QRegularExpression>
 
@@ -55,7 +55,7 @@ QString fileList(const QStringList &list, int maxFiles) {
 Result applyTemplate(const QString &text, const QStringList &files) {
   QString templ = text;
 
-  QString pattern = TemplateButton::filesPosition;
+  QString pattern = CommitTemplates::filesPosition;
   pattern.replace("{", "\\{");
   pattern.replace("}", "\\}");
   pattern.replace("$", "\\$");
@@ -76,7 +76,7 @@ Result applyTemplate(const QString &text, const QStringList &files) {
     }
   }
 
-  int index = text.indexOf(TemplateButton::cursorPositionString);
+  int index = text.indexOf(CommitTemplates::cursorPositionString);
   if (index < 0) {
     index = templ.length();
   } else if (start > 0 && index > start) {
@@ -84,7 +84,7 @@ Result applyTemplate(const QString &text, const QStringList &files) {
     index += offset;
   }
 
-  templ.replace(TemplateButton::cursorPositionString, "");
+  templ.replace(CommitTemplates::cursorPositionString, "");
   return {templ, qMin(index, static_cast<int>(templ.length()))};
 }
 

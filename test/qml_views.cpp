@@ -156,7 +156,7 @@ void TestQmlViews::dialogs() {
   confirm->addButton("Other");
   check(confirm, "ConfirmDialog");
 
-  QList<TemplateButton::Template> templates = {{"Name", "Value"}};
+  QList<CommitTemplates::Template> templates = {{"Name", "Value"}};
   TemplateDialog *templateDialog = new TemplateDialog(templates, view);
   check(templateDialog, "TemplateDialog");
 }

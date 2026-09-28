@@ -1,6 +1,6 @@
 #include "Test.h"
 
-#include "ui/TemplateButton.h"
+#include "ui/CommitTemplates.h"
 #include "ui/TemplateDialog.h"
 
 #include <QLineEdit>
@@ -18,7 +18,7 @@ private slots:
 };
 
 void TestCommitMessageTemplate::testImportExport() {
-  QList<TemplateButton::Template> templates;
+  QList<CommitTemplates::Template> templates;
   QTemporaryFile f;
   QVERIFY(f.open());
   QVERIFY(!f.fileName().isEmpty());
@@ -55,7 +55,7 @@ void TestCommitMessageTemplate::testImportExport() {
 }
 
 void TestCommitMessageTemplate::testMoveUp() {
-  QList<TemplateButton::Template> templates;
+  QList<CommitTemplates::Template> templates;
   TemplateDialog d(templates);
 
   d.setName(QStringLiteral("Template1"));
@@ -106,7 +106,7 @@ void TestCommitMessageTemplate::testMoveUp() {
 }
 
 void TestCommitMessageTemplate::testMoveDown() {
-  QList<TemplateButton::Template> templates;
+  QList<CommitTemplates::Template> templates;
   TemplateDialog d(templates);
 
   d.setName(QStringLiteral("Template1"));
@@ -157,7 +157,7 @@ void TestCommitMessageTemplate::testMoveDown() {
 }
 
 void TestCommitMessageTemplate::testRemove() {
-  QList<TemplateButton::Template> templates;
+  QList<CommitTemplates::Template> templates;
   TemplateDialog d(templates);
 
   d.setName(QStringLiteral("Template1"));
@@ -188,7 +188,7 @@ void TestCommitMessageTemplate::testRemove() {
 }
 
 void TestCommitMessageTemplate::testRemoveNoItemAvailable() {
-  QList<TemplateButton::Template> templates;
+  QList<CommitTemplates::Template> templates;
   TemplateDialog d(templates);
   d.removeTemplate();
 

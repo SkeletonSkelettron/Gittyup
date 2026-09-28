@@ -8,7 +8,7 @@
 #ifndef TEMPLATEDIALOG_H
 #define TEMPLATEDIALOG_H
 
-#include "TemplateButton.h"
+#include "CommitTemplates.h"
 #include "dialogs/QmlDialog.h"
 
 // Edit the commit message templates. qrc:/qml/TemplateDialog.qml draws it.
@@ -25,7 +25,7 @@ class TemplateDialog : public QmlDialog {
   Q_PROPERTY(QString cursorHint READ cursorHint CONSTANT)
 
 public:
-  TemplateDialog(QList<TemplateButton::Template> &templates,
+  TemplateDialog(QList<CommitTemplates::Template> &templates,
                  QWidget *parent = nullptr);
 
   QStringList names() const;
@@ -58,8 +58,8 @@ private:
   void showTemplate(int index);
   void moveTemplate(int offset);
 
-  QList<TemplateButton::Template> &mTemplates;
-  QList<TemplateButton::Template> mNew;
+  QList<CommitTemplates::Template> &mTemplates;
+  QList<CommitTemplates::Template> mNew;
   int mCurrent = -1;
   QString mName;
   QString mTemplate;

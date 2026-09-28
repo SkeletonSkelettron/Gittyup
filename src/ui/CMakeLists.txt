@@ -32,7 +32,7 @@ add_library(
   SpellChecker.cpp
   TabStrip.cpp
   TabWidget.cpp
-  TemplateButton.cpp
+  CommitTemplates.cpp
   TemplateDialog.cpp
   ToolBar.cpp
   TreeModel.cpp
