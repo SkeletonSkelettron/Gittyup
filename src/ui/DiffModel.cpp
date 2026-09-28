@@ -36,39 +36,6 @@ namespace {
 const int kMaxLines = 20000;
 const int kTabWidth = 4;
 
-// Append 'text' to 'html', escaped, with tabs expanded and spaces kept.
-void appendText(QString &html, const QString &text, int &column) {
-  for (QChar ch : text) {
-    if (ch == '\t') {
-      int spaces = kTabWidth - (column % kTabWidth);
-      for (int i = 0; i < spaces; ++i)
-        html += "&nbsp;";
-      column += spaces;
-      continue;
-    }
-
-    switch (ch.unicode()) {
-      case ' ':
-        html += "&nbsp;";
-        break;
-      case '<':
-        html += "&lt;";
-        break;
-      case '>':
-        html += "&gt;";
-        break;
-      case '&':
-        html += "&amp;";
-        break;
-      default:
-        html += ch;
-        break;
-    }
-
-    ++column;
-  }
-}
-
 QByteArray chomp(const QByteArray &line) {
   QByteArray result = line;
   while (result.endsWith('\n') || result.endsWith('\r'))
@@ -442,10 +409,9 @@ QString DiffModel::html(int hunk, int line) const {
   }
 
   Theme *theme = Application::theme();
-  QString wordColor =
-      theme->diff(current.origin == '-' ? Theme::Diff::WordDeletion
-                                        : Theme::Diff::WordAddition)
-          .name();
+  QColor wordColor = theme->diff(current.origin == '-'
+                                     ? Theme::Diff::WordDeletion
+                                     : Theme::Diff::WordAddition);
 
   // Whether each byte is in a changed word.
   QVector<bool> changed(content.size(), false);
@@ -456,47 +422,16 @@ QString DiffModel::html(int hunk, int line) const {
   }
 
   QByteArray styles;
-  if (mHighlighter && hunk < mStyles.size() && line < mStyles.at(hunk).size())
+  if (hunk < mStyles.size() && line < mStyles.at(hunk).size())
     styles = mStyles.at(hunk).at(line);
-  auto styleAt = [&styles](int pos) {
-    return pos < styles.size() ? static_cast<uchar>(styles.at(pos)) : 0;
-  };
 
-  // Emit runs of bytes with the same style and word change state.
-  QString html;
-  int column = 0;
-  int pos = 0;
-  while (pos < content.size()) {
-    bool word = changed.at(pos);
-    int style = styleAt(pos);
-    int end = pos + 1;
-    while (end < content.size() && changed.at(end) == word &&
-           styleAt(end) == style)
-      ++end;
+  if (!mHighlighter)
+    return QString();
 
-    QString css;
-    if (word)
-      css += QString("background-color:%1;").arg(wordColor);
-    if (style) {
-      SyntaxHighlighter::Format format = mHighlighter->format(style);
-      if (format.color.isValid())
-        css += QString("color:%1;").arg(format.color.name());
-      if (format.bold)
-        css += "font-weight:bold;";
-      if (format.italic)
-        css += "font-style:italic;";
-    }
-
-    if (!css.isEmpty())
-      html += QString("<span style='%1'>").arg(css);
-    appendText(html, repo.decode(content.mid(pos, end - pos)), column);
-    if (!css.isEmpty())
-      html += "</span>";
-
-    pos = end;
-  }
-
-  return html;
+  return mHighlighter->html(
+      content, styles,
+      [&repo](const QByteArray &bytes) { return repo.decode(bytes); }, changed,
+      wordColor);
 }
 
 void DiffModel::toggleLine(int row) {

@@ -50,7 +50,12 @@ Rectangle {
 
             DiffPanel {
                 anchors.fill: parent
-                visible: detailView.selectedFile !== ""
+                visible: detailView.selectedFile !== "" && detailView.viewMode !== 1
+            }
+
+            FileView {
+                anchors.fill: parent
+                visible: detailView.selectedFile !== "" && detailView.viewMode === 1
             }
         }
 

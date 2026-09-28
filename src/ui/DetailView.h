@@ -18,6 +18,7 @@
 
 class ChangedFilesModel;
 class DiffModel;
+class FileViewModel;
 class SpellCheck;
 class CommitTemplates;
 class TreeModel;
@@ -59,6 +60,8 @@ class DetailView : public QObject {
   Q_PROPERTY(QAbstractItemModel *unstagedFiles READ unstagedFiles CONSTANT)
   Q_PROPERTY(QAbstractItemModel *tree READ tree CONSTANT)
   Q_PROPERTY(QObject *diff READ diffModel CONSTANT)
+  // The content of the selected file in tree mode.
+  Q_PROPERTY(QObject *content READ contentModel CONSTANT)
   Q_PROPERTY(QObject *spellCheck READ spellCheck CONSTANT)
   Q_PROPERTY(QString selectedFile READ file NOTIFY selectedFileChanged)
   Q_PROPERTY(bool listMode READ listMode NOTIFY settingsChanged)
@@ -148,6 +151,7 @@ public:
   QAbstractItemModel *unstagedFiles() const;
   QAbstractItemModel *tree() const;
   QObject *diffModel() const;
+  QObject *contentModel() const;
   QObject *spellCheck() const;
   bool listMode() const;
   bool hideUntracked() const;
@@ -197,6 +201,9 @@ signals:
   void messagePopulated();
 
 private:
+  // Show the content of 'path' at the selected commit.
+  bool showContent(const QString &path);
+
   ChangedFilesModel *model(int list) const;
   void setMode(Mode mode);
   void setCommits(const QList<git::Commit> &commits);
@@ -220,6 +227,7 @@ private:
   ChangedFilesModel *mUnstagedFiles;
   TreeModel *mTree;
   DiffModel *mDiffModel;
+  FileViewModel *mContentModel;
   SpellCheck *mSpellCheck;
   CommitTemplates *mTemplates;
 

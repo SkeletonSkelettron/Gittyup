@@ -31,6 +31,7 @@
 #include "git/Index.h"
 #include "log/LogEntry.h"
 #include "ui/IgnoreDialog.h"
+#include "ui/DetailView.h"
 #include "ui/MainWindow.h"
 #include "ui/RepoView.h"
 #include "ui/TabStrip.h"
@@ -118,6 +119,22 @@ void TestQmlViews::mainWindow() {
   mWindow->tabWidget()->setWelcomeVisible(true);
   qWait(200);
   mWindow->tabWidget()->setWelcomeVisible(false);
+  qWait(100);
+
+  // The content of a file with its blame in tree mode.
+  view->setViewMode(RepoView::Tree);
+  DetailView *details = view->findChild<DetailView *>();
+  details->selectPath("file.txt");
+  QCOMPARE(details->file(), QString("file.txt"));
+  QAbstractItemModel *content =
+      qobject_cast<QAbstractItemModel *>(details->contentModel());
+  QVERIFY(content->rowCount() > 0);
+  QTRY_VERIFY(!content->property("blameLoading").toBool());
+  QVERIFY(content->property("hasBlame").toBool());
+  QCOMPARE(content->index(0, 0).data(Qt::UserRole + 3).toString().isEmpty(),
+           false);
+  details->closeFile();
+  view->setViewMode(RepoView::DoubleTree);
   qWait(100);
 
   QVERIFY2(sMessages.isEmpty(), qPrintable(sMessages.join('\n')));

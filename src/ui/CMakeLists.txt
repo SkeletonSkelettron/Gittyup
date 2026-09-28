@@ -10,6 +10,7 @@ add_library(
   DiffModel.cpp
   EditorWindow.cpp
   FileContextMenu.cpp
+  FileViewModel.cpp
   FindWidget.cpp
   History.cpp
   IgnoreDialog.cpp

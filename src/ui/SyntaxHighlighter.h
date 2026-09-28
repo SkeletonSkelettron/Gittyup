@@ -12,6 +12,8 @@
 #include <QColor>
 #include <QHash>
 #include <QString>
+#include <QVector>
+#include <functional>
 
 class TextEditor;
 
@@ -34,6 +36,14 @@ public:
 
   // The format of a style returned by the last call to style().
   Format format(int style) const;
+
+  // The HTML of a line of text and its styles from the last call to
+  // style(), with tabs expanded and spaces kept. Bytes that are 'marked'
+  // get the background 'markColor'. 'decode' converts bytes to text.
+  QString html(const QByteArray &line, const QByteArray &styles,
+               const std::function<QString(const QByteArray &)> &decode,
+               const QVector<bool> &marked = QVector<bool>(),
+               const QColor &markColor = QColor()) const;
 
   // The hidden editor, for example to run plugins on text.
   TextEditor *editor() const { return mEditor; }

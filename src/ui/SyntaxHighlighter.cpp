@@ -10,8 +10,43 @@
 
 namespace {
 
+const int kTabWidth = 4;
+
 QColor fromScintilla(sptr_t colour) {
   return QColor(colour & 0xff, (colour >> 8) & 0xff, (colour >> 16) & 0xff);
+}
+
+// Append 'text' to 'html', escaped, with tabs expanded and spaces kept.
+void appendText(QString &html, const QString &text, int &column) {
+  for (QChar ch : text) {
+    if (ch == '\t') {
+      int spaces = kTabWidth - (column % kTabWidth);
+      for (int i = 0; i < spaces; ++i)
+        html += "&nbsp;";
+      column += spaces;
+      continue;
+    }
+
+    switch (ch.unicode()) {
+      case ' ':
+        html += "&nbsp;";
+        break;
+      case '<':
+        html += "&lt;";
+        break;
+      case '>':
+        html += "&gt;";
+        break;
+      case '&':
+        html += "&amp;";
+        break;
+      default:
+        html += ch;
+        break;
+    }
+
+    ++column;
+  }
 }
 
 } // namespace
@@ -55,4 +90,52 @@ SyntaxHighlighter::Format SyntaxHighlighter::format(int style) const {
 
   mFormats.insert(style, format);
   return format;
+}
+
+QString SyntaxHighlighter::html(
+    const QByteArray &line, const QByteArray &styles,
+    const std::function<QString(const QByteArray &)> &decode,
+    const QVector<bool> &marked, const QColor &markColor) const {
+  auto styleAt = [&styles](int pos) {
+    return pos < styles.size() ? static_cast<uchar>(styles.at(pos)) : 0;
+  };
+  auto markedAt = [&marked](int pos) {
+    return pos < marked.size() && marked.at(pos);
+  };
+
+  // Emit runs of bytes with the same style and mark.
+  QString html;
+  int column = 0;
+  int pos = 0;
+  while (pos < line.size()) {
+    bool mark = markedAt(pos);
+    int style = styleAt(pos);
+    int end = pos + 1;
+    while (end < line.size() && markedAt(end) == mark &&
+           styleAt(end) == style)
+      ++end;
+
+    QString css;
+    if (mark)
+      css += QString("background-color:%1;").arg(markColor.name());
+    if (style) {
+      Format format = this->format(style);
+      if (format.color.isValid())
+        css += QString("color:%1;").arg(format.color.name());
+      if (format.bold)
+        css += "font-weight:bold;";
+      if (format.italic)
+        css += "font-style:italic;";
+    }
+
+    if (!css.isEmpty())
+      html += QString("<span style='%1'>").arg(css);
+    appendText(html, decode(line.mid(pos, end - pos)), column);
+    if (!css.isEmpty())
+      html += "</span>";
+
+    pos = end;
+  }
+
+  return html;
 }

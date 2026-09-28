@@ -14,6 +14,7 @@
 #include "CommitMessage.h"
 #include "DiffModel.h"
 #include "FileContextMenu.h"
+#include "FileViewModel.h"
 #include "MenuBar.h"
 #include "CommitTemplates.h"
 #include "TreeModel.h"
@@ -57,6 +58,7 @@ DetailView::DetailView(const git::Repository &repo, RepoView *view)
       mStagedFiles(new ChangedFilesModel(ChangedFilesModel::Staged, this)),
       mUnstagedFiles(new ChangedFilesModel(ChangedFilesModel::Unstaged, this)),
       mTree(new TreeModel(repo, this)), mDiffModel(new DiffModel(view, this)),
+      mContentModel(new FileViewModel(view, this)),
       mSpellCheck(new SpellCheck(repo, view)) {
   mTemplates = new CommitTemplates(this);
   connect(mTemplates, &CommitTemplates::templateChanged, this,
@@ -127,6 +129,8 @@ QAbstractItemModel *DetailView::tree() const { return mTree; }
 
 QObject *DetailView::diffModel() const { return mDiffModel; }
 
+QObject *DetailView::contentModel() const { return mContentModel; }
+
 QObject *DetailView::spellCheck() const { return mSpellCheck; }
 
 bool DetailView::listMode() const {
@@ -182,6 +186,9 @@ void DetailView::setViewMode(RepoView::ViewMode mode, bool spontaneous) {
     return;
 
   mViewMode = mode;
+
+  // The file is shown differently in the other mode.
+  closeFile();
 
   // Emit own signal so that the view can respond *after* the change.
   emit viewModeChanged(mode, spontaneous);
@@ -243,10 +250,18 @@ void DetailView::setDiff(const git::Diff &diff, const QString &file,
 
   // Keep showing the same file if it's still there.
   QString path = !file.isEmpty() ? file : mFile;
-  if (!diff.isValid() || diff.indexOf(path) < 0)
-    path.clear();
+  if (mViewMode == RepoView::Tree) {
+    if (!path.isEmpty() && !showContent(path))
+      path.clear();
+    if (path.isEmpty())
+      mContentModel->clear();
+    mDiffModel->setDiff(git::Diff(), QString());
+  } else {
+    if (!diff.isValid() || diff.indexOf(path) < 0)
+      path.clear();
+    mDiffModel->setDiff(diff, path);
+  }
 
-  mDiffModel->setDiff(diff, path);
   if (path != mFile) {
     mFile = path;
     emit selectedFileChanged();
@@ -618,10 +633,19 @@ void DetailView::selectFile(int list, int row) {
 }
 
 void DetailView::selectPath(const QString &path) {
-  if (path.isEmpty() || !mDiff.isValid() || mDiff.indexOf(path) < 0)
+  if (path.isEmpty())
     return;
 
-  mDiffModel->setDiff(mDiff, path);
+  // Tree mode shows the content of the file, like the diff mode its diff.
+  if (mViewMode == RepoView::Tree) {
+    if (!showContent(path))
+      return;
+  } else {
+    if (!mDiff.isValid() || mDiff.indexOf(path) < 0)
+      return;
+    mDiffModel->setDiff(mDiff, path);
+  }
+
   if (path != mFile) {
     mFile = path;
     emit selectedFileChanged();
@@ -634,7 +658,22 @@ void DetailView::closeFile() {
 
   mFile.clear();
   mDiffModel->setDiff(git::Diff(), QString());
+  mContentModel->clear();
   emit selectedFileChanged();
+}
+
+bool DetailView::showContent(const QString &path) {
+  // The selected commit, or the working copy for the uncommitted changes.
+  QList<git::Commit> commits = mView->commits();
+  git::Commit commit = !commits.isEmpty() ? commits.first() : git::Commit();
+  bool exists = commit.isValid()
+                    ? commit.blob(path).isValid()
+                    : QFileInfo(mRepo.workdir().filePath(path)).isFile();
+  if (!exists)
+    return false;
+
+  mContentModel->load(path, commit);
+  return true;
 }
 
 void DetailView::stageFiles(int list, int row, bool staged) {
