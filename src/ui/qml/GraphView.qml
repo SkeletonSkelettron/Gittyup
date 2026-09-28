@@ -414,7 +414,7 @@ Rectangle {
 
                             Text {
                                 anchors.verticalCenter: parent.verticalCenter
-                                visible: row.busy !== true && row.wip
+                                visible: row.busy !== true && !!row.wip
                                          && !(row.wip.modified || row.wip.added || row.wip.deleted)
                                 text: qsTr("No changes")
                                 color: Theme.textMuted

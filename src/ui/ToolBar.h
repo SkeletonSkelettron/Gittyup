@@ -86,11 +86,10 @@ public:
   Q_INVOKABLE void setStarred(bool starred);
   Q_INVOKABLE void showSettingsMenu(qreal x, qreal y);
 
+  RepoView *currentView() const;
+
 signals:
   void stateChanged();
-
-protected:
-  void resizeEvent(QResizeEvent *event) override;
 
 private:
   struct State {
@@ -118,8 +117,6 @@ private:
   void updateStash();
   void updateView();
   void updateSearch();
-
-  RepoView *currentView() const;
 
   State mState;
   bool mPullRequestAvailable = false;

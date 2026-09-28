@@ -7,11 +7,13 @@ Rectangle {
     id: root
 
     // Hide button labels when there isn't enough room for them.
-    readonly property bool narrow: width < 1180
+    readonly property bool narrow: width < 1408
     // Hide buttons that duplicate other controls when space is tight.
-    readonly property bool tight: width < 1000
+    readonly property bool tight: width < 1228
     // Also hide what the View menu covers when space is really tight.
-    readonly property bool cramped: width < 860
+    readonly property bool cramped: width < 1018
+    // Make the search field narrower.
+    readonly property bool narrowSearch: width < 1100
 
     color: Theme.toolbar
 
@@ -258,6 +260,12 @@ Rectangle {
             menuOnly: true
             tip: qsTr("Configure Settings")
             onMenuRequested: (x, y) => toolbar.showSettingsMenu(x, y)
+        }
+
+        SearchField {
+            Layout.leftMargin: 6
+            Layout.rightMargin: 4
+            Layout.preferredWidth: root.narrowSearch ? 150 : 220
         }
     }
 }

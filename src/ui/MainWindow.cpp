@@ -9,11 +9,8 @@
 
 #include "MainWindow.h"
 #include "dialogs/ConfirmDialog.h"
-#include "AdvancedSearchWidget.h"
-#include "IndexCompleter.h"
 #include "MenuBar.h"
 #include "RepoView.h"
-#include "SearchField.h"
 #include "SideBar.h"
 #include "TabStrip.h"
 #include "TabWidget.h"
@@ -32,7 +29,6 @@
 #include <QMimeData>
 #include <QSettings>
 #include <QTimeLine>
-#include <QToolButton>
 #include "util/Debug.h"
 
 namespace {
@@ -86,22 +82,6 @@ MainWindow::MainWindow(const git::Repository &repo, QWidget *parent,
 
   mToolBar = new ToolBar(this);
   addToolBar(Qt::TopToolBarArea, mToolBar);
-
-  // Initialize search.
-  SearchField *searchField = mToolBar->searchField();
-  connect(searchField, &QLineEdit::textEdited, mMenuBar,
-          &MenuBar::updateUndoRedo);
-  connect(searchField, &QLineEdit::selectionChanged, mMenuBar,
-          &MenuBar::updateCutCopyPaste);
-
-  // Hook up advanced search.
-  AdvancedSearchWidget *advancedSearch = new AdvancedSearchWidget(this);
-  connect(advancedSearch, &AdvancedSearchWidget::accepted, searchField,
-          &QLineEdit::setText);
-  connect(searchField->advancedButton(), &QToolButton::clicked, this,
-          [this, searchField, advancedSearch] {
-            advancedSearch->exec(searchField, currentView()->index());
-          });
 
   // Update title and refresh when settings change.
   mFullPath =
@@ -159,9 +139,6 @@ MainWindow::MainWindow(const git::Repository &repo, QWidget *parent,
 
   if (repo)
     addTab(repo);
-
-  // Set search completer.
-  searchField->setCompleter(new IndexCompleter(this, searchField));
 
   // Restore the last known size and position, falling back to a default.
   QByteArray lastGeometry = QSettings().value(kLastGeometryKey).toByteArray();

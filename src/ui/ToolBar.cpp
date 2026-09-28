@@ -26,10 +26,6 @@
 namespace {
 
 const int kToolBarHeight = 52;
-const int kSearchFieldWidth = 220;
-const int kNarrowSearchFieldWidth = 150;
-const int kNarrowWidth = 1100;
-const int kSearchFieldHeight = 28;
 const QString kStarredQuery = "is:starred";
 
 static Hotkey terminalHotkey = HotkeyManager::registerHotkey(
@@ -48,7 +44,6 @@ ToolBar::ToolBar(MainWindow *parent) : QToolBar(parent) {
   setFixedHeight(kToolBarHeight);
   setContentsMargins(0, 0, 0, 0);
 
-  // Match the QML background so the search field blends in.
   QmlTheme *theme = QmlTheme::instance();
   setStyleSheet(QString("ToolBar {"
                         "  background: %1;"
@@ -56,19 +51,8 @@ ToolBar::ToolBar(MainWindow *parent) : QToolBar(parent) {
                         "  border-bottom: 1px solid %2;"
                         "  padding: 0px;"
                         "  spacing: 0px"
-                        "}"
-                        "SearchField {"
-                        "  background: %3;"
-                        "  color: %4;"
-                        "  border: 1px solid %2;"
-                        "  border-radius: 6px"
-                        "}"
-                        "SearchField:focus {"
-                        "  border: 1px solid %5"
                         "}")
-                    .arg(theme->toolbar().name(), theme->border().name(),
-                         theme->field().name(), theme->text().name(),
-                         theme->accent().name()));
+                    .arg(theme->toolbar().name(), theme->border().name()));
 
   // Disable the built-in context menu.
   setContextMenuPolicy(Qt::PreventContextMenu);
@@ -105,22 +89,16 @@ ToolBar::ToolBar(MainWindow *parent) : QToolBar(parent) {
   connect(appConfigAction, &QAction::triggered,
           [] { SettingsDialog::openSharedInstance(); });
 
-  // Create the QML buttons.
+  // Create the QML buttons and search field.
+  mSearchField = new SearchField(this);
   mView = QmlSupport::createView(
-      "ToolBar", {{"toolbar", QVariant::fromValue<QObject *>(this)}}, this);
+      "ToolBar",
+      {{"toolbar", QVariant::fromValue<QObject *>(this)},
+       {"search", QVariant::fromValue<QObject *>(mSearchField)}},
+      this);
   mView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
   mView->setMinimumHeight(kToolBarHeight - 1);
   addWidget(mView);
-
-  // The search field stays a widget for its completer and advanced search.
-  mSearchField = new SearchField(this);
-  mSearchField->setFixedSize(kSearchFieldWidth, kSearchFieldHeight);
-  addWidget(mSearchField);
-
-  QWidget *spacer = new QWidget(this);
-  spacer->setFixedWidth(8);
-  spacer->setAttribute(Qt::WA_TransparentForMouseEvents);
-  addWidget(spacer);
 
   connect(mSearchField, &SearchField::textChanged, [this](const QString &text) {
     QStringList terms = text.split(QRegularExpression("\\s+"));
@@ -143,13 +121,6 @@ ToolBar::ToolBar(MainWindow *parent) : QToolBar(parent) {
 ToolBar::~ToolBar() {
   // The QML view references this object, so it has to go first.
   delete mView;
-}
-
-void ToolBar::resizeEvent(QResizeEvent *event) {
-  QToolBar::resizeEvent(event);
-  bool narrow = (width() < kNarrowWidth);
-  mSearchField->setFixedWidth(narrow ? kNarrowSearchFieldWidth
-                                     : kSearchFieldWidth);
 }
 
 void ToolBar::toggleSideBar() {

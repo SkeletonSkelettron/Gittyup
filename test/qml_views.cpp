@@ -36,6 +36,8 @@
 #include "ui/TabStrip.h"
 #include "ui/TabWidget.h"
 #include "ui/TemplateDialog.h"
+#include "ui/SearchField.h"
+#include "ui/ToolBar.h"
 #include "update/UpdateDialog.h"
 #include <QFile>
 #include <QQuickItem>
@@ -70,6 +72,7 @@ private slots:
   void mainWindow();
   void dialogs();
   void settings();
+  void search();
   void dragTab();
   void cleanupTestCase();
 
@@ -175,6 +178,22 @@ void TestQmlViews::settings() {
   for (int i = ConfigDialog::General; i <= ConfigDialog::Lfs; ++i)
     config->setSection(i);
   check(config, "ConfigDialog");
+}
+
+void TestQmlViews::search() {
+  SearchField *search = mWindow->toolBar()->searchField();
+  QVERIFY(search->isEnabled());
+
+  // The advanced search fills its fields from the query.
+  search->setText("author:someone words");
+  search->showAdvanced(0, 0, 220, 28);
+  qWait(200);
+  search->setAdvancedValue(0, "other");
+  search->acceptAdvanced();
+  QCOMPARE(search->text(), QString("other author:someone"));
+
+  search->edit("", 0, 0, 0, 220, 28);
+  QVERIFY2(sMessages.isEmpty(), qPrintable(sMessages.join('\n')));
 }
 
 void TestQmlViews::dragTab() {

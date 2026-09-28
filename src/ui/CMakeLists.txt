@@ -1,6 +1,5 @@
 add_library(
   ui
-  AdvancedSearchWidget.cpp
   BlameEditor.cpp
   BlameMargin.cpp
   ChangedFilesModel.cpp
@@ -15,12 +14,12 @@ add_library(
   History.cpp
   IgnoreDialog.cpp
   HotkeyManager.cpp
-  IndexCompleter.cpp
   Location.cpp
   LogPanel.cpp
   MainWindow.cpp
   MenuBar.cpp
   ProgressIndicator.cpp
+  QmlPopup.cpp
   RefsPanel.cpp
   RepoView.cpp
   RemoteCallbacks.cpp
