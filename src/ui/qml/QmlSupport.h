@@ -13,6 +13,7 @@
 #include <QString>
 #include <QVariantMap>
 
+class QImage;
 class QMenu;
 class QQuickWidget;
 class QWidget;
@@ -49,6 +50,11 @@ QQuickWidget *createView(const QString &name, const QVariantMap &context,
 
 // Get the host object of a view created with createView().
 QmlHost *host(QQuickWidget *view);
+
+// Images for QML at "image://images/<key>". Remove them when they're no
+// longer shown.
+QString addImage(const QImage &image);
+void removeImage(const QString &url);
 
 } // namespace QmlSupport
 

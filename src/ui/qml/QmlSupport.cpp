@@ -11,6 +11,8 @@
 #include "host/Account.h"
 #include <QBuffer>
 #include <QFile>
+#include <QHash>
+#include <QImage>
 #include <QImageReader>
 #include <QMenu>
 #include <QQmlContext>
@@ -87,6 +89,30 @@ void QmlHost::popup(QMenu *menu, qreal x, qreal y) const {
   menu->popup(mapToGlobal(x, y));
 }
 
+namespace {
+
+// Serves "image://images/<key>" from the images added to the store.
+QHash<QString, QImage> sImages;
+int sNextImage = 0;
+
+class ImageProvider : public QQuickImageProvider {
+public:
+  ImageProvider() : QQuickImageProvider(QQuickImageProvider::Image) {}
+
+  QImage requestImage(const QString &id, QSize *size,
+                      const QSize &requestedSize) override {
+    QImage image = sImages.value(id);
+    if (size)
+      *size = image.size();
+    if (!image.isNull() && requestedSize.isValid() && !requestedSize.isEmpty())
+      image = image.scaled(requestedSize, Qt::KeepAspectRatio,
+                           Qt::SmoothTransformation);
+    return image;
+  }
+};
+
+} // namespace
+
 namespace QmlSupport {
 
 QQuickWidget *createView(const QString &name, const QVariantMap &context,
@@ -107,6 +133,7 @@ QQuickWidget *createView(const QString &name, const QVariantMap &context,
   view->setResizeMode(QQuickWidget::SizeRootObjectToView);
   view->setClearColor(QmlTheme::instance()->toolbar());
   view->engine()->addImageProvider("icons", new IconProvider);
+  view->engine()->addImageProvider("images", new ImageProvider);
 
   QQmlContext *root = view->rootContext();
   root->setContextProperty("host", new QmlHost(view));
@@ -123,5 +150,15 @@ QQuickWidget *createView(const QString &name, const QVariantMap &context,
 }
 
 QmlHost *host(QQuickWidget *view) { return view->findChild<QmlHost *>(); }
+
+QString addImage(const QImage &image) {
+  QString key = QString::number(sNextImage++);
+  sImages.insert(key, image);
+  return QString("image://images/%1").arg(key);
+}
+
+void removeImage(const QString &url) {
+  sImages.remove(url.section('/', -1));
+}
 
 } // namespace QmlSupport

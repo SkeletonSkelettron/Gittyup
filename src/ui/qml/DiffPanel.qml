@@ -136,6 +136,7 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
             visible: root.diff.notice !== ""
+                     && root.diff.oldImage === "" && root.diff.newImage === ""
 
             Column {
                 anchors.centerIn: parent
@@ -153,6 +154,134 @@ Rectangle {
                     visible: root.diff.canLoadAnyway
                     text: qsTr("Load Anyway")
                     onClicked: root.diff.loadAnyway()
+                }
+            }
+        }
+
+        // Images before and after the change.
+        Item {
+            id: images
+
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: root.diff.oldImage !== "" || root.diff.newImage !== ""
+
+            readonly property bool both: root.diff.oldImage !== "" && root.diff.newImage !== ""
+            readonly property real cardWidth: both ? (width - 120) / 2 : Math.min(width - 48, 640)
+
+            component ImageCard: ColumnLayout {
+                id: card
+
+                property string label
+                property string source
+                property string info
+                property color accent
+
+                width: images.cardWidth
+                spacing: 8
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Rectangle {
+                        implicitWidth: labelText.implicitWidth + 16
+                        implicitHeight: 22
+                        radius: 11
+                        color: Qt.rgba(card.accent.r, card.accent.g, card.accent.b, 0.16)
+
+                        Text {
+                            id: labelText
+
+                            anchors.centerIn: parent
+                            text: card.label
+                            color: card.accent
+                            font.pixelSize: 11
+                            font.weight: Font.DemiBold
+                        }
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: card.info
+                        elide: Text.ElideRight
+                        color: Theme.textMuted
+                        font.pixelSize: 12
+                    }
+                }
+
+                // The image on a checkerboard for transparency.
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Math.min(images.height - 100,
+                                                     width * Math.max(0.2, picture.implicitHeight
+                                                                      / Math.max(1, picture.implicitWidth)))
+                    radius: 8
+                    color: Theme.base
+                    border.color: Theme.border
+                    clip: true
+
+                    Grid {
+                        anchors.fill: parent
+                        anchors.margins: 1
+                        columns: Math.ceil(width / 12)
+                        opacity: 0.35
+
+                        Repeater {
+                            model: Math.ceil(parent.width / 12) * Math.ceil(parent.height / 12)
+
+                            delegate: Rectangle {
+                                required property int index
+
+                                readonly property int columns: Math.ceil(parent.width / 12)
+
+                                width: 12
+                                height: 12
+                                color: (Math.floor(index / columns) + index % columns) % 2
+                                       ? Theme.hover : "transparent"
+                            }
+                        }
+                    }
+
+                    Image {
+                        id: picture
+
+                        anchors.fill: parent
+                        anchors.margins: 12
+                        source: card.source
+                        fillMode: Image.PreserveAspectFit
+                        smooth: true
+                        mipmap: true
+                    }
+                }
+            }
+
+            Row {
+                anchors.centerIn: parent
+                spacing: 24
+
+                ImageCard {
+                    visible: root.diff.oldImage !== ""
+                    label: images.both ? qsTr("Before") : qsTr("Deleted")
+                    accent: images.both ? Theme.textMuted : Theme.deleted
+                    source: root.diff.oldImage
+                    info: root.diff.oldImageInfo
+                }
+
+                Icon {
+                    visible: images.both
+                    anchors.verticalCenter: parent.verticalCenter
+                    name: "arrow-right"
+                    size: 24
+                    color: Theme.textMuted
+                }
+
+                ImageCard {
+                    visible: root.diff.newImage !== ""
+                    label: images.both ? qsTr("After") : qsTr("Added")
+                    accent: Theme.added
+                    source: root.diff.newImage
+                    info: root.diff.newImageInfo
                 }
             }
         }

@@ -6,6 +6,7 @@
 //
 
 #include "DiffModel.h"
+#include "qml/QmlSupport.h"
 #include "dialogs/ConfirmDialog.h"
 #include "RepoView.h"
 #include "app/Application.h"
@@ -18,6 +19,8 @@
 #include "git/Tree.h"
 #include "git2/diff.h"
 #include <QDir>
+#include <QImage>
+#include <QLocale>
 #include <QMenu>
 #include <QPushButton>
 #include <QSaveFile>
@@ -140,6 +143,7 @@ void DiffModel::load() {
   mRows.clear();
   mStyles.clear();
   mNotice.clear();
+  clearImages();
   mCanLoadAnyway = false;
   mAdditions = 0;
   mDeletions = 0;
@@ -154,8 +158,10 @@ void DiffModel::load() {
 
     if (mPatch.isBinary()) {
       mNotice = tr("Binary file");
+      loadImages(false);
     } else if (mPatch.isLfsPointer()) {
       mNotice = tr("Git LFS object");
+      loadImages(true);
     } else if (!mLoadAnyway && stats.additions + stats.deletions > kMaxLines) {
       mNotice = tr("This diff has %1 changed lines and wasn't loaded.")
                     .arg(stats.additions + stats.deletions);
@@ -248,6 +254,52 @@ int DiffModel::hunkState(int hunk) const {
   if (!staged)
     return git::Index::Unstaged;
   return staged == changes ? git::Index::Staged : git::Index::PartiallyStaged;
+}
+
+DiffModel::~DiffModel() { clearImages(); }
+
+void DiffModel::loadImages(bool lfs) {
+  git::Repository repo = mView->repo();
+  auto load = [this, &repo, lfs](git::Diff::File file, QString &url,
+                                 QString &info) {
+    QByteArray data;
+    git::Blob blob = mPatch.blob(file);
+    if (blob.isValid()) {
+      data = blob.content();
+      if (lfs)
+        data = repo.lfsSmudge(data, mPath);
+    } else if (file == git::Diff::NewFile) {
+      // The working copy.
+      QFile workdirFile(repo.workdir().filePath(mPath));
+      if (workdirFile.open(QFile::ReadOnly))
+        data = workdirFile.readAll();
+    }
+
+    QImage image = QImage::fromData(data);
+    if (image.isNull())
+      return;
+
+    url = QmlSupport::addImage(image);
+    info = QString("%1 × %2 · %3")
+               .arg(image.width())
+               .arg(image.height())
+               .arg(QLocale().formattedDataSize(data.size()));
+  };
+
+  load(git::Diff::OldFile, mOldImage, mOldImageInfo);
+  if (mPatch.status() != GIT_DELTA_DELETED)
+    load(git::Diff::NewFile, mNewImage, mNewImageInfo);
+}
+
+void DiffModel::clearImages() {
+  if (!mOldImage.isEmpty())
+    QmlSupport::removeImage(mOldImage);
+  if (!mNewImage.isEmpty())
+    QmlSupport::removeImage(mNewImage);
+  mOldImage.clear();
+  mNewImage.clear();
+  mOldImageInfo.clear();
+  mNewImageInfo.clear();
 }
 
 void DiffModel::highlight() {

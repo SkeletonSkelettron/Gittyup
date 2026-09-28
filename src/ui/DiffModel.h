@@ -35,6 +35,11 @@ class DiffModel : public QAbstractListModel {
   Q_PROPERTY(int stageState READ stageState NOTIFY stageStateChanged)
   Q_PROPERTY(int lineNumberWidth READ lineNumberWidth NOTIFY diffChanged)
   Q_PROPERTY(int maxLineLength READ maxLineLength NOTIFY diffChanged)
+  // Previews of images, before and after the change, or empty.
+  Q_PROPERTY(QString oldImage READ oldImage NOTIFY diffChanged)
+  Q_PROPERTY(QString newImage READ newImage NOTIFY diffChanged)
+  Q_PROPERTY(QString oldImageInfo READ oldImageInfo NOTIFY diffChanged)
+  Q_PROPERTY(QString newImageInfo READ newImageInfo NOTIFY diffChanged)
 
 public:
   enum Kind { HunkRow, LineRow };
@@ -55,6 +60,7 @@ public:
   };
 
   DiffModel(RepoView *view, QObject *parent = nullptr);
+  ~DiffModel() override;
 
   // Show the file 'path' of 'diff', or nothing.
   void setDiff(const git::Diff &diff, const QString &path);
@@ -75,6 +81,11 @@ public:
   int maxLineLength() const { return mMaxLineLength; }
 
   // The lines of the hunks, and the row of a line in the model.
+  QString oldImage() const { return mOldImage; }
+  QString newImage() const { return mNewImage; }
+  QString oldImageInfo() const { return mOldImageInfo; }
+  QString newImageInfo() const { return mNewImageInfo; }
+
   int hunkCount() const { return mHunks.size(); }
   const QList<DiffLines::Line> &lines(int hunk) const { return mHunks.at(hunk); }
   int row(int hunk, int line) const;
@@ -117,6 +128,8 @@ private:
   void loadStaged();
   void updateIndex(const QStringList &paths);
   void highlight();
+  void loadImages(bool lfs);
+  void clearImages();
   QString html(int hunk, int line) const;
   int hunkState(int hunk) const;
   void stage(int changedHunk = -1);
@@ -135,6 +148,10 @@ private:
   QList<QList<QByteArray>> mStyles;
 
   QString mNotice;
+  QString mOldImage;
+  QString mNewImage;
+  QString mOldImageInfo;
+  QString mNewImageInfo;
   bool mCanLoadAnyway = false;
   bool mLoadAnyway = false;
   int mAdditions = 0;
