@@ -137,6 +137,7 @@ void DiffModel::load() {
   mStaged = git::Patch();
   mHunks.clear();
   mRows.clear();
+  mStyles.clear();
   mNotice.clear();
   mCanLoadAnyway = false;
   mAdditions = 0;
@@ -179,6 +180,7 @@ void DiffModel::load() {
       }
 
       mLineNumberWidth = qMax(2, static_cast<int>(QString::number(maxLine).size()));
+      highlight();
 
       if (mHunks.isEmpty())
         mNotice = mPatch.status() == GIT_DELTA_UNTRACKED && QFileInfo(
@@ -247,6 +249,37 @@ int DiffModel::hunkState(int hunk) const {
   return staged == changes ? git::Index::Staged : git::Index::PartiallyStaged;
 }
 
+void DiffModel::highlight() {
+  if (mHunks.isEmpty())
+    return;
+
+  // Style all lines of the file at once, in the order they appear.
+  QByteArray text;
+  QList<QList<QPair<int, int>>> spans;
+  for (const QList<DiffLines::Line> &lines : mHunks) {
+    QList<QPair<int, int>> lineSpans;
+    for (const DiffLines::Line &line : lines) {
+      QByteArray content = chomp(line.content);
+      lineSpans.append({static_cast<int>(text.size()),
+                        static_cast<int>(content.size())});
+      text += content;
+      text += '\n';
+    }
+    spans.append(lineSpans);
+  }
+
+  if (!mHighlighter)
+    mHighlighter.reset(new SyntaxHighlighter);
+  QByteArray styles = mHighlighter->style(mPath, text);
+
+  for (const QList<QPair<int, int>> &lineSpans : spans) {
+    QList<QByteArray> hunkStyles;
+    for (const auto &span : lineSpans)
+      hunkStyles.append(styles.mid(span.first, span.second));
+    mStyles.append(hunkStyles);
+  }
+}
+
 QString DiffModel::html(int hunk, int line) const {
   const QList<DiffLines::Line> &lines = mHunks.at(hunk);
   const DiffLines::Line &current = lines.at(line);
@@ -266,26 +299,60 @@ QString DiffModel::html(int hunk, int line) const {
   }
 
   Theme *theme = Application::theme();
-  QString color = theme->diff(current.origin == '-' ? Theme::Diff::WordDeletion
-                                                    : Theme::Diff::WordAddition)
-                      .name();
+  QString wordColor =
+      theme->diff(current.origin == '-' ? Theme::Diff::WordDeletion
+                                        : Theme::Diff::WordAddition)
+          .name();
 
+  // Whether each byte is in a changed word.
+  QVector<bool> changed(content.size(), false);
+  for (const auto &range : ranges) {
+    int end = qMin(range.first + range.second, static_cast<int>(content.size()));
+    for (int i = qMax(0, range.first); i < end; ++i)
+      changed[i] = true;
+  }
+
+  QByteArray styles;
+  if (mHighlighter && hunk < mStyles.size() && line < mStyles.at(hunk).size())
+    styles = mStyles.at(hunk).at(line);
+  auto styleAt = [&styles](int pos) {
+    return pos < styles.size() ? static_cast<uchar>(styles.at(pos)) : 0;
+  };
+
+  // Emit runs of bytes with the same style and word change state.
   QString html;
   int column = 0;
   int pos = 0;
-  for (const auto &range : ranges) {
-    if (range.first > pos)
-      appendText(html, repo.decode(content.mid(pos, range.first - pos)),
-                 column);
+  while (pos < content.size()) {
+    bool word = changed.at(pos);
+    int style = styleAt(pos);
+    int end = pos + 1;
+    while (end < content.size() && changed.at(end) == word &&
+           styleAt(end) == style)
+      ++end;
 
-    html += QString("<span style='background-color:%1'>").arg(color);
-    appendText(html, repo.decode(content.mid(range.first, range.second)),
-               column);
-    html += "</span>";
-    pos = range.first + range.second;
+    QString css;
+    if (word)
+      css += QString("background-color:%1;").arg(wordColor);
+    if (style) {
+      SyntaxHighlighter::Format format = mHighlighter->format(style);
+      if (format.color.isValid())
+        css += QString("color:%1;").arg(format.color.name());
+      if (format.bold)
+        css += "font-weight:bold;";
+      if (format.italic)
+        css += "font-style:italic;";
+    }
+
+    if (!css.isEmpty())
+      html += QString("<span style='%1'>").arg(css);
+    appendText(html, repo.decode(content.mid(pos, end - pos)), column);
+    if (!css.isEmpty())
+      html += "</span>";
+
+    pos = end;
   }
 
-  appendText(html, repo.decode(content.mid(pos)), column);
   return html;
 }
 

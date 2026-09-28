@@ -33,6 +33,7 @@ add_library(
   SearchField.cpp
   SideBar.cpp
   StateAction.cpp
+  SyntaxHighlighter.cpp
   SpellChecker.cpp
   TabBar.cpp
   TabStrip.cpp

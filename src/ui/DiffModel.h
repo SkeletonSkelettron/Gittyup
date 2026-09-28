@@ -9,6 +9,7 @@
 #define DIFFMODEL_H
 
 #include "DiffLines.h"
+#include "SyntaxHighlighter.h"
 #include "git/Diff.h"
 #include "git/Patch.h"
 #include <QAbstractListModel>
@@ -112,6 +113,7 @@ private:
   void load();
   void loadStaged();
   void updateIndex(const QStringList &paths);
+  void highlight();
   QString html(int hunk, int line) const;
   int hunkState(int hunk) const;
   void stage(int changedHunk = -1);
@@ -124,6 +126,10 @@ private:
 
   QList<QList<DiffLines::Line>> mHunks;
   QList<Row> mRows;
+
+  // The syntax style of each byte of each line.
+  QScopedPointer<SyntaxHighlighter> mHighlighter;
+  QList<QList<QByteArray>> mStyles;
 
   QString mNotice;
   bool mCanLoadAnyway = false;
