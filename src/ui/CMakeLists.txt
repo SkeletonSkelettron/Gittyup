@@ -11,6 +11,7 @@ add_library(
   FileContextMenu.cpp
   FileEditor.cpp
   FileViewModel.cpp
+  MergeModel.cpp
   FindController.cpp
   History.cpp
   IgnoreDialog.cpp

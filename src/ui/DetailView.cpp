@@ -17,6 +17,7 @@
 #include "FileContextMenu.h"
 #include "FileViewModel.h"
 #include "FindController.h"
+#include "MergeModel.h"
 #include "MenuBar.h"
 #include "CommitTemplates.h"
 #include "TreeModel.h"
@@ -36,6 +37,7 @@
 #include <QCryptographicHash>
 #include <QFileInfo>
 #include <QMenu>
+#include <QSettings>
 #include <QRegularExpression>
 #include <QtConcurrent>
 
@@ -91,6 +93,15 @@ DetailView::DetailView(const git::Repository &repo, RepoView *view)
       mSpellCheck(new SpellCheck(repo, view)) {
   connect(mContentModel, &FileViewModel::linkActivated, view,
           &RepoView::visitLink);
+
+  // The merge editor shows the conflicts of the selected file.
+  mMerge = new MergeModel(view, this);
+  connect(mDiffModel, &DiffModel::diffChanged, this, [this] {
+    if (mDiffModel->isConflicted())
+      mMerge->load(mDiffModel->path());
+    else
+      mMerge->clear();
+  });
 
   // Find in the diff, or in the content in tree mode.
   mFinder = new FindController(
@@ -181,6 +192,20 @@ QObject *DetailView::diffModel() const { return mDiffModel; }
 QObject *DetailView::contentModel() const { return mContentModel; }
 
 QObject *DetailView::finder() const { return mFinder; }
+
+QObject *DetailView::mergeModel() const { return mMerge; }
+
+bool DetailView::mergeEditor() const {
+  return QSettings().value("diff/mergeEditor", false).toBool();
+}
+
+void DetailView::setMergeEditor(bool merge) {
+  if (merge == mergeEditor())
+    return;
+
+  QSettings().setValue("diff/mergeEditor", merge);
+  emit mergeEditorChanged();
+}
 
 QObject *DetailView::spellCheck() const { return mSpellCheck; }
 

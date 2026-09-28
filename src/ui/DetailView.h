@@ -20,6 +20,7 @@ class ChangedFilesModel;
 class DiffModel;
 class FileViewModel;
 class FindController;
+class MergeModel;
 class SpellCheck;
 class CommitTemplates;
 class TreeModel;
@@ -65,6 +66,11 @@ class DetailView : public QObject {
   Q_PROPERTY(QObject *content READ contentModel CONSTANT)
   // Finds text in the diff or the content of the selected file.
   Q_PROPERTY(QObject *finder READ finder CONSTANT)
+  // The conflicts of the selected file, and whether they are shown in the
+  // merge editor instead of the diff.
+  Q_PROPERTY(QObject *merge READ mergeModel CONSTANT)
+  Q_PROPERTY(bool mergeEditor READ mergeEditor WRITE setMergeEditor NOTIFY
+                 mergeEditorChanged)
   Q_PROPERTY(QObject *spellCheck READ spellCheck CONSTANT)
   Q_PROPERTY(QString selectedFile READ file NOTIFY selectedFileChanged)
   Q_PROPERTY(bool listMode READ listMode NOTIFY settingsChanged)
@@ -156,6 +162,9 @@ public:
   QObject *diffModel() const;
   QObject *contentModel() const;
   QObject *finder() const;
+  QObject *mergeModel() const;
+  bool mergeEditor() const;
+  void setMergeEditor(bool merge);
   QObject *spellCheck() const;
   bool listMode() const;
   bool hideUntracked() const;
@@ -195,6 +204,7 @@ signals:
   void loadingChanged();
   void commitChanged();
   void selectedFileChanged();
+  void mergeEditorChanged();
   void settingsChanged();
   void messageChanged();
   void buttonsChanged();
@@ -233,6 +243,7 @@ private:
   DiffModel *mDiffModel;
   FileViewModel *mContentModel;
   FindController *mFinder;
+  MergeModel *mMerge;
   SpellCheck *mSpellCheck;
   CommitTemplates *mTemplates;
 

@@ -32,6 +32,7 @@
 #include "log/LogEntry.h"
 #include "ui/IgnoreDialog.h"
 #include "ui/DetailView.h"
+#include "ui/MergeModel.h"
 #include "git/Config.h"
 #include "ui/CommitList.h"
 #include "ui/FindController.h"
@@ -46,6 +47,8 @@
 #include "update/UpdateDialog.h"
 #include <QClipboard>
 #include <QMenu>
+#include <QTextCursor>
+#include <QTextDocument>
 #include <QTimer>
 #include <QFile>
 #include <QQuickItem>
@@ -83,6 +86,7 @@ private slots:
   void search();
   void menu();
   void solo();
+  void merge();
   void dragTab();
   void cleanupTestCase();
 
@@ -344,6 +348,79 @@ void TestQmlViews::solo() {
   commits->setSoloed(other.qualifiedName(), true);
   other.remove();
   QTRY_VERIFY(commits->solo().isEmpty());
+  QVERIFY2(sMessages.isEmpty(), qPrintable(sMessages.join('\n')));
+}
+
+void TestQmlViews::merge() {
+  RepoView *view = mWindow->currentView();
+  git::Repository repo = view->repo();
+
+  // A file with two conflicts.
+  QFile file(repo.workdir().filePath("conflict.txt"));
+  QVERIFY(file.open(QFile::WriteOnly));
+  file.write("top\n"
+             "<<<<<<< HEAD\n"
+             "ours 1\n"
+             "=======\n"
+             "theirs 1\n"
+             ">>>>>>> feature\n"
+             "middle\n"
+             "<<<<<<< HEAD\n"
+             "ours 2a\n"
+             "ours 2b\n"
+             "||||||| base\n"
+             "base 2\n"
+             "=======\n"
+             "theirs 2\n"
+             ">>>>>>> feature\n"
+             "bottom\n");
+  file.close();
+
+  MergeModel merge(view);
+  QTextDocument document;
+  merge.setTextDocument(&document);
+  merge.load("conflict.txt");
+  QCOMPARE(merge.notice(), QString());
+  QCOMPARE(merge.conflictCount(), 2);
+  QCOMPARE(merge.oursLabel(), QString("HEAD"));
+  QCOMPARE(merge.theirsLabel(), QString("feature"));
+  QCOMPARE(merge.unresolvedCount(), 2);
+
+  // Common lines and a header and the lines of each conflict.
+  QAbstractItemModel *ours = qobject_cast<QAbstractItemModel *>(merge.ours());
+  QCOMPARE(ours->rowCount(), 3 + 1 + 1 + 1 + 2);
+  QCOMPARE(merge.conflictRow(0, 1), 4);
+
+  // Nothing is taken from the conflicts yet.
+  QCOMPARE(document.toPlainText(), QString("top\nmiddle\nbottom\n"));
+
+  // The side that is taken first comes first.
+  merge.setConflictChecked(1, 0, true);
+  merge.setLineChecked(1, 1, 0, true);
+  merge.setLineChecked(0, 1, 1, true);
+  QCOMPARE(merge.unresolvedCount(), 0);
+  QCOMPARE(document.toPlainText(),
+           QString("top\ntheirs 1\nmiddle\ntheirs 2\nours 2b\nbottom\n"));
+
+  // Edits of the output outside of a conflict are kept.
+  QTextCursor cursor(&document);
+  cursor.insertText("edited ");
+  merge.setLineChecked(0, 1, 1, false);
+  QCOMPARE(document.toPlainText(),
+           QString("edited top\ntheirs 1\nmiddle\ntheirs 2\nbottom\n"));
+
+  // Taking all of a side replaces the other one.
+  merge.takeAll(0);
+  QCOMPARE(document.toPlainText(),
+           QString("edited top\nours 1\nmiddle\nours 2a\nours 2b\nbottom\n"));
+
+  // Saving writes the output and stages the file.
+  merge.save();
+  QVERIFY(file.open(QFile::ReadOnly));
+  QCOMPARE(file.readAll(),
+           QByteArray("edited top\nours 1\nmiddle\nours 2a\nours 2b\nbottom\n"));
+  file.close();
+  QCOMPARE(repo.index().isStaged("conflict.txt"), git::Index::Staged);
   QVERIFY2(sMessages.isEmpty(), qPrintable(sMessages.join('\n')));
 }
 

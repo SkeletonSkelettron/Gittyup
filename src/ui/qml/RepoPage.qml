@@ -55,6 +55,14 @@ FocusScope {
             DiffPanel {
                 anchors.fill: parent
                 visible: detailView.selectedFile !== "" && detailView.viewMode !== 1
+                         && !(detailView.diff.conflicted && detailView.mergeEditor)
+            }
+
+            // Conflicts in the merge editor, when it's switched on.
+            MergePanel {
+                anchors.fill: parent
+                visible: detailView.selectedFile !== "" && detailView.viewMode !== 1
+                         && detailView.diff.conflicted && detailView.mergeEditor
             }
 
             FileView {

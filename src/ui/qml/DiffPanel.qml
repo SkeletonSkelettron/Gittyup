@@ -112,6 +112,8 @@ Rectangle {
                     font.bold: true
                 }
 
+                MergeModeSwitch {}
+
                 PushButton {
                     visible: root.diff.editable
                     implicitHeight: 26
