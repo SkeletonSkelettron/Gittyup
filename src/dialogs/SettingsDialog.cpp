@@ -11,7 +11,7 @@
 #include "AboutDialog.h"
 #include "ConfirmDialog.h"
 #include "ExternalToolsDialog.h"
-#include "HotkeysPanel.h"
+#include "ui/HotkeyManager.h"
 #include "PluginsDialog.h"
 #include "app/CustomTheme.h"
 #include "conf/Settings.h"
@@ -28,10 +28,10 @@
 #include <QDirIterator>
 #include <QFontDatabase>
 #include <QMetaEnum>
+#include <QRegularExpression>
 #include <QPointer>
 #include <QProcess>
 #include <QTimer>
-#include <QVBoxLayout>
 #include <array>
 
 #ifdef Q_OS_UNIX
@@ -50,18 +50,6 @@ template <typename T> bool lookup(const QString &name, T &value) {
   int key = QMetaEnum::fromType<T>().keyToValue(name.toUtf8().constData(), &ok);
   value = static_cast<T>(key);
   return ok;
-}
-
-// Show a legacy settings panel in a window of its own.
-void showPanel(QWidget *panel, const QString &title, QWidget *parent) {
-  QDialog *dialog = new QDialog(parent);
-  dialog->setAttribute(Qt::WA_DeleteOnClose);
-  dialog->setWindowTitle(title);
-  QVBoxLayout *layout = new QVBoxLayout(dialog);
-  panel->setParent(dialog);
-  layout->addWidget(panel);
-  dialog->resize(640, 480);
-  dialog->open();
 }
 
 } // namespace
@@ -483,8 +471,91 @@ void SettingsDialog::configurePlugins() {
   (new PluginsDialog(git::Repository(), this))->open();
 }
 
-void SettingsDialog::configureHotkeys() {
-  showPanel(new HotkeysPanel, tr("Hotkeys"), this);
+QVariantList SettingsDialog::hotkeys() const {
+  static QRegularExpression slashes("/+");
+
+  QVariantList hotkeys;
+  QVector<Hotkey> known = HotkeyManager::instance()->knownHotkeys();
+  for (int i = 0; i < known.size(); ++i) {
+    const Hotkey &hotkey = known.at(i);
+    QString label = hotkey.label().replace(slashes, "/");
+    int sep = label.lastIndexOf('/');
+    QStringList groups;
+    for (const QString &group : label.left(qMax(0, sep)).split('/'))
+      groups.append(tr(group.toUtf8()));
+
+    QKeySequence keys = hotkey.currentKeys();
+    hotkeys.append(QVariantMap{
+        {"index", i},
+        {"group", groups.join(" › ")},
+        {"label", tr(label.mid(sep + 1).toUtf8())},
+        {"keys", keys.toString(QKeySequence::NativeText)},
+        {"custom", keys != hotkey.defaultSequence()}});
+  }
+
+  return hotkeys;
+}
+
+QString SettingsDialog::keyText(int key, int modifiers) const {
+  // Wait for a key that isn't a modifier.
+  switch (key) {
+    case Qt::Key_Shift:
+    case Qt::Key_Control:
+    case Qt::Key_Meta:
+    case Qt::Key_Alt:
+    case Qt::Key_AltGr:
+      return QKeySequence(QKeyCombination::fromCombined(modifiers))
+          .toString(QKeySequence::NativeText);
+  }
+
+  QKeyCombination combination(Qt::KeyboardModifiers(modifiers),
+                              static_cast<Qt::Key>(key));
+  return QKeySequence(combination).toString(QKeySequence::NativeText);
+}
+
+QString SettingsDialog::hotkeyConflicts(int index, int key,
+                                        int modifiers) const {
+  QVector<Hotkey> known = HotkeyManager::instance()->knownHotkeys();
+  QKeySequence keys(QKeyCombination(Qt::KeyboardModifiers(modifiers),
+                                    static_cast<Qt::Key>(key)));
+  QStringList conflicts;
+  for (int i = 0; i < known.size(); ++i) {
+    if (i != index && known.at(i).currentKeys() == keys)
+      conflicts.append(known.at(i).label().section('/', -1));
+  }
+
+  return conflicts.join(", ");
+}
+
+void SettingsDialog::setHotkey(int index, int key, int modifiers) {
+  QVector<Hotkey> known = HotkeyManager::instance()->knownHotkeys();
+  if (index < 0 || index >= known.size())
+    return;
+
+  Hotkey hotkey = known.at(index);
+  hotkey.setKeys(QKeySequence(QKeyCombination(Qt::KeyboardModifiers(modifiers),
+                                              static_cast<Qt::Key>(key))));
+  emit hotkeysChanged();
+}
+
+void SettingsDialog::clearHotkey(int index) {
+  QVector<Hotkey> known = HotkeyManager::instance()->knownHotkeys();
+  if (index < 0 || index >= known.size())
+    return;
+
+  Hotkey hotkey = known.at(index);
+  hotkey.setKeys(QKeySequence());
+  emit hotkeysChanged();
+}
+
+void SettingsDialog::resetHotkey(int index) {
+  QVector<Hotkey> known = HotkeyManager::instance()->knownHotkeys();
+  if (index < 0 || index >= known.size())
+    return;
+
+  Hotkey hotkey = known.at(index);
+  hotkey.setKeys(hotkey.defaultSequence());
+  emit hotkeysChanged();
 }
 
 void SettingsDialog::refreshViews() {

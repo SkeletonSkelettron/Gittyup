@@ -36,6 +36,7 @@ class SettingsDialog : public QmlDialog {
   Q_PROPERTY(bool terminalInstallEnabled READ isTerminalInstallEnabled NOTIFY
                  terminalChanged)
   Q_PROPERTY(bool singleInstanceVisible READ isSingleInstanceVisible CONSTANT)
+  Q_PROPERTY(QVariantList hotkeys READ hotkeys NOTIFY hotkeysChanged)
 
 public:
   // Keep in sync with SettingsPage.qml.
@@ -126,13 +127,20 @@ public:
   Q_INVOKABLE void editConfigFile();
   Q_INVOKABLE void showPrivacyPolicy();
   Q_INVOKABLE void configurePlugins();
-  Q_INVOKABLE void configureHotkeys();
+  // Hotkeys by their index in the list, set from a key and its modifiers.
+  QVariantList hotkeys() const;
+  Q_INVOKABLE QString keyText(int key, int modifiers) const;
+  Q_INVOKABLE QString hotkeyConflicts(int index, int key, int modifiers) const;
+  Q_INVOKABLE void setHotkey(int index, int key, int modifiers);
+  Q_INVOKABLE void clearHotkey(int index);
+  Q_INVOKABLE void resetHotkey(int index);
 
 signals:
   void sectionChanged();
   void themesChanged();
   void terminalChanged();
   void configChanged();
+  void hotkeysChanged();
 
 private:
   void refreshViews();

@@ -720,20 +720,182 @@ PreferencesPage {
         id: hotkeys
 
         ColumnLayout {
-            spacing: 20
+            id: hotkeyPage
 
-            SettingSection {
-                title: qsTr("Hotkeys")
+            // The index of the hotkey that records keys, or -1.
+            property int recording: -1
+            property string recorded
+            property string conflicts
 
-                SettingRow {
-                    label: qsTr("Shortcuts")
-                    hint: qsTr("Change the keys of the menu actions")
+            spacing: 12
 
-                    PushButton {
-                        implicitHeight: 32
-                        icon: "keyboard"
-                        text: qsTr("Edit Hotkeys...")
-                        onClicked: dialog.configureHotkeys()
+            TextField {
+                id: hotkeyFilter
+
+                Layout.fillWidth: true
+                placeholderText: qsTr("Filter actions")
+            }
+
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("Click a shortcut and press the new keys. Backspace removes the shortcut and Escape cancels.")
+                wrapMode: Text.Wrap
+                color: Theme.textMuted
+                font.pixelSize: 12
+            }
+
+            Repeater {
+                model: dialog.hotkeys
+
+                delegate: ColumnLayout {
+                    id: hotkey
+
+                    required property var modelData
+                    required property int index
+
+                    readonly property bool matches: {
+                        const filter = hotkeyFilter.text.toLowerCase()
+                        return filter === ""
+                               || modelData.label.toLowerCase().indexOf(filter) >= 0
+                               || modelData.group.toLowerCase().indexOf(filter) >= 0
+                               || modelData.keys.toLowerCase().indexOf(filter) >= 0
+                    }
+                    readonly property bool firstOfGroup: {
+                        const all = dialog.hotkeys
+                        for (let i = index - 1; i >= 0; --i) {
+                            const previous = all[i]
+                            if (previous.group !== modelData.group)
+                                return true
+                            const filter = hotkeyFilter.text.toLowerCase()
+                            if (filter === "" || previous.label.toLowerCase().indexOf(filter) >= 0
+                                    || previous.group.toLowerCase().indexOf(filter) >= 0
+                                    || previous.keys.toLowerCase().indexOf(filter) >= 0)
+                                return false
+                        }
+                        return true
+                    }
+                    readonly property bool isRecording: hotkeyPage.recording === modelData.index
+
+                    Layout.fillWidth: true
+                    visible: matches
+                    spacing: 4
+
+                    Text {
+                        visible: hotkey.firstOfGroup && hotkey.modelData.group !== ""
+                        Layout.topMargin: 10
+                        text: hotkey.modelData.group
+                        color: Theme.textMuted
+                        font.pixelSize: 11
+                        font.weight: Font.DemiBold
+                        font.letterSpacing: 0.8
+                        font.capitalization: Font.AllUppercase
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: hotkey.modelData.label
+                            elide: Text.ElideRight
+                            color: Theme.text
+                            font.pixelSize: 13
+                        }
+
+                        Text {
+                            visible: hotkey.isRecording && hotkeyPage.conflicts !== ""
+                            text: qsTr("Also used by %1").arg(hotkeyPage.conflicts)
+                            color: Theme.modified
+                            font.pixelSize: 11
+                        }
+
+                        // The shortcut. Click to record new keys.
+                        Rectangle {
+                            id: keyChip
+
+                            implicitWidth: Math.max(96, keyLabel.implicitWidth + 20)
+                            implicitHeight: 28
+                            radius: 6
+                            color: hotkey.isRecording ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.16)
+                                                      : chipMouse.containsMouse ? Theme.hover : Theme.field
+                            border.width: hotkey.isRecording ? 2 : 1
+                            border.color: hotkey.isRecording ? Theme.accent : Theme.border
+                            focus: hotkey.isRecording
+
+                            Text {
+                                id: keyLabel
+
+                                anchors.centerIn: parent
+                                text: hotkey.isRecording
+                                      ? (hotkeyPage.recorded !== "" ? hotkeyPage.recorded : qsTr("Press keys..."))
+                                      : (hotkey.modelData.keys !== "" ? hotkey.modelData.keys : qsTr("None"))
+                                color: hotkey.isRecording ? Theme.accent
+                                       : hotkey.modelData.keys !== "" ? Theme.text : Theme.textMuted
+                                font.family: Theme.monoFont
+                                font.pixelSize: 12
+                            }
+
+                            MouseArea {
+                                id: chipMouse
+
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    hotkeyPage.recording = hotkey.modelData.index
+                                    hotkeyPage.recorded = ""
+                                    hotkeyPage.conflicts = ""
+                                    keyChip.forceActiveFocus()
+                                }
+                            }
+
+                            // Take every key, including the shortcuts of the menus.
+                            Keys.onShortcutOverride: (event) => event.accepted = hotkey.isRecording
+                            Keys.onPressed: (event) => {
+                                if (!hotkey.isRecording)
+                                    return
+                                event.accepted = true
+                                const modifiers = event.modifiers & (Qt.ShiftModifier | Qt.ControlModifier
+                                                                     | Qt.AltModifier | Qt.MetaModifier)
+                                if (event.key === Qt.Key_Escape && !modifiers) {
+                                    hotkeyPage.recording = -1
+                                    return
+                                }
+                                if ((event.key === Qt.Key_Backspace || event.key === Qt.Key_Delete) && !modifiers) {
+                                    dialog.clearHotkey(hotkey.modelData.index)
+                                    hotkeyPage.recording = -1
+                                    return
+                                }
+
+                                hotkeyPage.recorded = dialog.keyText(event.key, modifiers)
+                                const modifierKeys = [Qt.Key_Shift, Qt.Key_Control, Qt.Key_Meta,
+                                                      Qt.Key_Alt, Qt.Key_AltGr]
+                                if (modifierKeys.indexOf(event.key) >= 0)
+                                    return
+
+                                hotkeyPage.conflicts = dialog.hotkeyConflicts(hotkey.modelData.index,
+                                                                              event.key, modifiers)
+                                dialog.setHotkey(hotkey.modelData.index, event.key, modifiers)
+                                if (hotkeyPage.conflicts === "")
+                                    hotkeyPage.recording = -1
+                            }
+                            onActiveFocusChanged: {
+                                if (!activeFocus && hotkey.isRecording)
+                                    hotkeyPage.recording = -1
+                            }
+                        }
+
+                        ActionButton {
+                            compact: true
+                            implicitWidth: 28
+                            implicitHeight: 28
+                            opacity: hotkey.modelData.custom ? 1 : 0
+                            enabled: hotkey.modelData.custom
+                            icon: "refresh"
+                            tip: qsTr("Reset to the default")
+                            onClicked: dialog.resetHotkey(hotkey.modelData.index)
+                        }
                     }
                 }
             }
