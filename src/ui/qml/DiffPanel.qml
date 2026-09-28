@@ -115,8 +115,10 @@ Rectangle {
                 ActionButton {
                     compact: true
                     icon: "pencil"
+                    hasMenu: true
+                    menuOnly: true
                     tip: qsTr("Edit the file")
-                    onClicked: detailView.editFile(root.diff.path)
+                    onMenuRequested: (x, y) => root.diff.showEditMenu(-1, x, y)
                 }
             }
 
@@ -282,13 +284,14 @@ Rectangle {
                         }
 
                         ActionButton {
-                            visible: root.diff.editable
                             compact: true
                             icon: "pencil"
                             implicitWidth: 24
                             implicitHeight: 22
+                            hasMenu: true
+                            menuOnly: true
                             tip: qsTr("Edit the hunk")
-                            onClicked: root.diff.editHunk(row.hunk)
+                            onMenuRequested: (x, y) => root.diff.showEditMenu(row.hunk, x, y)
                         }
                     }
                 }

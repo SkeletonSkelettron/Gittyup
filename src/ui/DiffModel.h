@@ -91,6 +91,9 @@ public:
   Q_INVOKABLE void discardHunk(int hunk);
   Q_INVOKABLE void discardLines(int first, int last);
   Q_INVOKABLE void editHunk(int hunk);
+  // Offer to edit the working copy, the new or the old revision at the
+  // hunk, or at the start of the file if the hunk is -1.
+  Q_INVOKABLE void showEditMenu(int hunk, qreal x, qreal y);
   Q_INVOKABLE void chooseConflict(int hunk, int resolution);
   Q_INVOKABLE void saveConflict(int hunk);
 

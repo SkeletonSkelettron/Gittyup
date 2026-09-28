@@ -18,6 +18,7 @@
 #include "git/Tree.h"
 #include "git2/diff.h"
 #include <QDir>
+#include <QMenu>
 #include <QPushButton>
 #include <QSaveFile>
 #include <QTextStream>
@@ -536,6 +537,53 @@ void DiffModel::editHunk(int hunk) {
   }
 
   mView->edit(mPath, line);
+}
+
+void DiffModel::showEditMenu(int hunk, qreal x, qreal y) {
+  if (mPath.isEmpty() || !mPatch.isValid())
+    return;
+
+  // Calculate starting line numbers.
+  int oldLine = -1;
+  int newLine = -1;
+  if (hunk >= 0 && hunk < mPatch.count() && mPatch.lineCount(hunk) > 0) {
+    oldLine = mPatch.lineNumber(hunk, 0, git::Diff::OldFile);
+    newLine = mPatch.lineNumber(hunk, 0, git::Diff::NewFile);
+  }
+
+  QMenu menu;
+  RepoView *view = mView;
+  QString name = mPath;
+
+  if (view->repo().workdir().exists(name)) {
+    menu.addAction(tr("Edit Working Copy"), this,
+                   [view, name, newLine] { view->edit(name, newLine); });
+  }
+
+  QList<git::Commit> commits = view->commits();
+  git::Commit commit = !commits.isEmpty() ? commits.first() : git::Commit();
+
+  git::Blob newBlob = mPatch.blob(git::Diff::NewFile);
+  if (newBlob.isValid()) {
+    menu.addAction(tr("Edit New Revision"), this,
+                   [view, name, newLine, newBlob, commit] {
+                     view->openEditor(name, newLine, newBlob, commit);
+                   });
+  }
+
+  git::Blob oldBlob = mPatch.blob(git::Diff::OldFile);
+  if (oldBlob.isValid()) {
+    git::Commit parent = commit;
+    if (parent.isValid() && !parent.parents().isEmpty())
+      parent = parent.parents().first();
+    menu.addAction(tr("Edit Old Revision"), this,
+                   [view, name, oldLine, oldBlob, parent] {
+                     view->openEditor(name, oldLine, oldBlob, parent);
+                   });
+  }
+
+  if (!menu.isEmpty())
+    menu.exec(view->mapFromPage(x, y));
 }
 
 void DiffModel::chooseConflict(int hunk, int resolution) {
