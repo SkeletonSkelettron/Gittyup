@@ -12,8 +12,9 @@
 #include <QVariantList>
 
 namespace git {
+class Commit;
 class Repository;
-}
+} // namespace git
 
 // References listed by the combo boxes of QML dialogs. Each item has a
 // 'text', an 'icon' and the short id of its target as 'detail'.
@@ -38,6 +39,10 @@ public:
 
   git::Reference reference(int index) const;
   int indexOf(const git::Reference &ref) const;
+
+  // The best reference that points to the commit: a local branch, then a
+  // tag, then a remote branch. -1 if there isn't any.
+  int indexOf(const git::Commit &commit) const;
 
   // Insert an item without a reference at the top, like a commit.
   void prepend(const QVariantMap &item);

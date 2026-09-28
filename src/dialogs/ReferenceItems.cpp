@@ -63,6 +63,28 @@ int ReferenceItems::indexOf(const git::Reference &ref) const {
   return -1;
 }
 
+int ReferenceItems::indexOf(const git::Commit &commit) const {
+  if (!commit.isValid())
+    return -1;
+
+  int tag = -1;
+  int remote = -1;
+  for (int i = 0; i < mRefs.size(); ++i) {
+    const git::Reference &ref = mRefs.at(i);
+    if (!ref.isValid() || ref.target() != commit)
+      continue;
+
+    if (ref.isLocalBranch())
+      return i;
+    if (ref.isTag() && tag < 0)
+      tag = i;
+    if (ref.isRemoteBranch() && remote < 0)
+      remote = i;
+  }
+
+  return tag >= 0 ? tag : remote;
+}
+
 void ReferenceItems::prepend(const QVariantMap &item) {
   mRefs.prepend(git::Reference());
   mItems.prepend(item);

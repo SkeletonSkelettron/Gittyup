@@ -57,6 +57,13 @@ RepoView::MergeFlags MergeDialog::flags() const {
 }
 
 void MergeDialog::setCommit(const git::Commit &commit) {
+  // Prefer a reference that points to the commit.
+  int index = mRefs.indexOf(commit);
+  if (index >= 0) {
+    setRefIndex(index);
+    return;
+  }
+
   // Merge a commit that no reference points to.
   if (mCommit.isValid() || !commit.isValid())
     return;

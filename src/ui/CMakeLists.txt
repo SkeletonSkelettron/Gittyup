@@ -22,10 +22,7 @@ add_library(
   MainWindow.cpp
   MenuBar.cpp
   ProgressIndicator.cpp
-  ReferenceList.cpp
-  ReferenceView.cpp
   RefsPanel.cpp
-  ReferenceModel.cpp
   RepoView.cpp
   RemoteCallbacks.cpp
   SearchField.cpp
@@ -33,7 +30,6 @@ add_library(
   StateAction.cpp
   SyntaxHighlighter.cpp
   SpellChecker.cpp
-  TabBar.cpp
   TabStrip.cpp
   TabWidget.cpp
   TemplateButton.cpp
