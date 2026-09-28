@@ -20,6 +20,7 @@ add_library(
   LogPanel.cpp
   MainWindow.cpp
   MenuBar.cpp
+  RefDrop.cpp
   RefsPanel.cpp
   RepoView.cpp
   RemoteCallbacks.cpp

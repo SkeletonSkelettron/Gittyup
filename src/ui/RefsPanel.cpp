@@ -291,6 +291,12 @@ QVariant RefsModel::data(const QModelIndex &index, int role) const {
     case SoloRole:
       return (item.kind == Branch || item.kind == RemoteBranch) &&
              item.ref.isValid() && mSolo.contains(item.ref.qualifiedName());
+    case RefNameRole:
+      if (item.kind == RemoteGroup)
+        return QString("remote:%1").arg(item.name);
+      if (item.kind == Stash || !item.ref.isValid())
+        return QString();
+      return item.ref.qualifiedName();
   }
 
   return QVariant();
@@ -312,7 +318,7 @@ QHash<int, QByteArray> RefsModel::roleNames() const {
           {CurrentRole, "isCurrent"},   {AheadRole, "ahead"},
           {BehindRole, "behind"},       {CountRole, "count"},
           {ExpandedRole, "expanded"},   {ExpandableRole, "expandable"},
-          {SoloRole, "soloed"}};
+          {SoloRole, "soloed"},         {RefNameRole, "refName"}};
 }
 
 RefsPanel::RefsPanel(const git::Repository &repo, RepoView *view)

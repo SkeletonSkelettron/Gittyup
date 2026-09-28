@@ -307,15 +307,44 @@ Rectangle {
                     commitList.selectionRevision >= 0 && commitList.isSelected(index)
                 readonly property bool hovered: mouse.containsMouse || starMouse.containsMouse
                 readonly property color laneColor: nodeColor ? nodeColor : Theme.accent
-                readonly property color foreground: selected ? Theme.selectedText : Theme.text
+                // Selected, and not the target of a dragged branch.
+                readonly property bool highlighted: selected && !drop.containsDrag
+                readonly property color foreground: highlighted ? Theme.selectedText : Theme.text
+                // The branch that references dragged onto this row are dropped onto.
+                readonly property string dropRef: {
+                    const refs = row.refs || []
+                    const local = refs.find((ref) => ref.local && ref.qualified)
+                    if (local)
+                        return local.qualified
+                    const remote = refs.find((ref) => ref.remote && ref.qualified)
+                    return remote ? remote.qualified : ""
+                }
 
                 width: ListView.view.width
                 height: root.rowHeight
 
                 Rectangle {
                     anchors.fill: parent
-                    color: row.selected ? Theme.selected
-                                        : row.hovered ? Theme.hover : "transparent"
+                    color: drop.containsDrag ? Qt.rgba(Theme.accent.r, Theme.accent.g,
+                                                       Theme.accent.b, 0.18)
+                           : row.selected ? Theme.selected
+                           : row.hovered ? Theme.hover : "transparent"
+                    border.width: drop.containsDrag ? 1 : 0
+                    border.color: Theme.accent
+                }
+
+                // Drop a branch onto the branch of this commit.
+                DropArea {
+                    id: drop
+
+                    anchors.fill: parent
+                    enabled: row.dropRef !== ""
+                    keys: ["gittyup/ref"]
+                    onEntered: (drag) => drag.accepted = refDrop.accepts(row.dropRef)
+                    onDropped: (drop) => {
+                        const p = mapToItem(null, drop.x, drop.y)
+                        refDrop.drop(row.dropRef, p.x, p.y)
+                    }
                 }
 
                 MouseArea {
@@ -353,10 +382,32 @@ Rectangle {
                             spacing: 3
 
                             RefBadge {
+                                id: badge
+
                                 visible: (row.refs || []).length > 0
                                 ref: (row.refs || []).length > 0 ? row.refs[0] : ({})
                                 laneColor: row.laneColor
                                 maxWidth: root.refsWidth - (more.visible ? more.width + 12 : 8)
+
+                                // Drag the branch onto another, like in GitKraken.
+                                RefDragArea {
+                                    anchors.fill: parent
+                                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                    refName: badge.ref.qualified || ""
+                                    cursorShape: refName !== "" ? Qt.OpenHandCursor
+                                                                : Qt.ArrowCursor
+                                    onPressed: list.forceActiveFocus()
+                                    onClicked: (event) => {
+                                        if (dragged)
+                                            return
+                                        if (event.button === Qt.RightButton) {
+                                            const p = mapToItem(null, event.x, event.y)
+                                            commitList.showContextMenu(row.index, p.x, p.y)
+                                        } else {
+                                            commitList.click(row.index, event.modifiers)
+                                        }
+                                    }
+                                }
                             }
 
                             Rectangle {
@@ -546,7 +597,7 @@ Rectangle {
                         verticalAlignment: Text.AlignVCenter
                         text: row.isStatus === true ? "" : (row.author || "")
                         elide: Text.ElideRight
-                        color: row.selected ? Theme.selectedText : Theme.textMuted
+                        color: row.highlighted ? Theme.selectedText : Theme.textMuted
                         font.pixelSize: 12
                     }
 
@@ -558,7 +609,7 @@ Rectangle {
                         verticalAlignment: Text.AlignVCenter
                         text: row.isStatus === true ? "" : (row.date || "")
                         elide: Text.ElideRight
-                        color: row.selected ? Theme.selectedText : Theme.textMuted
+                        color: row.highlighted ? Theme.selectedText : Theme.textMuted
                         font.pixelSize: 12
                     }
 
@@ -569,7 +620,7 @@ Rectangle {
                         leftPadding: 6
                         verticalAlignment: Text.AlignVCenter
                         text: row.isStatus === true ? "" : (row.shortId || "")
-                        color: row.selected ? Theme.selectedText : Theme.textMuted
+                        color: row.highlighted ? Theme.selectedText : Theme.textMuted
                         font.pixelSize: 12
                         font.family: "monospace"
                     }

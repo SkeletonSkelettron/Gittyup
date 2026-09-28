@@ -123,4 +123,55 @@ FocusScope {
             }
         }
     }
+
+    // The branch that is dragged onto another one, like in GitKraken.
+    Rectangle {
+        id: dragChip
+
+        readonly property point pointer: root.mapFromItem(null, refDrop.x, refDrop.y)
+
+        visible: refDrop.active
+        x: pointer.x + 14
+        y: pointer.y + 10
+        z: 100
+        implicitWidth: chipRow.implicitWidth + 16
+        implicitHeight: 24
+        radius: 6
+        color: Theme.accent
+
+        Drag.active: refDrop.active
+        Drag.keys: ["gittyup/ref"]
+        Drag.hotSpot.x: -14
+        Drag.hotSpot.y: -10
+
+        Connections {
+            target: refDrop
+
+            function onReleased() {
+                dragChip.Drag.drop()
+            }
+        }
+
+        Row {
+            id: chipRow
+
+            anchors.centerIn: parent
+            spacing: 6
+
+            Icon {
+                anchors.verticalCenter: parent.verticalCenter
+                name: "branch"
+                size: 13
+                color: Theme.accentText
+            }
+
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: refDrop.label
+                color: Theme.accentText
+                font.pixelSize: 12
+                font.bold: true
+            }
+        }
+    }
 }

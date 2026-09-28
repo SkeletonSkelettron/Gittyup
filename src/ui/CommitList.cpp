@@ -1813,10 +1813,12 @@ void CommitList::updateRefs() {
       continue;
     }
 
-    mRefs[target.id()].append(QVariantMap{{"name", ref.name()},
-                                          {"head", ref.isHead()},
-                                          {"tag", ref.isTag()},
-                                          {"local", ref.isLocalBranch()}});
+    mRefs[target.id()].append(
+        QVariantMap{{"name", ref.name()},
+                    {"qualified", ref.qualifiedName()},
+                    {"head", ref.isHead()},
+                    {"tag", ref.isTag()},
+                    {"local", ref.isLocalBranch()}});
   }
 
   for (auto it = remotes.cbegin(); it != remotes.cend(); ++it) {
@@ -1837,7 +1839,9 @@ void CommitList::updateRefs() {
       }
 
       if (!merged)
-        refs.append(QVariantMap{{"name", remote}, {"remote", true}});
+        refs.append(QVariantMap{{"name", remote},
+                                {"qualified", "refs/remotes/" + remote},
+                                {"remote", true}});
     }
   }
 

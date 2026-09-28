@@ -74,6 +74,7 @@ Rectangle {
                 required property bool expanded
                 required property bool expandable
                 required property bool soloed
+                required property string refName
 
                 readonly property bool isHeader: kind === root.kindHeader
                 readonly property bool isBranch: kind === root.kindBranch
@@ -82,6 +83,11 @@ Rectangle {
                                                 || soloMouse.containsMouse
                 // Branches that are hidden in the graph while others are soloed.
                 readonly property bool dimmed: refsPanel.soloActive && isBranch && !soloed
+                // Branches and tags are dragged onto branches and remotes.
+                readonly property bool draggable: isBranch || kind === root.kindTag
+                readonly property bool dropTarget: drop.containsDrag
+                // Current, and not the target of a dragged branch.
+                readonly property bool highlighted: isCurrent && !dropTarget
 
                 width: ListView.view.width
                 height: isHeader ? 30 : 26
@@ -91,8 +97,12 @@ Rectangle {
                     anchors.leftMargin: 4
                     anchors.rightMargin: 4
                     radius: 5
-                    color: row.isCurrent ? Theme.selected
-                                         : row.hovered ? Theme.hover : "transparent"
+                    color: row.dropTarget ? Qt.rgba(Theme.accent.r, Theme.accent.g,
+                                                    Theme.accent.b, 0.18)
+                           : row.highlighted ? Theme.selected
+                           : row.hovered ? Theme.hover : "transparent"
+                    border.width: row.dropTarget ? 1 : 0
+                    border.color: Theme.accent
                 }
 
                 Rectangle {
@@ -106,13 +116,16 @@ Rectangle {
                     color: Theme.border
                 }
 
-                MouseArea {
+                RefDragArea {
                     id: mouse
 
                     anchors.fill: parent
                     hoverEnabled: true
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    refName: row.draggable ? row.refName : ""
                     onClicked: (event) => {
+                        if (dragged)
+                            return
                         if (event.button === Qt.RightButton) {
                             const p = mapToItem(null, event.x, event.y)
                             refsPanel.showContextMenu(row.index, p.x, p.y)
@@ -126,9 +139,24 @@ Rectangle {
                     }
                 }
 
+                // Drop a branch onto another branch or a remote.
+                DropArea {
+                    id: drop
+
+                    anchors.fill: parent
+                    enabled: row.refName !== ""
+                             && (row.isBranch || row.kind === root.kindRemoteGroup)
+                    keys: ["gittyup/ref"]
+                    onEntered: (drag) => drag.accepted = refDrop.accepts(row.refName)
+                    onDropped: (drop) => {
+                        const p = mapToItem(null, drop.x, drop.y)
+                        refDrop.drop(row.refName, p.x, p.y)
+                    }
+                }
+
                 HoverTip {
                     target: row
-                    text: row.isHeader ? "" : row.toolTip
+                    text: row.isHeader || refDrop.active ? "" : row.toolTip
                     hovered: mouse.containsMouse && !row.isHeader && !soloMouse.containsMouse
                 }
 
@@ -158,7 +186,7 @@ Rectangle {
                         name: root.iconFor(row.kind, row.section, row.isHead)
                         size: row.isHeader ? 14 : 15
                         color: row.isHead ? Theme.accent
-                               : row.isCurrent ? Theme.selectedText : Theme.textMuted
+                               : row.highlighted ? Theme.selectedText : Theme.textMuted
                     }
 
                     Text {
@@ -166,7 +194,7 @@ Rectangle {
                         text: row.name
                         elide: Text.ElideMiddle
                         color: row.isHeader ? Theme.textMuted
-                               : row.isCurrent ? Theme.selectedText : Theme.text
+                               : row.highlighted ? Theme.selectedText : Theme.text
                         font.pixelSize: row.isHeader ? 11 : 13
                         font.bold: row.isHeader || row.isHead
                         font.capitalization: row.isHeader ? Font.AllUppercase : Font.MixedCase

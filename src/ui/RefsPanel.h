@@ -48,7 +48,10 @@ public:
     ExpandedRole,
     ExpandableRole,
     // The branch is soloed in the graph.
-    SoloRole
+    SoloRole,
+    // The qualified name of a reference, or "remote:<name>" for a remote,
+    // for dragging and dropping.
+    RefNameRole
   };
 
   struct Item {

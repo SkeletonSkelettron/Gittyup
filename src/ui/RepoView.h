@@ -40,6 +40,7 @@ class LogPanel;
 class MainWindow;
 class QQmlContext;
 class QQuickItem;
+class RefDrop;
 class RefsPanel;
 class RemoteCallbacks;
 class TreeModel;
@@ -94,6 +95,8 @@ public:
 
   // The actions that can be undone and redone.
   UndoHistory *undoHistory() const { return mUndo; }
+  // Branches dragged and dropped onto other branches.
+  RefDrop *refDrop() const { return mRefDrop; }
   Index *index() const { return mIndex; }
 
   Repository *remoteRepo();
@@ -439,6 +442,7 @@ private:
 
   History *mHistory;
   UndoHistory *mUndo = nullptr;
+  RefDrop *mRefDrop = nullptr;
 
   Repository *mRemoteRepo;
   bool mRemoteRepoCached = false;

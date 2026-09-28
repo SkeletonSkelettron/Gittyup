@@ -118,6 +118,7 @@ test(NAME commitMessageTemplate)
 test(NAME commitEditor)
 test(NAME qml_views)
 test(NAME undo)
+test(NAME refdrop)
 
 # Test case not compatible with Windows
 if(NOT WIN32)

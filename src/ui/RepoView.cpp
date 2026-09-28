@@ -17,6 +17,7 @@
 #include "MainWindow.h"
 #include "MenuBar.h"
 #include "qtsupport.h"
+#include "RefDrop.h"
 #include "RefsPanel.h"
 #include "TreeModel.h"
 #include "UndoHistory.h"
@@ -276,6 +277,9 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
 
   mDetails = new DetailView(repo, this);
 
+  // Drag and drop branches onto others.
+  mRefDrop = new RefDrop(this);
+
   // Create log.
   mLogRoot = new LogEntry(this);
   mLogPanel = new LogPanel(mLogRoot, this);
@@ -288,7 +292,8 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
        {"refsPanel", QVariant::fromValue<QObject *>(mRefs)},
        {"commitList", QVariant::fromValue<QObject *>(mCommits)},
        {"detailView", QVariant::fromValue<QObject *>(mDetails)},
-       {"logPanel", QVariant::fromValue<QObject *>(mLogPanel)}},
+       {"logPanel", QVariant::fromValue<QObject *>(mLogPanel)},
+       {"refDrop", QVariant::fromValue<QObject *>(mRefDrop)}},
       this, &mPageContext);
 
   // Respond to diff/tree mode change.
