@@ -44,9 +44,24 @@
 #include <QDesktopServices>
 #include <QFileDialog>
 #include <QLineEdit>
+#include <QQuickItem>
+#include <QQuickWidget>
+#include <QQuickWindow>
 #include <QTextEdit>
 
 namespace {
+
+// The QML text field or text area that has the focus.
+QQuickItem *focusTextItem() {
+  QWidget *widget = QApplication::focusWidget();
+  QQuickWidget *view = qobject_cast<QQuickWidget *>(widget);
+  QQuickItem *item = view ? view->quickWindow()->activeFocusItem() : nullptr;
+  if (item && (item->inherits("QQuickTextInput") ||
+               item->inherits("QQuickTextEdit")))
+    return item;
+
+  return nullptr;
+}
 
 void openCloneDialog(CloneDialog::Kind kind) {
   CloneDialog *dialog = new CloneDialog(kind);
@@ -346,6 +361,13 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
   // Edit
   QMenu *edit = addMenu(tr("Edit"));
 
+  // The focus moves within QML views without notice.
+  connect(edit, &QMenu::aboutToShow, this, [this] {
+    updateUndoRedo();
+    updateCutCopyPaste();
+    updateSelectAll();
+  });
+
   mUndo = edit->addAction(tr("Undo"));
   undoHotkey.use(mUndo);
   connect(mUndo, &QAction::triggered, [] {
@@ -356,6 +378,8 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
       editor->undo();
     } else if (QTextEdit *editor = qobject_cast<QTextEdit *>(widget)) {
       editor->undo();
+    } else if (QQuickItem *item = focusTextItem()) {
+      QMetaObject::invokeMethod(item, "undo");
     }
   });
 
@@ -369,6 +393,8 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
       editor->redo();
     } else if (QLineEdit *editor = qobject_cast<QLineEdit *>(widget)) {
       editor->redo();
+    } else if (QQuickItem *item = focusTextItem()) {
+      QMetaObject::invokeMethod(item, "redo");
     }
   });
 
@@ -384,6 +410,8 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
       editor->cut();
     } else if (QLineEdit *editor = qobject_cast<QLineEdit *>(widget)) {
       editor->cut();
+    } else if (QQuickItem *item = focusTextItem()) {
+      QMetaObject::invokeMethod(item, "cut");
     }
   });
 
@@ -397,6 +425,8 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
       editor->copy();
     } else if (QLineEdit *editor = qobject_cast<QLineEdit *>(widget)) {
       editor->copy();
+    } else if (QQuickItem *item = focusTextItem()) {
+      QMetaObject::invokeMethod(item, "copy");
     }
   });
 
@@ -410,6 +440,8 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
       editor->paste();
     } else if (QLineEdit *editor = qobject_cast<QLineEdit *>(widget)) {
       editor->paste();
+    } else if (QQuickItem *item = focusTextItem()) {
+      QMetaObject::invokeMethod(item, "paste");
     }
   });
 
@@ -423,6 +455,8 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
       editor->selectAll();
     } else if (QLineEdit *editor = qobject_cast<QLineEdit *>(widget)) {
       editor->selectAll();
+    } else if (QQuickItem *item = focusTextItem()) {
+      QMetaObject::invokeMethod(item, "selectAll");
     }
   });
 
@@ -472,6 +506,8 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
       FindWidget::setText(editor->textCursor().selectedText());
     } else if (QLineEdit *editor = qobject_cast<QLineEdit *>(widget)) {
       FindWidget::setText(editor->selectedText());
+    } else if (QQuickItem *item = focusTextItem()) {
+      FindWidget::setText(item->property("selectedText").toString());
     }
 
     // Update next/prev.
@@ -960,6 +996,9 @@ void MenuBar::updateUndoRedo() {
   } else if (QLineEdit *editor = qobject_cast<QLineEdit *>(widget)) {
     mUndo->setEnabled(editor->isUndoAvailable());
     mRedo->setEnabled(editor->isRedoAvailable());
+  } else if (QQuickItem *item = focusTextItem()) {
+    mUndo->setEnabled(item->property("canUndo").toBool());
+    mRedo->setEnabled(item->property("canRedo").toBool());
   }
 }
 
@@ -987,6 +1026,13 @@ void MenuBar::updateCutCopyPaste() {
     mCopy->setEnabled(editor->hasSelectedText());
     mPaste->setEnabled(canPaste);
     mFindSelection->setEnabled(editor->hasSelectedText());
+  } else if (QQuickItem *item = focusTextItem()) {
+    bool selection = !item->property("selectedText").toString().isEmpty();
+    bool readOnly = item->property("readOnly").toBool();
+    mCut->setEnabled(selection && !readOnly);
+    mCopy->setEnabled(selection);
+    mPaste->setEnabled(item->property("canPaste").toBool());
+    mFindSelection->setEnabled(selection);
   }
 }
 
@@ -994,7 +1040,7 @@ void MenuBar::updateSelectAll() {
   QWidget *widget = QApplication::focusWidget();
   mSelectAll->setEnabled(qobject_cast<TextEditor *>(widget) ||
                          qobject_cast<QTextEdit *>(widget) ||
-                         qobject_cast<QLineEdit *>(widget));
+                         qobject_cast<QLineEdit *>(widget) || focusTextItem());
 }
 
 void MenuBar::updateFind() {

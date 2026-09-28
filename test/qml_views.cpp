@@ -36,9 +36,12 @@
 #include "ui/TabStrip.h"
 #include "ui/TabWidget.h"
 #include "ui/TemplateDialog.h"
+#include "ui/MenuBar.h"
 #include "ui/SearchField.h"
 #include "ui/ToolBar.h"
 #include "update/UpdateDialog.h"
+#include <QClipboard>
+#include <QMenu>
 #include <QFile>
 #include <QQuickItem>
 #include <QQuickWidget>
@@ -191,6 +194,51 @@ void TestQmlViews::search() {
   search->setAdvancedValue(0, "other");
   search->acceptAdvanced();
   QCOMPARE(search->text(), QString("other author:someone"));
+
+  // The edit menu works on the focused QML field.
+  search->setText("hello");
+  QQuickWidget *view = mWindow->toolBar()->findChild<QQuickWidget *>();
+  QQuickItem *input = nullptr;
+  for (QQuickItem *item : view->rootObject()->findChildren<QQuickItem *>()) {
+    if (item->inherits("QQuickTextInput"))
+      input = item;
+  }
+  QVERIFY(input);
+  mWindow->activateWindow();
+  QVERIFY(qWaitForWindowActive(mWindow));
+  view->setFocus();
+  qWait(50);
+  input->forceActiveFocus();
+  qWait(50);
+  QApplication::clipboard()->clear();
+
+  MenuBar *menuBar = MenuBar::instance(mWindow);
+  QMenu *edit = nullptr;
+  for (QMenu *menu : menuBar->findChildren<QMenu *>()) {
+    if (menu->title() == "Edit")
+      edit = menu;
+  }
+  QVERIFY(edit);
+
+  QAction *selectAll = nullptr;
+  QAction *copy = nullptr;
+  for (QAction *action : edit->actions()) {
+    if (action->text() == "Select All")
+      selectAll = action;
+    else if (action->text() == "Copy")
+      copy = action;
+  }
+  QVERIFY(selectAll && copy);
+
+  // Opening the menu updates the actions.
+  emit edit->aboutToShow();
+  QVERIFY(selectAll->isEnabled());
+  QVERIFY(!copy->isEnabled());
+  selectAll->trigger();
+  emit edit->aboutToShow();
+  QVERIFY(copy->isEnabled());
+  copy->trigger();
+  QCOMPARE(QApplication::clipboard()->text(), QString("hello"));
 
   search->edit("", 0, 0, 0, 220, 28);
   QVERIFY2(sMessages.isEmpty(), qPrintable(sMessages.join('\n')));
