@@ -12,6 +12,7 @@
 #include <QAction>
 #include <QApplication>
 #include <QBuffer>
+#include <QEvent>
 #include <QEventLoop>
 #include <QFile>
 #include <QHash>
@@ -74,10 +75,46 @@ public:
 
 } // namespace
 
-QmlHost::QmlHost(QQuickWidget *view) : QObject(view), mView(view) {}
+namespace {
+
+// Tool tips aren't shown while a menu is open. Their items still count as
+// hovered below the menu.
+int sOpenMenus = 0;
+
+class MenuScope {
+public:
+  MenuScope() { ++sOpenMenus; }
+  ~MenuScope() { --sOpenMenus; }
+};
+
+} // namespace
+
+QmlHost::QmlHost(QQuickWidget *view) : QObject(view), mView(view) {
+  view->installEventFilter(this);
+}
+
+bool QmlHost::eventFilter(QObject *watched, QEvent *event) {
+  // Clicking or scrolling hides the tool tip, like native tool tips.
+  switch (event->type()) {
+    case QEvent::MouseButtonPress:
+    case QEvent::Wheel:
+    case QEvent::KeyPress:
+    case QEvent::FocusOut:
+      hideToolTip();
+      break;
+
+    default:
+      break;
+  }
+
+  return QObject::eventFilter(watched, event);
+}
 
 void QmlHost::showToolTip(const QString &text, qreal x, qreal y, qreal width,
                           qreal height) {
+  if (sOpenMenus > 0)
+    return;
+
   if (QmlSupport::drawsPopups(mView)) {
     mToolTipText = text;
     mToolTipRect = QRectF(x, y, width, height);
@@ -215,6 +252,7 @@ QAction *execMenu(QMenu *menu, const QPoint &pos) {
   QQuickWidget *view = popupViewAt(pos);
   if (!view || !view->rootObject()) {
     QToolTip::hideText();
+    MenuScope scope;
     return menu->exec(pos);
   }
 
@@ -285,12 +323,14 @@ QAction *execMenu(QMenu *menu, const QPoint &pos) {
   if (!popup) {
     for (const QQmlError &error : component.errors())
       qWarning("%s", qPrintable(error.toString()));
+    MenuScope scope;
     return menu->exec(pos);
   }
 
   // Wait until the menu closes, like a native menu.
   QEventLoop loop;
   QObject::connect(popup, SIGNAL(closed()), &loop, SLOT(quit()));
+  MenuScope scope;
   QMetaObject::invokeMethod(popup, "open");
   loop.exec();
   int chosen = popup->property("chosen").toInt();

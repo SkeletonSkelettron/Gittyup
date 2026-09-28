@@ -50,6 +50,9 @@ public:
 signals:
   void toolTipChanged();
 
+protected:
+  bool eventFilter(QObject *watched, QEvent *event) override;
+
 private:
   QQuickWidget *mView;
   QString mToolTipText;

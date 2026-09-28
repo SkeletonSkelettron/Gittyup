@@ -290,12 +290,19 @@ void TestQmlViews::menu() {
   QPoint pos = view->mapToGlobal(QPoint(300, 300));
   QCOMPARE(QApplication::widgetAt(pos), view);
 
-  QTimer::singleShot(200, [view] {
+  // Tool tips of the items below the menu aren't shown over it.
+  bool toolTipShown = true;
+  QTimer::singleShot(200, [view, &toolTipShown] {
+    QmlHost *host = QmlSupport::host(view);
+    host->showToolTip("tip", 10, 10, 20, 20);
+    toolTipShown = host->toolTipVisible();
+
     keyClick(view, Qt::Key_Down);
     keyClick(view, Qt::Key_Return);
   });
 
   QCOMPARE(QmlSupport::execMenu(&menu, pos), first);
+  QVERIFY(!toolTipShown);
   QVERIFY(triggered);
   QVERIFY2(sMessages.isEmpty(), qPrintable(sMessages.join('\n')));
 }
