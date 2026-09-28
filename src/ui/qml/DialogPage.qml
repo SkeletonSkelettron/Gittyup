@@ -28,8 +28,7 @@ Rectangle {
 
     // Called by QmlDialog once the dialog is shown.
     function focusInitialItem() {
-        if (root.initialFocus)
-            root.initialFocus.forceActiveFocus()
+        (root.initialFocus || root).forceActiveFocus()
     }
 
     // Handle the accept button instead of accepting the dialog.
