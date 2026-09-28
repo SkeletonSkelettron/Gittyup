@@ -15,6 +15,7 @@
 #include <QVariantMap>
 
 class MenuBar;
+class QMenu;
 class QQmlContext;
 class QQuickItem;
 class QQuickWidget;
@@ -39,6 +40,10 @@ class MainWindow : public QMainWindow {
                  sideBarVisibleChanged)
   Q_PROPERTY(bool welcomeVisible READ isWelcomeVisible NOTIFY
                  welcomeVisibleChanged)
+  // The view draws the menu bar unless the platform shows the menus.
+  Q_PROPERTY(bool menuBarVisible READ isMenuBarVisible NOTIFY
+                 menuBarVisibleChanged)
+  Q_PROPERTY(QStringList menuTitles READ menuTitles CONSTANT)
 
 public:
   MainWindow(const git::Repository &repo, QWidget *parent = nullptr,
@@ -52,6 +57,11 @@ public:
   void setSideBarVisible(bool visible);
 
   bool isWelcomeVisible() const;
+
+  bool isMenuBarVisible() const;
+  QStringList menuTitles() const;
+  // Show the menu of the menu bar at 'index' below a point of the view.
+  Q_INVOKABLE void showMenu(int index, qreal x, qreal y);
 
   // The view that draws the window.
   QQuickWidget *quickView() const { return mView; }
@@ -91,6 +101,7 @@ public:
 signals:
   void sideBarVisibleChanged();
   void welcomeVisibleChanged();
+  void menuBarVisibleChanged();
 
 protected:
   void showEvent(QShowEvent *event) override;
@@ -101,6 +112,7 @@ protected:
 private:
   void updatePages();
   void updateTabNames();
+  QList<QMenu *> menus() const;
   void updateInterface();
   void updateWindowTitle(int ahead = -1, int behind = -1);
 

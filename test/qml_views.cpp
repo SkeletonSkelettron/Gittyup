@@ -312,8 +312,9 @@ void TestQmlViews::dragTab() {
   QQuickWidget *view = mWindow->quickView();
   QVERIFY(view);
 
-  // Drag the first tab past the second one.
-  QPoint start(40, 20);
+  // Drag the first tab past the second one. The tabs are below the menu
+  // bar when the view draws it.
+  QPoint start(40, (mWindow->isMenuBarVisible() ? 28 : 0) + 20);
   mousePress(view, Qt::LeftButton, Qt::NoModifier, start);
   for (int x = 10; x <= 240; x += 10)
     mouseMove(view, start + QPoint(x, 0));

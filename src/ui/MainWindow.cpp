@@ -29,6 +29,7 @@
 #include <QGuiApplication>
 #include <QScreen>
 #include <QCryptographicHash>
+#include <QMenu>
 #include <QMimeData>
 #include <QSettings>
 #include <QQmlComponent>
@@ -91,10 +92,15 @@ MainWindow::MainWindow(const git::Repository &repo, QWidget *parent,
           [this](bool refresh) {
             Settings *settings = Settings::instance();
 
+            // The view draws the menu bar unless it's native.
             bool menuBarHidden =
                 settings->value(Setting::Id::HideMenuBar).toBool();
-            if (mMenuBar->isHidden() != menuBarHidden)
-              mMenuBar->setHidden(menuBarHidden);
+            if (mMenuBar->isNativeMenuBar()) {
+              if (mMenuBar->isHidden() != menuBarHidden)
+                mMenuBar->setHidden(menuBarHidden);
+            } else {
+              emit menuBarVisibleChanged();
+            }
 
             bool fullPath =
                 settings->value(Setting::Id::ShowFullRepoPath).toBool();
@@ -128,6 +134,11 @@ MainWindow::MainWindow(const git::Repository &repo, QWidget *parent,
   mTabStrip->setTabWidget(mTabs);
   mToolBar = new ToolBar(this);
   mSideBar = new SideBar(mTabs, this);
+
+  // The actions of the menu bar are also added to the window, so their
+  // shortcuts work while the view draws the menu bar.
+  if (!mMenuBar->isNativeMenuBar())
+    mMenuBar->hide();
 
   // Draw everything in one view, with the sidebar as it was.
   mIsSideBarVisible = QSettings().value(kSidebarKey, true).toBool();
@@ -199,6 +210,34 @@ TabWidget *MainWindow::tabWidget() const { return mTabs; }
 
 bool MainWindow::isWelcomeVisible() const {
   return mTabs && mTabs->isWelcomeVisible();
+}
+
+bool MainWindow::isMenuBarVisible() const {
+  return !mMenuBar->isNativeMenuBar() &&
+         !Settings::instance()->value(Setting::Id::HideMenuBar).toBool();
+}
+
+QList<QMenu *> MainWindow::menus() const {
+  QList<QMenu *> menus;
+  for (QAction *action : mMenuBar->actions()) {
+    if (action->isVisible() && action->menu())
+      menus.append(action->menu());
+  }
+
+  return menus;
+}
+
+QStringList MainWindow::menuTitles() const {
+  QStringList titles;
+  for (QMenu *menu : menus())
+    titles.append(menu->title());
+  return titles;
+}
+
+void MainWindow::showMenu(int index, qreal x, qreal y) {
+  QList<QMenu *> menus = this->menus();
+  if (index >= 0 && index < menus.size())
+    QmlSupport::execMenu(menus.at(index), mapFromScene(x, y));
 }
 
 QPoint MainWindow::mapFromScene(qreal x, qreal y) const {

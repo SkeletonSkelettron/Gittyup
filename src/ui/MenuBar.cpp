@@ -544,9 +544,11 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
 
   mToggleMenuBar = viewMenu->addAction(tr("Hide Menu Bar"));
   toggleMenuBarHotkey.use(mToggleMenuBar);
-  connect(mToggleMenuBar, &QAction::triggered, [this] {
-    setHidden(!isHidden());
-    Settings::instance()->setValue(Setting::Id::HideMenuBar, isHidden());
+  connect(mToggleMenuBar, &QAction::triggered, [] {
+    // The windows show or hide their menu bars.
+    Settings *settings = Settings::instance();
+    bool hidden = settings->value(Setting::Id::HideMenuBar).toBool();
+    settings->setValue(Setting::Id::HideMenuBar, !hidden);
   });
 
   // Repository
