@@ -8,20 +8,17 @@
 //
 
 #include "SearchField.h"
-#include "QmlPopup.h"
 #include "RepoView.h"
 #include "MainWindow.h"
 #include "ToolBar.h"
 #include "index/Query.h"
 #include <QDate>
-#include <QEvent>
 #include <QRegularExpression>
 #include <QtConcurrent>
 
 namespace {
 
 const int kMaxCompletions = 200;
-const int kAdvancedWidth = 400;
 
 const QString kParenFmt = "(%1)";
 const QString kFieldFmt = "%1:%2";
@@ -90,17 +87,9 @@ SearchField::SearchField(ToolBar *parent)
   connect(&mFieldMapWatcher,
           &QFutureWatcher<QMap<Index::Field, QStringList>>::finished, this,
           [this] { mFieldMap = mFieldMapWatcher.result(); });
-
-  // The completions stay where they are when the window moves.
-  parent->window()->installEventFilter(this);
 }
 
-SearchField::~SearchField() {
-  // The views of the popups reference this object.
-  delete mCompletionPopup;
-  delete mAdvancedPopup;
-  mFieldMapWatcher.waitForFinished();
-}
+SearchField::~SearchField() { mFieldMapWatcher.waitForFinished(); }
 
 void SearchField::setText(const QString &text) {
   if (text == mText)
@@ -131,15 +120,13 @@ void SearchField::setEnabled(bool enabled) {
   }
 }
 
-void SearchField::edit(const QString &text, int cursor, int x, int y,
-                       int width, int height) {
-  mField = QRect(x, y, width, height);
+void SearchField::edit(const QString &text, int cursor) {
   setText(text);
   updateCompletions(cursor);
 }
 
 bool SearchField::moveCompletion(int delta) {
-  if (!mCompletionPopup || !mCompletionPopup->isVisible())
+  if (!mCompletionsVisible)
     return false;
 
   // Moving before the first completion goes back to the text.
@@ -149,7 +136,7 @@ bool SearchField::moveCompletion(int delta) {
 }
 
 bool SearchField::acceptCompletion() {
-  if (!mCompletionPopup || !mCompletionPopup->isVisible())
+  if (!mCompletionsVisible)
     return false;
 
   if (mCompletionIndex < 0) {
@@ -162,10 +149,10 @@ bool SearchField::acceptCompletion() {
 }
 
 bool SearchField::hideCompletions() {
-  if (!mCompletionPopup || !mCompletionPopup->isVisible())
+  if (!mCompletionsVisible)
     return false;
 
-  mCompletionPopup->hide();
+  setCompletionsVisible(false);
   return true;
 }
 
@@ -194,11 +181,6 @@ QVariantList SearchField::advancedFields() const {
   }
 
   return fields;
-}
-
-void SearchField::showAdvanced(int x, int y, int width, int height) {
-  mField = QRect(x, y, width, height);
-  showAdvanced();
 }
 
 void SearchField::showAdvanced() {
@@ -233,20 +215,19 @@ void SearchField::showAdvanced() {
     mFieldMapWatcher.setFuture(
         QtConcurrent::run([index] { return index->fieldMap(); }));
 
-  if (!mAdvancedPopup) {
-    mAdvancedPopup = new QmlPopup(
-        "AdvancedSearch", {{"search", QVariant::fromValue<QObject *>(this)}},
-        true, mToolBar->window());
-    connect(mAdvancedPopup, &QmlPopup::hidden, this,
-            [this] { mFieldMap.clear(); });
+  if (!mAdvancedVisible) {
+    mAdvancedVisible = true;
+    emit advancedVisibleChanged();
   }
-
-  mAdvancedPopup->popup(mField, kAdvancedWidth);
 }
 
 void SearchField::hideAdvanced() {
-  if (mAdvancedPopup)
-    mAdvancedPopup->hide();
+  if (!mAdvancedVisible)
+    return;
+
+  mAdvancedVisible = false;
+  mFieldMap.clear();
+  emit advancedVisibleChanged();
 }
 
 void SearchField::setAdvancedValue(int index, const QString &value) {
@@ -287,22 +268,6 @@ void SearchField::acceptAdvanced() {
 
   hideAdvanced();
   setText((terms + mOtherTerms).join(' '));
-}
-
-bool SearchField::eventFilter(QObject *watched, QEvent *event) {
-  switch (event->type()) {
-    case QEvent::Move:
-    case QEvent::Resize:
-    case QEvent::Hide:
-    case QEvent::WindowDeactivate:
-      hideCompletions();
-      break;
-
-    default:
-      break;
-  }
-
-  return QObject::eventFilter(watched, event);
 }
 
 QString SearchField::term(Index::Field field, const QString &text) {
@@ -351,18 +316,7 @@ void SearchField::updateCompletions(int cursor) {
   emit completionsChanged();
   setCompletionIndex(-1);
 
-  if (completions.isEmpty()) {
-    hideCompletions();
-    return;
-  }
-
-  if (!mCompletionPopup)
-    mCompletionPopup = new QmlPopup(
-        "SearchCompletions",
-        {{"search", QVariant::fromValue<QObject *>(this)}}, false,
-        mToolBar->window());
-
-  mCompletionPopup->popup(mField, mField.width());
+  setCompletionsVisible(!completions.isEmpty());
 }
 
 void SearchField::setCompletionIndex(int index) {
@@ -371,4 +325,12 @@ void SearchField::setCompletionIndex(int index) {
 
   mCompletionIndex = index;
   emit completionIndexChanged();
+}
+
+void SearchField::setCompletionsVisible(bool visible) {
+  if (visible == mCompletionsVisible)
+    return;
+
+  mCompletionsVisible = visible;
+  emit completionsVisibleChanged();
 }

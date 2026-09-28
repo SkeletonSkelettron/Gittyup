@@ -14,17 +14,14 @@
 #include <QFutureWatcher>
 #include <QMap>
 #include <QObject>
-#include <QRect>
 #include <QStringList>
 #include <QVariantList>
 
-class QmlPopup;
 class ToolBar;
 
 // The search field of the tool bar, drawn by qrc:/qml/SearchField.qml as
 // 'search'. It completes the words of the index of the current repository
-// and has a panel to build advanced queries. Both are separate windows
-// below the field.
+// and has a panel to build advanced queries. Both drop down from the field.
 class SearchField : public QObject {
   Q_OBJECT
 
@@ -34,6 +31,10 @@ class SearchField : public QObject {
   Q_PROPERTY(bool enabled READ isEnabled NOTIFY enabledChanged)
   Q_PROPERTY(QStringList completions READ completions NOTIFY
                  completionsChanged)
+  Q_PROPERTY(bool completionsVisible READ completionsVisible NOTIFY
+                 completionsVisibleChanged)
+  Q_PROPERTY(bool advancedVisible READ advancedVisible NOTIFY
+                 advancedVisibleChanged)
   Q_PROPERTY(int completionIndex READ completionIndex NOTIFY
                  completionIndexChanged)
   Q_PROPERTY(QVariantList advancedFields READ advancedFields NOTIFY
@@ -52,12 +53,12 @@ public:
   bool isEnabled() const { return mEnabled; }
   void setEnabled(bool enabled);
 
-  // Called by QML when the text is edited. The rectangle of the field on
-  // the screen positions the popups.
-  Q_INVOKABLE void edit(const QString &text, int cursor, int x, int y,
-                        int width, int height);
+  // Called by QML when the text is edited.
+  Q_INVOKABLE void edit(const QString &text, int cursor);
 
   QStringList completions() const { return mCompletions; }
+  bool completionsVisible() const { return mCompletionsVisible; }
+  bool advancedVisible() const { return mAdvancedVisible; }
   int completionIndex() const { return mCompletionIndex; }
 
   // These return true if the list of completions handled the key.
@@ -70,7 +71,6 @@ public:
   // 'value' and whether it's a 'date' or starts a new 'group'.
   QVariantList advancedFields() const;
 
-  Q_INVOKABLE void showAdvanced(int x, int y, int width, int height);
   Q_INVOKABLE void showAdvanced();
   Q_INVOKABLE void hideAdvanced();
   Q_INVOKABLE void setAdvancedValue(int index, const QString &value);
@@ -87,12 +87,11 @@ signals:
   void completionsChanged();
   void completionIndexChanged();
   void advancedFieldsChanged();
+  void completionsVisibleChanged();
+  void advancedVisibleChanged();
 
   // Move the cursor of the field to 'position'.
   void cursorRequested(int position);
-
-protected:
-  bool eventFilter(QObject *watched, QEvent *event) override;
 
 private:
   // A term of a query that matches 'text' in 'field'.
@@ -101,23 +100,21 @@ private:
   Index *index() const;
   void updateCompletions(int cursor);
   void setCompletionIndex(int index);
+  void setCompletionsVisible(bool visible);
 
   ToolBar *mToolBar;
   QString mText;
   QString mPlaceholderText;
   bool mEnabled = false;
 
-  // The field on the screen.
-  QRect mField;
-
-  QmlPopup *mCompletionPopup = nullptr;
+  bool mCompletionsVisible = false;
   QStringList mCompletions;
   int mCompletionIndex = -1;
   // The word that the completions replace.
   int mWordStart = 0;
   int mWordLength = 0;
 
-  QmlPopup *mAdvancedPopup = nullptr;
+  bool mAdvancedVisible = false;
   QStringList mAdvancedValues;
   QStringList mOtherTerms;
   QMap<Index::Field, QStringList> mFieldMap;

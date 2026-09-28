@@ -215,11 +215,13 @@ void TestQmlViews::search() {
 
   // The advanced search fills its fields from the query.
   search->setText("author:someone words");
-  search->showAdvanced(0, 0, 220, 28);
+  search->showAdvanced();
+  QVERIFY(search->advancedVisible());
   qWait(200);
   search->setAdvancedValue(0, "other");
   search->acceptAdvanced();
   QCOMPARE(search->text(), QString("other author:someone"));
+  QVERIFY(!search->advancedVisible());
 
   // The edit menu works on the focused QML field.
   search->setText("hello");
@@ -263,7 +265,7 @@ void TestQmlViews::search() {
   copy->trigger();
   QCOMPARE(QApplication::clipboard()->text(), QString("hello"));
 
-  search->edit("", 0, 0, 0, 220, 28);
+  search->edit("", 0);
   QVERIFY2(sMessages.isEmpty(), qPrintable(sMessages.join('\n')));
 }
 

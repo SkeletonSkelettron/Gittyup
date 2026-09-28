@@ -19,7 +19,6 @@ add_library(
   LogPanel.cpp
   MainWindow.cpp
   MenuBar.cpp
-  QmlPopup.cpp
   RefsPanel.cpp
   RepoView.cpp
   RemoteCallbacks.cpp

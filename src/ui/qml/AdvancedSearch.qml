@@ -4,7 +4,7 @@ import QtQuick.Controls.Basic as Controls
 import Gittyup
 
 // The panel below the search field that builds a query from fields.
-// 'search' is the C++ SearchField and 'popup' the window.
+// 'search' is the C++ SearchField.
 Rectangle {
     id: root
 

@@ -3,7 +3,7 @@ import QtQuick.Layouts
 import Gittyup
 
 // The completions of the word being typed in the search field. 'search' is
-// the C++ SearchField and 'popup' the window.
+// the C++ SearchField.
 Rectangle {
     id: root
 

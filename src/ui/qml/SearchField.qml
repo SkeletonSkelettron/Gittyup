@@ -1,21 +1,14 @@
 import QtQuick
+import QtQuick.Controls.Basic as Controls
 import Gittyup
 
-// The search field of the tool bar. 'search' is the C++ SearchField, which
-// shows the completions and the advanced search below the field.
+// The search field of the tool bar, with the completions of the word being
+// typed and the advanced search below it. 'search' is the C++ SearchField.
 Rectangle {
     id: root
 
-    // The field on the screen.
-    function screenRect() {
-        const p = root.mapToItem(null, 0, 0)
-        const global = host.mapToGlobal(p.x, p.y)
-        return Qt.rect(global.x, global.y, root.width, root.height)
-    }
-
     function clear() {
-        const r = root.screenRect()
-        search.edit("", 0, r.x, r.y, r.width, r.height)
+        search.edit("", 0)
     }
 
     implicitWidth: 220
@@ -59,10 +52,7 @@ Rectangle {
         selectByMouse: true
         font.pixelSize: 12
 
-        onTextEdited: {
-            const r = root.screenRect()
-            search.edit(text, cursorPosition, r.x, r.y, r.width, r.height)
-        }
+        onTextEdited: search.edit(text, cursorPosition)
         onActiveFocusChanged: {
             if (!activeFocus)
                 search.hideCompletions()
@@ -153,8 +143,57 @@ Rectangle {
         icon: "chevron-down"
         tip: qsTr("Advanced Search")
         onClicked: {
-            const r = root.screenRect()
-            search.showAdvanced(r.x, r.y, r.width, r.height)
+            if (search.advancedVisible)
+                search.hideAdvanced()
+            else
+                search.showAdvanced()
+        }
+    }
+
+    // The completions keep the focus in the field.
+    Controls.Popup {
+        x: root.width - width
+        y: root.height + 5
+        width: root.width
+        padding: 0
+        focus: false
+        closePolicy: Controls.Popup.NoAutoClose
+        visible: search.completionsVisible
+        background: null
+
+        contentItem: SearchCompletions {}
+    }
+
+    Controls.Popup {
+        id: advanced
+
+        x: root.width - width
+        y: root.height + 5
+        width: 400
+        // Keep it in the window, and scroll the fields when it's too short.
+        height: Math.min(implicitHeight, root.Window.height - 16
+                         - root.mapToItem(null, 0, root.height + 5).y)
+        padding: 0
+        focus: true
+        closePolicy: Controls.Popup.CloseOnEscape | Controls.Popup.CloseOnPressOutsideParent
+        visible: search.advancedVisible
+        background: null
+        onClosed: search.hideAdvanced()
+
+        contentItem: Flickable {
+            implicitHeight: panel.implicitHeight
+            contentHeight: panel.implicitHeight
+            boundsBehavior: Flickable.StopAtBounds
+            clip: true
+
+            Controls.ScrollBar.vertical: ThinScrollBar {}
+
+            AdvancedSearch {
+                id: panel
+
+                width: parent.width
+                height: implicitHeight
+            }
         }
     }
 }
