@@ -9,6 +9,7 @@
 //
 
 #include "DetailView.h"
+#include "qml/QmlSupport.h"
 #include "SpellCheck.h"
 #include "ChangedFilesModel.h"
 #include "CommitMessage.h"
@@ -772,7 +773,7 @@ void DetailView::showFileMenu(int list, int row, qreal x, qreal y) {
     return;
 
   FileContextMenu menu(mView, files, git::Index());
-  menu.exec(mView->mapFromPage(x, y));
+  QmlSupport::execMenu(&menu, mView->mapFromPage(x, y));
 }
 
 void DetailView::showTreeMenu(const QString &path, qreal x, qreal y) {
@@ -780,7 +781,7 @@ void DetailView::showTreeMenu(const QString &path, qreal x, qreal y) {
     return;
 
   FileContextMenu menu(mView, {path}, git::Index());
-  menu.exec(mView->mapFromPage(x, y));
+  QmlSupport::execMenu(&menu, mView->mapFromPage(x, y));
 }
 
 void DetailView::openTreeFile(const QString &path) {
@@ -807,7 +808,7 @@ void DetailView::showOptionsMenu(qreal x, qreal y) {
   untracked->setCheckable(true);
   untracked->setChecked(hideUntracked());
 
-  menu.exec(mView->mapFromPage(x, y));
+  QmlSupport::execMenu(&menu, mView->mapFromPage(x, y));
 }
 
 void DetailView::showTemplateMenu(qreal x, qreal y) {

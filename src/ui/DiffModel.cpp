@@ -668,7 +668,7 @@ void DiffModel::showEditMenu(int hunk, qreal x, qreal y) {
   }
 
   if (!menu.isEmpty())
-    menu.exec(view->mapFromPage(x, y));
+    QmlSupport::execMenu(&menu, view->mapFromPage(x, y));
 }
 
 void DiffModel::chooseConflict(int hunk, int resolution) {

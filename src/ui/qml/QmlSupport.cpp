@@ -9,15 +9,20 @@
 #include "CommitGraphItem.h"
 #include "QmlTheme.h"
 #include "host/Account.h"
+#include <QAction>
+#include <QApplication>
 #include <QBuffer>
+#include <QEventLoop>
 #include <QFile>
 #include <QHash>
 #include <QImage>
 #include <QImageReader>
 #include <QMenu>
+#include <QQmlComponent>
 #include <QQmlContext>
 #include <QQmlEngine>
 #include <QQuickImageProvider>
+#include <QQuickItem>
 #include <QQuickWidget>
 #include <QToolTip>
 
@@ -85,8 +90,7 @@ QPoint QmlHost::mapToGlobal(qreal x, qreal y) const {
 }
 
 void QmlHost::popup(QMenu *menu, qreal x, qreal y) const {
-  QToolTip::hideText();
-  menu->popup(mapToGlobal(x, y));
+  QmlSupport::execMenu(menu, mapToGlobal(x, y));
 }
 
 namespace {
@@ -159,6 +163,109 @@ QString addImage(const QImage &image) {
 
 void removeImage(const QString &url) {
   sImages.remove(url.section('/', -1));
+}
+
+void setDrawsMenus(QQuickWidget *view, bool draws) {
+  view->setProperty("drawsMenus", draws);
+}
+
+QAction *execMenu(QMenu *menu, const QPoint &pos) {
+  QToolTip::hideText();
+
+  QQuickWidget *view = qobject_cast<QQuickWidget *>(QApplication::widgetAt(pos));
+  if (!view || !view->rootObject() || !view->property("drawsMenus").toBool())
+    return menu->exec(pos);
+
+  // Describe the visible actions of the menu and its submenus. Menus that
+  // add their actions when they are about to be shown do that now.
+  QList<QAction *> actions;
+  QList<QMenu *> menus;
+  std::function<QVariantList(QMenu *)> describe = [&](QMenu *menu) {
+    emit menu->aboutToShow();
+    menus.append(menu);
+
+    QVariantList items;
+    for (QAction *action : menu->actions()) {
+      if (!action->isVisible())
+        continue;
+
+      if (action->isSeparator()) {
+        // Skip leading and repeated separators, like native menus.
+        if (!items.isEmpty() && !items.last().toMap().value("separator").toBool())
+          items.append(QVariantMap{{"separator", true}});
+        continue;
+      }
+
+      // Remove the markers of mnemonics.
+      QString text = action->text();
+      text.replace("&&", QChar(0x1));
+      text.remove('&');
+      text.replace(QChar(0x1), '&');
+
+      QVariantMap item{
+          {"text", text},
+          {"shortcut", action->shortcut().toString(QKeySequence::NativeText)},
+          {"enabled", action->isEnabled()},
+          {"checkable", action->isCheckable()},
+          {"checked", action->isChecked()}};
+      if (QMenu *submenu = action->menu()) {
+        item.insert("submenu", describe(submenu));
+      } else {
+        item.insert("id", actions.size());
+        actions.append(action);
+      }
+
+      items.append(item);
+    }
+
+    if (!items.isEmpty() && items.last().toMap().value("separator").toBool())
+      items.removeLast();
+
+    return items;
+  };
+
+  QVariantList items = describe(menu);
+  if (items.isEmpty())
+    return nullptr;
+
+  QQmlComponent component(view->engine(),
+                          QUrl("qrc:/qml/ContextMenu.qml"));
+  QPoint local = view->mapFromGlobal(pos);
+  QObject *popup = component.createWithInitialProperties(
+      {{"items", items},
+       {"parent", QVariant::fromValue(view->rootObject())},
+       {"x", local.x()},
+       {"y", local.y()}},
+      view->rootContext());
+  if (!popup) {
+    for (const QQmlError &error : component.errors())
+      qWarning("%s", qPrintable(error.toString()));
+    return menu->exec(pos);
+  }
+
+  // Wait until the menu closes, like a native menu.
+  QEventLoop loop;
+  QObject::connect(popup, SIGNAL(closed()), &loop, SLOT(quit()));
+  QMetaObject::invokeMethod(popup, "open");
+  loop.exec();
+  int chosen = popup->property("chosen").toInt();
+  popup->deleteLater();
+
+  for (QMenu *shown : menus)
+    emit shown->aboutToHide();
+
+  if (chosen < 0 || chosen >= actions.size())
+    return nullptr;
+
+  // Trigger the action like the menu would.
+  QAction *action = actions.at(chosen);
+  action->activate(QAction::Trigger);
+  for (QMenu *shown : menus) {
+    if (shown->actions().contains(action) || shown == menu)
+      emit shown->triggered(action);
+  }
+
+  return action;
 }
 
 } // namespace QmlSupport

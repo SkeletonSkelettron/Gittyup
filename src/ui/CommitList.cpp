@@ -8,6 +8,7 @@
 //
 
 #include "CommitList.h"
+#include "qml/QmlSupport.h"
 #include "ConfigKeys.h"
 #include "Debug.h"
 #include "RepoView.h"
@@ -1278,7 +1279,7 @@ void CommitList::showContextMenu(int row, qreal x, qreal y) {
 
     clean->setEnabled(!untracked.isEmpty());
 
-    menu.exec(pos);
+    QmlSupport::execMenu(&menu, pos);
     return;
   }
 
@@ -1448,7 +1449,7 @@ void CommitList::showContextMenu(int row, qreal x, qreal y) {
     }
   }
 
-  menu.exec(pos);
+  QmlSupport::execMenu(&menu, pos);
 }
 
 void CommitList::showRefsFilterMenu(qreal x, qreal y) {
@@ -1470,7 +1471,7 @@ void CommitList::showRefsFilterMenu(qreal x, qreal y) {
     action->setChecked(current == static_cast<int>(entry.second));
   }
 
-  menu.exec(mView->mapFromPage(x, y));
+  QmlSupport::execMenu(&menu, mView->mapFromPage(x, y));
 }
 
 void CommitList::showSortMenu(qreal x, qreal y) {
@@ -1489,7 +1490,7 @@ void CommitList::showSortMenu(qreal x, qreal y) {
   topological->setCheckable(true);
   topological->setChecked(!date);
 
-  menu.exec(mView->mapFromPage(x, y));
+  QmlSupport::execMenu(&menu, mView->mapFromPage(x, y));
 }
 
 void CommitList::showSettingsMenu(qreal x, qreal y) {
@@ -1528,7 +1529,7 @@ void CommitList::showSettingsMenu(qreal x, qreal y) {
   addSetting(tr("Show Date"), Setting::Id::ShowCommitsDate, true);
   addSetting(tr("Show Id"), Setting::Id::ShowCommitsId, true);
 
-  menu.exec(mView->mapFromPage(x, y));
+  QmlSupport::execMenu(&menu, mView->mapFromPage(x, y));
 }
 
 void CommitList::setConfigValue(const QString &key, const QVariant &value) {

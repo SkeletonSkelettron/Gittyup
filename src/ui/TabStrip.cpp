@@ -96,7 +96,7 @@ void TabStrip::showMenu(int index, qreal x, qreal y) {
     QApplication::clipboard()->setText(QDir::toNativeSeparators(path));
   });
 
-  menu.exec(QmlSupport::host(mView)->mapToGlobal(x, y));
+  QmlSupport::execMenu(&menu, QmlSupport::host(mView)->mapToGlobal(x, y));
 }
 
 void TabStrip::scheduleUpdate() {

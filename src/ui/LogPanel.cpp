@@ -6,6 +6,7 @@
 //
 
 #include "LogPanel.h"
+#include "qml/QmlSupport.h"
 #include "log/LogEntry.h"
 #include "log/LogModel.h"
 #include <QApplication>
@@ -106,7 +107,7 @@ void LogPanel::showMenu(const QModelIndex &index, qreal x, qreal y) {
     menu.addSeparator();
     menu.addAction(tr("Hide Log"), this, &LogPanel::close);
   }
-  menu.exec(QCursor::pos());
+  QmlSupport::execMenu(&menu, QCursor::pos());
 }
 
 void LogPanel::close() { emit closeRequested(); }

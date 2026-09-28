@@ -6,6 +6,7 @@
 //
 
 #include "RefsPanel.h"
+#include "qml/QmlSupport.h"
 #include "CommitList.h"
 #include "ConfigKeys.h"
 #include "RepoView.h"
@@ -545,7 +546,7 @@ void RefsPanel::showContextMenu(int row, qreal x, qreal y) {
       return;
   }
 
-  menu.exec(mView->mapFromPage(x, y));
+  QmlSupport::execMenu(&menu, mView->mapFromPage(x, y));
 }
 
 void RefsPanel::add(int section) {

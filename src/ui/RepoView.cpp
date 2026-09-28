@@ -2778,7 +2778,7 @@ QAbstractItemModel *RepoView::pathModel() const { return mPathModel; }
 
 void RepoView::showPathContextMenu(const QString &path, qreal x, qreal y) {
   FileContextMenu menu(this, {path});
-  menu.exec(mapFromPage(x, y));
+  QmlSupport::execMenu(&menu, mapFromPage(x, y));
 }
 
 git::Commit RepoView::nextRevision(const QString &path) const {

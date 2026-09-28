@@ -6,6 +6,7 @@
 //
 
 #include "SpellCheck.h"
+#include "qml/QmlSupport.h"
 #include "RepoView.h"
 #include "SpellChecker.h"
 #include "conf/Settings.h"
@@ -153,7 +154,7 @@ void SpellCheck::showMenu(const QString &field, const QString &text,
   menu.addAction(tr("Edit User Dictionary"), this,
                  [this] { mView->openEditor(mUserDictionary); });
 
-  menu.exec(QCursor::pos());
+  QmlSupport::execMenu(&menu, QCursor::pos());
 }
 
 SpellCheck::Word SpellCheck::wordAt(const QString &text, int position) const {

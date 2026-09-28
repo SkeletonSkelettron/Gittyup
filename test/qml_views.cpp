@@ -40,9 +40,11 @@
 #include "ui/MenuBar.h"
 #include "ui/SearchField.h"
 #include "ui/ToolBar.h"
+#include "ui/qml/QmlSupport.h"
 #include "update/UpdateDialog.h"
 #include <QClipboard>
 #include <QMenu>
+#include <QTimer>
 #include <QFile>
 #include <QQuickItem>
 #include <QQuickWidget>
@@ -77,6 +79,7 @@ private slots:
   void dialogs();
   void settings();
   void search();
+  void menu();
   void dragTab();
   void cleanupTestCase();
 
@@ -266,6 +269,31 @@ void TestQmlViews::search() {
   QCOMPARE(QApplication::clipboard()->text(), QString("hello"));
 
   search->edit("", 0);
+  QVERIFY2(sMessages.isEmpty(), qPrintable(sMessages.join('\n')));
+}
+
+void TestQmlViews::menu() {
+  QMenu menu;
+  QAction *first = menu.addAction("First");
+  menu.addSeparator();
+  QMenu *more = menu.addMenu("More");
+  more->addAction("Second");
+
+  bool triggered = false;
+  connect(first, &QAction::triggered, [&triggered] { triggered = true; });
+
+  // The view of the window draws the menu.
+  QQuickWidget *view = mWindow->quickView();
+  QPoint pos = view->mapToGlobal(QPoint(300, 300));
+  QCOMPARE(QApplication::widgetAt(pos), view);
+
+  QTimer::singleShot(200, [view] {
+    keyClick(view, Qt::Key_Down);
+    keyClick(view, Qt::Key_Return);
+  });
+
+  QCOMPARE(QmlSupport::execMenu(&menu, pos), first);
+  QVERIFY(triggered);
   QVERIFY2(sMessages.isEmpty(), qPrintable(sMessages.join('\n')));
 }
 

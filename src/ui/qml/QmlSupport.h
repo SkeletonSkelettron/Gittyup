@@ -13,14 +13,14 @@
 #include <QString>
 #include <QVariantMap>
 
+class QAction;
 class QImage;
 class QMenu;
 class QQuickWidget;
 class QWidget;
 
-// Published to every QML view as "host". Popups created in QML are clipped
-// to the bounds of their QQuickWidget, so tooltips and menus are shown as
-// native widgets instead.
+// Published to every QML view as "host". Tool tips are native widgets, and
+// menus are drawn in the view if it allows it, see execMenu().
 class QmlHost : public QObject {
   Q_OBJECT
 
@@ -33,6 +33,7 @@ public:
   Q_INVOKABLE void hideToolTip();
 
   QPoint mapToGlobal(qreal x, qreal y) const;
+  // Show 'menu' at a point of the scene and wait until it closes.
   void popup(QMenu *menu, qreal x, qreal y) const;
 
 private:
@@ -50,6 +51,15 @@ QQuickWidget *createView(const QString &name, const QVariantMap &context,
 
 // Get the host object of a view created with createView().
 QmlHost *host(QQuickWidget *view);
+
+// Views that are big enough for menus, like the view of the main window,
+// draw them with qrc:/qml/ContextMenu.qml instead of showing native menus.
+void setDrawsMenus(QQuickWidget *view, bool draws);
+
+// Show the actions of 'menu' at 'pos' on the screen and wait until the
+// menu closes, like QMenu::exec(). The menu is drawn by the view at 'pos'
+// if it draws menus. Returns the triggered action.
+QAction *execMenu(QMenu *menu, const QPoint &pos);
 
 // Images for QML at "image://images/<key>". Remove them when they're no
 // longer shown.

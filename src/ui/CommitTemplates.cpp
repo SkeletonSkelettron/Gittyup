@@ -1,4 +1,5 @@
 #include "CommitTemplates.h"
+#include "qml/QmlSupport.h"
 
 #include "TemplateDialog.h"
 
@@ -36,7 +37,7 @@ void CommitTemplates::showMenu(const QPoint &pos, QWidget *parent) {
       storeTemplates();
   });
 
-  menu.exec(pos);
+  QmlSupport::execMenu(&menu, pos);
 }
 
 void CommitTemplates::storeTemplates() {
