@@ -23,6 +23,7 @@ DialogPage {
                 : dialog.busy ? qsTr("The repository opens when the clone finishes.")
                               : qsTr("Go back to try again.")
     contentWidth: 500
+    initialFocus: dialog.step === remoteStep ? urlField : nameField
     customAccept: true
     acceptVisible: dialog.step !== progressStep
     acceptEnabled: dialog.canContinue
@@ -139,7 +140,6 @@ DialogPage {
                     placeholderText: qsTr("https://github.com/user/repository.git")
                     text: dialog.url
                     onTextEdited: dialog.url = text
-                    Component.onCompleted: if (dialog.step === 0) forceActiveFocus()
                 }
 
                 PushButton {

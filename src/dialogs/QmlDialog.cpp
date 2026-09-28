@@ -37,7 +37,6 @@ void QmlDialog::setContent(const QString &name, const QVariantMap &context) {
             &QmlDialog::updateSize);
     connect(root, &QQuickItem::implicitHeightChanged, this,
             &QmlDialog::updateSize);
-    root->forceActiveFocus();
   }
 
   updateSize();
@@ -52,12 +51,20 @@ void QmlDialog::showEvent(QShowEvent *event) {
   // A QQuickWidget that is resized before its window is exposed keeps
   // drawing at its old size, so resize it again after that.
   QTimer::singleShot(0, this, [this] {
-    if (!mView || mView->quickWindow()->size() == mView->size())
+    if (!mView)
       return;
 
-    QSize size = mView->size();
-    mView->resize(size + QSize(0, 1));
-    mView->resize(size);
+    if (mView->quickWindow()->size() != mView->size()) {
+      QSize size = mView->size();
+      mView->resize(size + QSize(0, 1));
+      mView->resize(size);
+    }
+
+    // Showing the dialog moves the focus to the first item, so move it to
+    // the item that should have it.
+    QQuickItem *root = rootItem();
+    if (root && root->metaObject()->indexOfMethod("focusInitialItem()") >= 0)
+      QMetaObject::invokeMethod(root, "focusInitialItem");
   });
 }
 

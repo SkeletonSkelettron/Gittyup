@@ -4,6 +4,7 @@ import Gittyup
 
 // 'dialog' is the C++ AddRemoteDialog.
 DialogPage {
+    initialFocus: dialog.name === "" ? nameField : urlField
     title: qsTr("Add a remote")
     acceptText: qsTr("Add Remote")
     acceptEnabled: dialog.acceptable
@@ -12,11 +13,12 @@ DialogPage {
         label: qsTr("Name")
 
         TextField {
+            id: nameField
+
             Layout.fillWidth: true
             placeholderText: qsTr("origin")
             text: dialog.name
             onTextEdited: dialog.name = text
-            Component.onCompleted: if (text === "") forceActiveFocus()
         }
     }
 
@@ -24,11 +26,12 @@ DialogPage {
         label: qsTr("URL")
 
         TextField {
+            id: urlField
+
             Layout.fillWidth: true
             placeholderText: qsTr("https://example.com/user/repository.git")
             text: dialog.url
             onTextEdited: dialog.url = text
-            Component.onCompleted: if (dialog.name !== "") forceActiveFocus()
         }
     }
 }

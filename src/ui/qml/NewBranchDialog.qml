@@ -4,6 +4,7 @@ import Gittyup
 
 // 'dialog' is the C++ NewBranchDialog.
 DialogPage {
+    initialFocus: nameField
     title: qsTr("Create a new branch")
     subtitle: dialog.commitText !== "" ? qsTr("The branch starts at %1.").arg(dialog.commitText)
                                        : ""
@@ -23,7 +24,6 @@ DialogPage {
             error: dialog.nameError !== ""
             focus: true
             onTextEdited: dialog.name = text
-            Component.onCompleted: forceActiveFocus()
         }
     }
 

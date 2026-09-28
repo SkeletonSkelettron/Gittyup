@@ -4,6 +4,7 @@ import Gittyup
 
 // 'dialog' is the C++ MergeDialog.
 DialogPage {
+    initialFocus: refCombo
     title: dialog.buttonText
     subtitle: dialog.labelText
     acceptText: dialog.buttonText
@@ -13,12 +14,13 @@ DialogPage {
         label: qsTr("Reference")
 
         ComboBox {
+            id: refCombo
+
             Layout.fillWidth: true
             model: dialog.refs
             textRole: "text"
             currentIndex: dialog.refIndex
             onActivated: (index) => dialog.refIndex = index
-            Component.onCompleted: forceActiveFocus()
         }
     }
 

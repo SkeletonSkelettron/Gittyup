@@ -4,6 +4,7 @@ import Gittyup
 
 // 'dialog' is the C++ CheckoutDialog.
 DialogPage {
+    initialFocus: refCombo
     title: qsTr("Check out")
     subtitle: qsTr("Switch the working directory to a branch, a tag or a remote branch.")
     acceptText: qsTr("Checkout")
@@ -13,12 +14,13 @@ DialogPage {
         label: qsTr("Reference")
 
         ComboBox {
+            id: refCombo
+
             Layout.fillWidth: true
             model: dialog.refs
             textRole: "text"
             currentIndex: dialog.refIndex
             onActivated: (index) => dialog.refIndex = index
-            Component.onCompleted: forceActiveFocus()
         }
     }
 

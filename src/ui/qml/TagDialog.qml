@@ -5,6 +5,7 @@ import Gittyup
 
 // 'dialog' is the C++ TagDialog.
 DialogPage {
+    initialFocus: tagNameField
     title: qsTr("Create a tag")
     subtitle: qsTr("The tag points to %1.").arg(dialog.target)
     acceptText: qsTr("Create Tag")
@@ -15,12 +16,13 @@ DialogPage {
         error: dialog.nameError
 
         TextField {
+            id: tagNameField
+
             Layout.fillWidth: true
             placeholderText: qsTr("v1.0.0")
             text: dialog.name
             error: dialog.nameError !== ""
             onTextEdited: dialog.name = text
-            Component.onCompleted: forceActiveFocus()
         }
     }
 

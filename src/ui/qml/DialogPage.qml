@@ -23,6 +23,15 @@ Rectangle {
     // Buttons on the left of the footer.
     property alias extraButtons: extra.data
 
+    // The item that has the focus when the dialog opens.
+    property Item initialFocus: null
+
+    // Called by QmlDialog once the dialog is shown.
+    function focusInitialItem() {
+        if (root.initialFocus)
+            root.initialFocus.forceActiveFocus()
+    }
+
     // Handle the accept button instead of accepting the dialog.
     property bool customAccept: false
     signal acceptRequested()

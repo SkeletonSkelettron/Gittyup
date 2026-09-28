@@ -25,6 +25,8 @@
 #include <QPushButton>
 #include <QQuickWidget>
 #include <QSettings>
+#include <QStyle>
+#include <QTabBar>
 #include <QVBoxLayout>
 
 namespace {
