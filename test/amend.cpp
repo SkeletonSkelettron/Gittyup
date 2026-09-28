@@ -5,9 +5,8 @@
 #include "git/Reference.h"
 #include "git/Tree.h"
 #include "ui/MainWindow.h"
-#include "ui/DoubleTreeWidget.h"
+#include "ui/DetailView.h"
 #include "ui/RepoView.h"
-#include "ui/TreeView.h"
 #include "dialogs/AmendDialog.h"
 
 #include <QTextEdit>
@@ -101,26 +100,17 @@ void TestAmend::testAmendAddFile() {
 
     Test::refresh(view);
 
-    auto doubleTree = view->findChild<DoubleTreeWidget *>();
-    QVERIFY(doubleTree);
+    auto details = view->findChild<DetailView *>();
+    QVERIFY(details);
 
-    auto files = doubleTree->findChild<TreeView *>("Unstaged");
-    QVERIFY(files);
-
-    QAbstractItemModel *model = files->model();
+    QAbstractItemModel *model = details->unstagedFiles();
     QCOMPARE(model->rowCount(), 1);
 
-    // Click on the check box.
-    QModelIndex index = model->index(0, 0);
-    QTest::mouseClick(files->viewport(), Qt::LeftButton,
-                      Qt::KeyboardModifiers(),
-                      files->checkRect(index).center());
+    // Stage the file.
+    details->stageFiles(DetailView::UnstagedFiles, 0, true);
 
     // Commit and refresh.
-    QTextEdit *editor = view->findChild<QTextEdit *>("MessageEditor");
-    QVERIFY(editor);
-
-    editor->setText("base commit");
+    details->setCommitMessage("base commit");
     view->commit();
     Test::refresh(view, false);
 
@@ -146,21 +136,13 @@ void TestAmend::testAmendAddFile() {
 
     Test::refresh(view);
 
-    auto doubleTree = view->findChild<DoubleTreeWidget *>();
-    QVERIFY(doubleTree);
+    auto details = view->findChild<DetailView *>();
+    QVERIFY(details);
 
     // Staging the file
-    auto files = doubleTree->findChild<TreeView *>("Unstaged");
-    QVERIFY(files);
-
-    QAbstractItemModel *model = files->model();
+    QAbstractItemModel *model = details->unstagedFiles();
     QCOMPARE(model->rowCount(), 1);
-
-    // Click on the check box. to stage file
-    QModelIndex index = model->index(0, 0);
-    QTest::mouseClick(files->viewport(), Qt::LeftButton,
-                      Qt::KeyboardModifiers(),
-                      files->checkRect(index).center());
+    details->stageFiles(DetailView::UnstagedFiles, 0, true);
   }
 
   // Check that changes applied after amending

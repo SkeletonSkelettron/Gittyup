@@ -116,6 +116,15 @@ int DiffModel::stageState() const {
   return mDiff.index().isStaged(mPath);
 }
 
+int DiffModel::row(int hunk, int line) const {
+  for (int i = 0; i < mRows.size(); ++i) {
+    if (mRows.at(i).hunk == hunk && mRows.at(i).line == line)
+      return i;
+  }
+
+  return -1;
+}
+
 void DiffModel::loadAnyway() {
   mLoadAnyway = true;
   load();
@@ -133,6 +142,7 @@ void DiffModel::load() {
   mAdditions = 0;
   mDeletions = 0;
   mLineNumberWidth = 2;
+  mMaxLineLength = 0;
 
   if (!mPath.isEmpty()) {
     mPatch = mDiff.patch(mDiff.indexOf(mPath));
@@ -158,6 +168,11 @@ void DiffModel::load() {
         for (int l = 0; l < lines.size(); ++l) {
           mRows.append({LineRow, h, l});
           maxLine = qMax(maxLine, qMax(lines.at(l).oldLine, lines.at(l).newLine));
+
+          // Approximate the width, tabs are expanded when drawn.
+          const QByteArray &content = lines.at(l).content;
+          int length = content.size() + content.count('\t') * (kTabWidth - 1);
+          mMaxLineLength = qMax(mMaxLineLength, length);
         }
 
         mHunks.append(lines);

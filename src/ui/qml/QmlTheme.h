@@ -49,6 +49,12 @@ class QmlTheme : public QObject {
   Q_PROPERTY(QColor modified READ modified CONSTANT)
   Q_PROPERTY(QColor deleted READ deleted CONSTANT)
 
+  Q_PROPERTY(QColor diffAddition READ diffAddition CONSTANT)
+  Q_PROPERTY(QColor diffDeletion READ diffDeletion CONSTANT)
+  Q_PROPERTY(QColor diffOurs READ diffOurs CONSTANT)
+  Q_PROPERTY(QColor diffTheirs READ diffTheirs CONSTANT)
+  Q_PROPERTY(QString monoFont READ monoFont CONSTANT)
+
   Q_PROPERTY(QColor tooltip READ tooltip CONSTANT)
   Q_PROPERTY(QColor tooltipText READ tooltipText CONSTANT)
 
@@ -86,6 +92,12 @@ public:
   QColor modified() const { return color("modified"); }
   QColor deleted() const { return color("deleted"); }
 
+  QColor diffAddition() const { return color("diff_addition"); }
+  QColor diffDeletion() const { return color("diff_deletion"); }
+  QColor diffOurs() const { return color("diff_ours"); }
+  QColor diffTheirs() const { return color("diff_theirs"); }
+  QString monoFont() const { return mMonoFont; }
+
   QColor tooltip() const { return color("tooltip"); }
   QColor tooltipText() const { return color("tooltip_text"); }
 
@@ -97,6 +109,7 @@ private:
 
   bool mDark = false;
   QVariantMap mColors;
+  QString mMonoFont;
 };
 
 #endif

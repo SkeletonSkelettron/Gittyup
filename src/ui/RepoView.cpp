@@ -22,7 +22,6 @@
 #include "qml/QmlSupport.h"
 #include "RemoteCallbacks.h"
 #include "SearchField.h"
-#include "DoubleTreeWidget.h"
 #include "ToolBar.h"
 #include "Debug.h"
 #include "app/Application.h"
@@ -75,7 +74,6 @@
 
 namespace {
 
-const QString kSplitterKey = "reposplitter2";
 const QString kMsgFmt = "%1 - <span style='color: gray'>%2</span>";
 
 QString msg(const git::Commit &commit) {
@@ -264,17 +262,20 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
   connect(mIndex, &Index::indexReset, this,
           [this, searchField] { mCommits->setFilter(searchField->text()); });
 
-  // Create the QML page with the reference panel and the commit graph.
+
+  mDetails = new DetailView(repo, this);
+
+  // Create the QML page with the reference panel, the commit graph, the
+  // diff and the details.
   mSideBar = QmlSupport::createView(
       "RepoPage",
       {{"repoView", QVariant::fromValue<QObject *>(this)},
        {"refsPanel", QVariant::fromValue<QObject *>(mRefs)},
-       {"commitList", QVariant::fromValue<QObject *>(mCommits)}},
+       {"commitList", QVariant::fromValue<QObject *>(mCommits)},
+       {"detailView", QVariant::fromValue<QObject *>(mDetails)}},
       this);
   mPage = static_cast<QQuickWidget *>(mSideBar);
   mPage->setMinimumWidth(480);
-
-  mDetails = new DetailView(repo, this);
 
   // Respond to diff/tree mode change.
   connect(mDetails, &DetailView::viewModeChanged, this,
@@ -369,17 +370,6 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
   connect(mCommits, &CommitList::statusChanged, watcher,
           &RepositoryWatcher::cancelPendingNotification);
 
-  mDetailSplitter = new QSplitter(Qt::Horizontal, this);
-  mDetailSplitter->setChildrenCollapsible(false);
-  mDetailSplitter->setHandleWidth(0);
-  mDetailSplitter->addWidget(mSideBar);
-  mDetailSplitter->addWidget(mDetails);
-  mDetailSplitter->setStretchFactor(0, 3);
-  mDetailSplitter->setStretchFactor(1, 2);
-  connect(mDetailSplitter, &QSplitter::splitterMoved, this, [this] {
-    QSettings().setValue(kSplitterKey, mDetailSplitter->saveState());
-  });
-
   // Create log.
   mLogRoot = new LogEntry(this);
   connect(mLogRoot, &LogEntry::errorInserted, this, &RepoView::suspendLogTimer);
@@ -416,7 +406,7 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
   connect(mLogView->model(), &QAbstractItemModel::dataChanged, this,
           &RepoView::startLogTimer);
 
-  addWidget(mDetailSplitter);
+  addWidget(mPage);
   addWidget(mLogView);
   setCollapsible(0, false);
   setStretchFactor(0, 1);
@@ -424,9 +414,6 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
 
   connect(this, &QSplitter::splitterMoved,
           [this] { mIsLogVisible = (sizes().last() > 0); });
-
-  // Restore splitter state.
-  mDetailSplitter->restoreState(QSettings().value(kSplitterKey).toByteArray());
 
   // Connect automatic fetch timer.
   connect(&mFetchTimer, &QTimer::timeout, this,
@@ -2798,10 +2785,6 @@ void RepoView::refresh() { refresh(true); }
 
 void RepoView::refresh(bool restoreSelection) {
   // Fake head update.
-  auto dtw = findChild<DoubleTreeWidget *>();
-  if (dtw) {
-    dtw->setDiffCounter();
-  }
   if (mRepo.head().isValid()) {
     DebugRefresh("Head name: " << mRepo.head().name());
   } else {
@@ -2874,8 +2857,6 @@ RepoView *RepoView::parentView(const QWidget *widget) {
 
   return parentView(parent);
 }
-
-bool RepoView::detailsMaximized() { return mMaximized; }
 
 void RepoView::showEvent(QShowEvent *event) {
   QSplitter::showEvent(event);
@@ -3004,52 +2985,16 @@ bool RepoView::match(QObject *search, QObject *parent) {
 RepoView::DetailSplitterWidgets
 RepoView::detailSplitterMaximize(bool maximized,
                                  DetailSplitterWidgets maximizeWidget) {
-  QWidget *widget = mDetailSplitter->focusWidget();
+  Q_UNUSED(maximizeWidget)
 
-  DetailSplitterWidgets newMaximized = DetailSplitterWidgets::NotDefined;
-
-  if (maximizeWidget != DetailSplitterWidgets::NotDefined)
-    newMaximized = maximizeWidget;
-
-  mMaximized = maximized;
-
-  if (mMaximized) {
-    bool found = false;
-    for (int i = 0; i < mDetailSplitter->count(); i++) {
-      QWidget *w = mDetailSplitter->widget(i);
-      if (maximizeWidget == DetailSplitterWidgets::SideBar) {
-        if (w == mSideBar) {
-          mSideBar->setVisible(true);
-          found = true;
-          continue;
-        }
-      } else if (maximizeWidget == DetailSplitterWidgets::DetailView) {
-        if (w == mDetails) {
-          mDetails->setVisible(true);
-          found = true;
-          continue;
-        }
-      } else if (!widget)
-        return DetailSplitterWidgets::NotDefined;
-      else if (w == widget || match(widget, w)) {
-        w->setVisible(true);
-        found = true;
-        if (w == mSideBar)
-          newMaximized = DetailSplitterWidgets::SideBar;
-        else if (w == mDetails)
-          newMaximized = DetailSplitterWidgets::DetailView;
-        continue;
-      }
-      w->setVisible(false);
-    }
-
-    assert(found);
-    Q_UNUSED(found)
-  } else {
-    for (int i = 0; i < mDetailSplitter->count(); i++)
-      mDetailSplitter->widget(i)->setVisible(true);
+  // Maximizing hides the panels around the graph or the diff.
+  if (maximized != mMaximized) {
+    mMaximized = maximized;
+    emit maximizedChanged();
   }
 
-  return newMaximized;
+  return maximized ? DetailSplitterWidgets::SideBar
+                   : DetailSplitterWidgets::NotDefined;
 }
+
 #include "RepoView.moc"

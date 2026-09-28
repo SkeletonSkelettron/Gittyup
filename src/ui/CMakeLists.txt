@@ -5,22 +5,11 @@ add_library(
   BlameEditor.cpp
   BlameMargin.cpp
   ChangedFilesModel.cpp
-  ColumnView.cpp
   CommitList.cpp
-  CommitEditor.cpp
   CommitMessage.cpp
-  ContextMenuButton.cpp
   DetailView.cpp
   DiffLines.cpp
   DiffModel.cpp
-  DiffView/DiffView.cpp
-  DiffView/HunkWidget.cpp
-  DiffView/FileWidget.cpp
-  DiffView/FileLabel.cpp
-  DiffView/Images.cpp
-  DiffView/Comment.cpp
-  DiffView/EditButton.cpp
-  DoubleTreeWidget.cpp
   EditorWindow.cpp
   ExpandButton.cpp
   FileContextMenu.cpp
@@ -43,7 +32,6 @@ add_library(
   SearchField.cpp
   SideBar.cpp
   StateAction.cpp
-  StatePushButton.cpp
   SpellChecker.cpp
   TabBar.cpp
   TabWidget.cpp
@@ -51,11 +39,6 @@ add_library(
   TemplateDialog.cpp
   ToolBar.cpp
   TreeModel.cpp
-  DiffTreeModel.cpp
-  TreeProxy.cpp
-  TreeView.cpp
-  TreeWidget.cpp
-  ViewDelegate.cpp
   ConfigKeys.cpp
   qml/CommitGraphItem.cpp
   qml/QmlSupport.cpp
