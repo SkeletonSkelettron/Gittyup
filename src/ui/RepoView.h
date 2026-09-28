@@ -36,7 +36,7 @@ class History;
 class Index;
 class Location;
 class LogEntry;
-class LogView;
+class LogPanel;
 class MainWindow;
 class QQuickWidget;
 class RefsPanel;
@@ -442,7 +442,7 @@ private:
 
   LogEntry *mLogRoot;
   LogEntry *mRebase{nullptr};
-  LogView *mLogView;
+  LogPanel *mLogPanel;
   QTimer mLogTimer;
   bool mIsLogVisible = false;
 

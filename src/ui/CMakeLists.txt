@@ -20,6 +20,7 @@ add_library(
   HotkeyManager.cpp
   IndexCompleter.cpp
   Location.cpp
+  LogPanel.cpp
   MainWindow.cpp
   MenuBar.cpp
   ProgressIndicator.cpp

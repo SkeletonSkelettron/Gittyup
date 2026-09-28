@@ -49,7 +49,7 @@
 #include "host/Accounts.h"
 #include "index/Index.h"
 #include "log/LogEntry.h"
-#include "log/LogView.h"
+#include "LogPanel.h"
 #include "tools/ShowTool.h"
 #include "watcher/RepositoryWatcher.h"
 #include <QCheckBox>
@@ -61,7 +61,6 @@
 #include <QQuickWidget>
 #include <QSettings>
 #include <QShortcut>
-#include <QTimeLine>
 #include <QUrl>
 #include <QUrlQuery>
 #include <QVBoxLayout>
@@ -132,14 +131,14 @@ private:
 
 class ScopedCollapse {
 public:
-  ScopedCollapse(LogView *view) : mView(view) {
-    mView->setCollapseEnabled(false);
+  ScopedCollapse(LogPanel *panel) : mPanel(panel) {
+    mPanel->setCollapseEnabled(false);
   }
 
-  ~ScopedCollapse() { mView->setCollapseEnabled(true); }
+  ~ScopedCollapse() { mPanel->setCollapseEnabled(true); }
 
 private:
-  LogView *mView;
+  LogPanel *mPanel;
 };
 
 } // namespace
@@ -265,6 +264,10 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
 
   mDetails = new DetailView(repo, this);
 
+  // Create log.
+  mLogRoot = new LogEntry(this);
+  mLogPanel = new LogPanel(mLogRoot, this);
+
   // Create the QML page with the reference panel, the commit graph, the
   // diff and the details.
   mSideBar = QmlSupport::createView(
@@ -272,7 +275,8 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
       {{"repoView", QVariant::fromValue<QObject *>(this)},
        {"refsPanel", QVariant::fromValue<QObject *>(mRefs)},
        {"commitList", QVariant::fromValue<QObject *>(mCommits)},
-       {"detailView", QVariant::fromValue<QObject *>(mDetails)}},
+       {"detailView", QVariant::fromValue<QObject *>(mDetails)},
+       {"logPanel", QVariant::fromValue<QObject *>(mLogPanel)}},
       this);
   mPage = static_cast<QQuickWidget *>(mSideBar);
   mPage->setMinimumWidth(480);
@@ -370,22 +374,15 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
   connect(mCommits, &CommitList::statusChanged, watcher,
           &RepositoryWatcher::cancelPendingNotification);
 
-  // Create log.
-  mLogRoot = new LogEntry(this);
   connect(mLogRoot, &LogEntry::errorInserted, this, &RepoView::suspendLogTimer);
-
-  mLogView = new LogView(mLogRoot, this);
-  connect(mLogView, &LogView::linkActivated, this, &RepoView::visitLink);
-  connect(mLogView, &LogView::operationCanceled, this,
+  connect(mLogPanel, &LogPanel::linkActivated, this, &RepoView::visitLink);
+  connect(mLogPanel, &LogPanel::operationCanceled, this,
           &RepoView::cancelRemoteTransfer);
+  connect(mLogPanel, &LogPanel::closeRequested, this,
+          [this] { setLogVisible(false); });
 
   mLogTimer.setSingleShot(true);
   connect(&mLogTimer, &QTimer::timeout, this, [this] { setLogVisible(false); });
-
-  QShortcut *esc = new QShortcut(tr("Esc"), mLogView);
-  esc->setContext(Qt::WidgetWithChildrenShortcut);
-  connect(esc, &QShortcut::activated, mLogView,
-          [this] { setLogVisible(false); });
 
   connect(notifier, &git::RepositoryNotifier::indexStageError, this,
           [this] { error(mLogRoot, tr("stage")); });
@@ -401,19 +398,13 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
           });
 
   // Automatically hide the log when the model changes.
-  connect(mLogView->model(), &QAbstractItemModel::rowsInserted, this,
+  connect(mLogPanel->model(), &QAbstractItemModel::rowsInserted, this,
           &RepoView::startLogTimer);
-  connect(mLogView->model(), &QAbstractItemModel::dataChanged, this,
+  connect(mLogPanel->model(), &QAbstractItemModel::dataChanged, this,
           &RepoView::startLogTimer);
 
   addWidget(mPage);
-  addWidget(mLogView);
   setCollapsible(0, false);
-  setStretchFactor(0, 1);
-  setSizes({1, 0});
-
-  connect(this, &QSplitter::splitterMoved,
-          [this] { mIsLogVisible = (sizes().last() > 0); });
 
   // Connect automatic fetch timer.
   connect(&mFetchTimer, &QTimer::timeout, this,
@@ -538,7 +529,7 @@ void RepoView::cancelBackgroundTasks() {
 }
 
 void RepoView::visitLink(const QString &link) {
-  ScopedCollapse collapse(mLogView);
+  ScopedCollapse collapse(mLogPanel);
   (void)collapse;
 
   QUrl url(link);
@@ -853,26 +844,12 @@ void RepoView::setLogVisible(bool visible) {
 
   mIsLogVisible = visible;
 
+  // The page animates the log sliding in or out.
+  mLogPanel->setVisible(visible);
+
   // Update interface.
   toolBar()->updateView();
   MenuBar::instance(this)->updateView();
-
-  // Animate log view sliding in or out.
-  int pos = visible ? mLogView->sizeHint().height() : sizes().last();
-
-  QTimeLine *timeline = new QTimeLine(250, this);
-  timeline->setDirection(visible ? QTimeLine::Forward : QTimeLine::Backward);
-  timeline->setEasingCurve(QEasingCurve(QEasingCurve::Linear));
-  timeline->setUpdateInterval(20);
-
-  connect(timeline, &QTimeLine::valueChanged, this, [this, pos](qreal value) {
-    setSizes({1, static_cast<int>(pos * value)});
-  });
-
-  connect(timeline, &QTimeLine::finished,
-          [timeline] { timeline->deleteLater(); });
-
-  timeline->start();
 }
 
 LogEntry *RepoView::addLogEntry(const QString &text, const QString &title,
@@ -2951,7 +2928,7 @@ bool RepoView::checkForConflicts(LogEntry *parent, const QString &action) {
   resolve->addEntry(LogEntry::Entry, hint3);
   details->addEntry(LogEntry::Entry, mark);
   details->addEntry(LogEntry::Entry, commit.arg(action));
-  mLogView->setEntryExpanded(details, false);
+  mLogPanel->setEntryExpanded(details, false);
 
   if (action != tr("squash")) {
     QString abort = tr("You can <a href='action:abort'>abort</a> the %1 "

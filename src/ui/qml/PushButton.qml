@@ -20,13 +20,16 @@ Rectangle {
     implicitWidth: row.implicitWidth + 20
     implicitHeight: 28
     radius: 6
-    opacity: enabled ? 1 : 0.6
-    color: primary ? (mouse.pressed ? Qt.darker(Theme.accent, 1.15)
-                                    : mouse.containsMouse ? Qt.lighter(Theme.accent, 1.1)
-                                                          : Theme.accent)
-                   : (mouse.pressed ? Theme.pressed
-                                    : mouse.containsMouse ? Theme.hover : Theme.field)
-    border.color: primary ? "transparent" : Theme.border
+    // Disabled buttons look alike, so the label stays readable.
+    readonly property bool filled: primary && enabled
+
+    color: filled ? (mouse.pressed ? Qt.darker(Theme.accent, 1.15)
+                                   : mouse.containsMouse ? Qt.lighter(Theme.accent, 1.1)
+                                                         : Theme.accent)
+                  : (!enabled ? Theme.field
+                              : mouse.pressed ? Theme.pressed
+                                              : mouse.containsMouse ? Theme.hover : Theme.field)
+    border.color: filled ? "transparent" : Theme.border
 
     MouseArea {
         id: mouse
