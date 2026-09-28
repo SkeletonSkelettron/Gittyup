@@ -16,13 +16,15 @@
 #include "ui/RepoView.h"
 #include "conf/Settings.h"
 #include "git/Submodule.h"
-#include "ui/DoubleTreeWidget.h"
-#include "ui/TreeView.h"
+#include "ui/ChangedFilesModel.h"
+#include "ui/DetailView.h"
 
 #include <QToolButton>
 #include <QMenu>
 #include <QWizard>
 #include <QLineEdit>
+#include <QMessageBox>
+#include <QPushButton>
 
 #define INIT_REPO(repoPath)                                                    \
   QString path = Test::extractRepository(repoPath);                            \
@@ -178,8 +180,10 @@ void TestSubmodule::discardFile() {
     file.close();
   }
 
-  auto doubleTree = repoView->findChild<DoubleTreeWidget *>();
-  QVERIFY(doubleTree);
+  auto details = repoView->findChild<DetailView *>();
+  QVERIFY(details);
+  auto unstagedModel =
+      static_cast<ChangedFilesModel *>(details->unstagedFiles());
 
   // Select head
   // Does not work
@@ -191,26 +195,25 @@ void TestSubmodule::discardFile() {
 
   {
     // wait for refresh!
-    auto unstagedTree = doubleTree->findChild<TreeView *>("Unstaged");
-    QVERIFY(unstagedTree);
-    QAbstractItemModel *unstagedModel = unstagedTree->model();
     auto timeout = Timeout(10000, "Repository didn't refresh in time");
     while (unstagedModel->rowCount() < 2 ||
-           unstagedModel->data(unstagedModel->index(1, 0)) != "README.md")
+           unstagedModel->rowOf("README.md") < 0)
       qWait(300);
   }
 
   {
-    auto unstagedTree = doubleTree->findChild<TreeView *>("Unstaged");
-    QVERIFY(unstagedTree);
-    QAbstractItemModel *unstagedModel = unstagedTree->model();
-
     QCOMPARE(unstagedModel->rowCount(), 2);
-    auto submodule = unstagedModel->index(0, 0);
-    auto readme = unstagedModel->index(1, 0);
-    QCOMPARE(unstagedModel->data(readme).toString(), QString("README.md"));
+    QVERIFY(unstagedModel->rowOf("GittyupTestRepo") >= 0);
+    int readme = unstagedModel->rowOf("README.md");
+    QVERIFY(readme >= 0);
 
-    unstagedTree->discard(readme, true);
+    // Discard README.md and confirm.
+    details->discardFiles(DetailView::UnstagedFiles, readme);
+    QMessageBox *popup = repoView->findChild<QMessageBox *>();
+    QVERIFY(popup);
+    QPushButton *discard = popup->findChild<QPushButton *>("DiscardButton");
+    QVERIFY(discard);
+    discard->click();
   }
 
   QFile file(repo.workdir().filePath("GittyupTestRepo/README.md"));

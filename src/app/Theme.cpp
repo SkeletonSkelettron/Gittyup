@@ -13,7 +13,6 @@
 #include "conf/ConfFile.h"
 #include "conf/Settings.h"
 #include "dialogs/ThemeDialog.h"
-#include "ui/DiffView/DiffView.h"
 #include <QProxyStyle>
 #include <QStyleOption>
 #include <QWidget>
@@ -69,12 +68,6 @@ Theme::Theme() {
     QByteArray file = mDir.filePath(QString("%1.lua").arg(mName)).toUtf8();
     mMap = ConfFile(file).parse("theme");
   }
-}
-
-QString Theme::diffButtonStyle(Theme::Diff role) {
-  QColor color = diff(role);
-  QString pressed = color.darker(115).name();
-  return DiffViewStyle::kButtonStyleFmt.arg(color.name(), pressed);
 }
 
 QDir Theme::dir() const { return mDir; }

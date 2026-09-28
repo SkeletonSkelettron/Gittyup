@@ -33,6 +33,7 @@ class DiffModel : public QAbstractListModel {
   Q_PROPERTY(int deletions READ deletions NOTIFY diffChanged)
   Q_PROPERTY(int stageState READ stageState NOTIFY stageStateChanged)
   Q_PROPERTY(int lineNumberWidth READ lineNumberWidth NOTIFY diffChanged)
+  Q_PROPERTY(int maxLineLength READ maxLineLength NOTIFY diffChanged)
 
 public:
   enum Kind { HunkRow, LineRow };
@@ -70,6 +71,16 @@ public:
   int deletions() const { return mDeletions; }
   int stageState() const;
   int lineNumberWidth() const { return mLineNumberWidth; }
+  int maxLineLength() const { return mMaxLineLength; }
+
+  // The lines of the hunks, and the row of a line in the model.
+  int hunkCount() const { return mHunks.size(); }
+  const QList<DiffLines::Line> &lines(int hunk) const { return mHunks.at(hunk); }
+  int row(int hunk, int line) const;
+
+  // Discard the changes of the lines for which 'lines' is true without
+  // asking for confirmation.
+  void discard(int hunk, const QList<bool> &lines);
 
   Q_INVOKABLE void loadAnyway();
   Q_INVOKABLE void toggleLine(int row);
@@ -104,7 +115,6 @@ private:
   QString html(int hunk, int line) const;
   int hunkState(int hunk) const;
   void stage(int changedHunk = -1);
-  void discard(int hunk, const QList<bool> &lines);
 
   RepoView *mView;
   git::Diff mDiff;
@@ -121,6 +131,7 @@ private:
   int mAdditions = 0;
   int mDeletions = 0;
   int mLineNumberWidth = 2;
+  int mMaxLineLength = 0;
 };
 
 #endif

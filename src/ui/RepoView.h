@@ -55,6 +55,7 @@ class RepoView : public QSplitter {
   Q_PROPERTY(QString pathspec READ pathspec WRITE setPathspec NOTIFY
                  pathspecChanged)
   Q_PROPERTY(QAbstractItemModel *pathModel READ pathModel CONSTANT)
+  Q_PROPERTY(bool maximized READ detailsMaximized NOTIFY maximizedChanged)
 
 public:
   enum ViewMode {
@@ -350,7 +351,7 @@ public:
    * Returns if the details are maximized or not
    * \return
    */
-  bool detailsMaximized();
+  bool detailsMaximized() const { return mMaximized; }
   /*!
    * \brief detailSplitterMaximize
    *
@@ -378,6 +379,7 @@ signals:
   void statusChanged(bool dirty);
   void loadingChanged(bool loading);
   void pathspecChanged(const QString &pathspec);
+  void maximizedChanged();
 
 protected:
   void showEvent(QShowEvent *event) override;
@@ -455,15 +457,8 @@ private:
   friend class MenuBar;
 
   /*!
-   * \brief mDetailSplitter
-   * Splits the history list and the detailview (diffView, TreeView)
-   */
-  QSplitter *mDetailSplitter;
-  /*!
    * \brief mMaximized
-   * Maximizes the widgets in the mDetailSplitter
-   * true: single widget is visible and the others are invisible
-   * false: all widgets are sized normaly and visible
+   * Whether the panels around the graph or the diff are hidden.
    */
   bool mMaximized{false};
 };

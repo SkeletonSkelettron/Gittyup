@@ -62,6 +62,8 @@ void TemplateButton::updateMenu() {
   setMenu(mMenu);
 }
 
+QMenu *TemplateButton::menu() const { return mMenu; }
+
 const QList<TemplateButton::Template> &TemplateButton::templates() {
   return mTemplates;
 }

@@ -8,6 +8,7 @@
 #include "QmlTheme.h"
 #include "app/Application.h"
 #include "app/Theme.h"
+#include <QFontDatabase>
 #include <QPalette>
 
 namespace {
@@ -61,6 +62,10 @@ QmlTheme::QmlTheme() {
       {"added", QColor("#3FB950")},
       {"modified", QColor("#D29922")},
       {"deleted", QColor("#F85149")},
+      {"diff_addition", QColor(mDark ? "#1C3A2A" : "#E3F6E8")},
+      {"diff_deletion", QColor(mDark ? "#45252A" : "#FCE8EA")},
+      {"diff_ours", QColor(mDark ? "#1D2E4A" : "#E0F0FF")},
+      {"diff_theirs", QColor(mDark ? "#3B2248" : "#F5E6FF")},
       {"tooltip", palette.color(QPalette::ToolTipBase)},
       {"tooltip_text", palette.color(QPalette::ToolTipText)},
   };
@@ -84,6 +89,16 @@ QmlTheme::QmlTheme() {
     if (minus.isValid())
       mColors.insert("deleted", minus);
 
+    auto setDiff = [this, theme](const char *key, Theme::Diff role) {
+      QColor color = theme->diff(role);
+      if (color.isValid())
+        mColors.insert(key, color);
+    };
+    setDiff("diff_addition", Theme::Diff::Addition);
+    setDiff("diff_deletion", Theme::Diff::Deletion);
+    setDiff("diff_ours", Theme::Diff::Ours);
+    setDiff("diff_theirs", Theme::Diff::Theirs);
+
     QColor star = theme->star();
     if (star.isValid())
       mColors.insert("star", star);
@@ -99,6 +114,8 @@ QmlTheme::QmlTheme() {
     if (ui.contains("dark"))
       mDark = ui.value("dark").toBool();
   }
+
+  mMonoFont = QFontDatabase::systemFont(QFontDatabase::FixedFont).family();
 }
 
 QColor QmlTheme::color(const QString &key) const {
