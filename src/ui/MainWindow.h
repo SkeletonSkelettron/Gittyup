@@ -15,7 +15,6 @@
 #include <QVariantMap>
 
 class MenuBar;
-class QMenu;
 class QQmlContext;
 class QQuickItem;
 class QQuickWidget;
@@ -112,7 +111,6 @@ protected:
 private:
   void updatePages();
   void updateTabNames();
-  QList<QMenu *> menus() const;
   void updateInterface();
   void updateWindowTitle(int ahead = -1, int behind = -1);
 

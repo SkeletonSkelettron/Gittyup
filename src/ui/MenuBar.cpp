@@ -1208,3 +1208,13 @@ bool MenuBar::isMaximized() { return mToggleMaximize->isActive(); }
 void MenuBar::registerActions(QWidget *parent) const {
   parent->addActions(actions());
 }
+
+QList<QMenu *> MenuBar::menus() const {
+  QList<QMenu *> menus;
+  for (QAction *action : actions()) {
+    if (action->isVisible() && action->menu())
+      menus.append(action->menu());
+  }
+
+  return menus;
+}

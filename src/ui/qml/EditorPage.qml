@@ -4,7 +4,7 @@ import QtQuick.Layouts
 import Gittyup
 
 // A text editor with the commit that last changed each line on the left.
-// 'editor' is the C++ FileEditor.
+// 'editor' is the C++ FileEditor and 'editorWindow' its window.
 Rectangle {
     id: root
 
@@ -83,9 +83,16 @@ Rectangle {
         }
     }
 
+    ToolTipPopup {}
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
+
+        MenuBarRow {
+            Layout.fillWidth: true
+            target: editorWindow
+        }
 
         FindBar {
             Layout.fillWidth: true

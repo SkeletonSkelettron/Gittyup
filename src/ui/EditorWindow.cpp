@@ -10,12 +10,14 @@
 #include "EditorWindow.h"
 #include "FileEditor.h"
 #include "MenuBar.h"
+#include "conf/Settings.h"
 #include "dialogs/ConfirmDialog.h"
 #include "git/Reference.h"
 #include "qml/QmlSupport.h"
 #include <QCloseEvent>
 #include <QDir>
 #include <QFileInfo>
+#include <QMenu>
 #include <QQuickWidget>
 
 EditorWindow::EditorWindow(const git::Repository &repo, QWidget *parent)
@@ -35,14 +37,25 @@ EditorWindow::EditorWindow(const git::Repository &repo, QWidget *parent)
     emit repo.notifier()->referenceUpdated(repo.head());
   });
 
-  // Connect menu bar actions.
-  if (MenuBar *menuBar = MenuBar::instance(this))
+  // Connect menu bar actions. The view draws the menu bar unless it's
+  // native, and the actions are added to the window for their shortcuts.
+  if (MenuBar *menuBar = MenuBar::instance(this)) {
     connect(mEditor, &FileEditor::modifiedChanged, menuBar,
             &MenuBar::updateSave);
+    menuBar->registerActions(this);
+    if (!menuBar->isNativeMenuBar())
+      menuBar->hide();
+  }
+
+  connect(Settings::instance(), &Settings::settingsChanged, this,
+          &EditorWindow::menuBarVisibleChanged);
 
   mView = QmlSupport::createView(
-      "EditorPage", {{"editor", QVariant::fromValue<QObject *>(mEditor)}},
+      "EditorPage",
+      {{"editor", QVariant::fromValue<QObject *>(mEditor)},
+       {"editorWindow", QVariant::fromValue<QObject *>(this)}},
       this);
+  QmlSupport::setDrawsPopups(mView, true);
   setCentralWidget(mView);
   mView->setFocus();
 }
@@ -50,6 +63,30 @@ EditorWindow::EditorWindow(const git::Repository &repo, QWidget *parent)
 EditorWindow::~EditorWindow() {
   // The QML view references the editor, so it has to go first.
   delete mView;
+}
+
+bool EditorWindow::isMenuBarVisible() const {
+  MenuBar *menuBar = qobject_cast<MenuBar *>(this->menuBar());
+  return menuBar && !menuBar->isNativeMenuBar() &&
+         !Settings::instance()->value(Setting::Id::HideMenuBar).toBool();
+}
+
+QStringList EditorWindow::menuTitles() const {
+  QStringList titles;
+  if (MenuBar *menuBar = qobject_cast<MenuBar *>(this->menuBar())) {
+    for (QMenu *menu : menuBar->menus())
+      titles.append(menu->title());
+  }
+
+  return titles;
+}
+
+void EditorWindow::showMenu(int index, qreal x, qreal y) {
+  MenuBar *menuBar = qobject_cast<MenuBar *>(this->menuBar());
+  QList<QMenu *> menus = menuBar ? menuBar->menus() : QList<QMenu *>();
+  if (index >= 0 && index < menus.size())
+    QmlSupport::execMenu(menus.at(index),
+                         QmlSupport::host(mView)->mapToGlobal(x, y));
 }
 
 void EditorWindow::updateWindowTitle() {

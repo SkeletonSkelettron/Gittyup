@@ -217,25 +217,15 @@ bool MainWindow::isMenuBarVisible() const {
          !Settings::instance()->value(Setting::Id::HideMenuBar).toBool();
 }
 
-QList<QMenu *> MainWindow::menus() const {
-  QList<QMenu *> menus;
-  for (QAction *action : mMenuBar->actions()) {
-    if (action->isVisible() && action->menu())
-      menus.append(action->menu());
-  }
-
-  return menus;
-}
-
 QStringList MainWindow::menuTitles() const {
   QStringList titles;
-  for (QMenu *menu : menus())
+  for (QMenu *menu : mMenuBar->menus())
     titles.append(menu->title());
   return titles;
 }
 
 void MainWindow::showMenu(int index, qreal x, qreal y) {
-  QList<QMenu *> menus = this->menus();
+  QList<QMenu *> menus = mMenuBar->menus();
   if (index >= 0 && index < menus.size())
     QmlSupport::execMenu(menus.at(index), mapFromScene(x, y));
 }
