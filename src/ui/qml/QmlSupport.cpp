@@ -78,12 +78,27 @@ QmlHost::QmlHost(QQuickWidget *view) : QObject(view), mView(view) {}
 
 void QmlHost::showToolTip(const QString &text, qreal x, qreal y, qreal width,
                           qreal height) {
+  if (QmlSupport::drawsPopups(mView)) {
+    mToolTipText = text;
+    mToolTipRect = QRectF(x, y, width, height);
+    mToolTipVisible = !text.isEmpty();
+    emit toolTipChanged();
+    return;
+  }
+
   QRect rect = QRectF(x, y, width, height).toAlignedRect();
   QPoint pos = mView->mapToGlobal(QPoint(rect.left(), rect.bottom() + 4));
   QToolTip::showText(pos, text, mView, rect);
 }
 
-void QmlHost::hideToolTip() { QToolTip::hideText(); }
+void QmlHost::hideToolTip() {
+  if (mToolTipVisible) {
+    mToolTipVisible = false;
+    emit toolTipChanged();
+  }
+
+  QToolTip::hideText();
+}
 
 QPoint QmlHost::mapToGlobal(qreal x, qreal y) const {
   return mView->mapToGlobal(QPointF(x, y).toPoint());
@@ -165,16 +180,23 @@ void removeImage(const QString &url) {
   sImages.remove(url.section('/', -1));
 }
 
-void setDrawsMenus(QQuickWidget *view, bool draws) {
-  view->setProperty("drawsMenus", draws);
+void setDrawsPopups(QQuickWidget *view, bool draws) {
+  view->setProperty("drawsPopups", draws);
+}
+
+bool drawsPopups(QQuickWidget *view) {
+  return view->property("drawsPopups").toBool();
 }
 
 QAction *execMenu(QMenu *menu, const QPoint &pos) {
-  QToolTip::hideText();
-
   QQuickWidget *view = qobject_cast<QQuickWidget *>(QApplication::widgetAt(pos));
-  if (!view || !view->rootObject() || !view->property("drawsMenus").toBool())
+  if (!view || !view->rootObject() || !drawsPopups(view)) {
+    QToolTip::hideText();
     return menu->exec(pos);
+  }
+
+  if (QmlHost *host = QmlSupport::host(view))
+    host->hideToolTip();
 
   // Describe the visible actions of the menu and its submenus. Menus that
   // add their actions when they are about to be shown do that now.

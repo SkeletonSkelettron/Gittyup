@@ -141,7 +141,7 @@ MainWindow::MainWindow(const git::Repository &repo, QWidget *parent,
        {"welcome", QVariant::fromValue<QObject *>(mTabs->welcomePage())}},
       this);
   mView->setMinimumSize(kMinimumWidth, kMinimumHeight);
-  QmlSupport::setDrawsMenus(mView, true);
+  QmlSupport::setDrawsPopups(mView, true);
   setCentralWidget(mView);
   mTabStrip->setView(mView);
   mToolBar->setView(mView);

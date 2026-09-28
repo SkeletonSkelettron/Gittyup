@@ -10,6 +10,7 @@
 
 #include <QObject>
 #include <QPoint>
+#include <QRectF>
 #include <QString>
 #include <QVariantMap>
 
@@ -19,10 +20,16 @@ class QMenu;
 class QQuickWidget;
 class QWidget;
 
-// Published to every QML view as "host". Tool tips are native widgets, and
-// menus are drawn in the view if it allows it, see execMenu().
+// Published to every QML view as "host". Views that draw popups show tool
+// tips and menus themselves, see setDrawsPopups(). Other views show native
+// ones.
 class QmlHost : public QObject {
   Q_OBJECT
+
+  // The tool tip that a view that draws popups shows below 'toolTipRect'.
+  Q_PROPERTY(QString toolTipText READ toolTipText NOTIFY toolTipChanged)
+  Q_PROPERTY(QRectF toolTipRect READ toolTipRect NOTIFY toolTipChanged)
+  Q_PROPERTY(bool toolTipVisible READ toolTipVisible NOTIFY toolTipChanged)
 
 public:
   QmlHost(QQuickWidget *view);
@@ -32,12 +39,22 @@ public:
                                qreal width, qreal height);
   Q_INVOKABLE void hideToolTip();
 
+  QString toolTipText() const { return mToolTipText; }
+  QRectF toolTipRect() const { return mToolTipRect; }
+  bool toolTipVisible() const { return mToolTipVisible; }
+
   QPoint mapToGlobal(qreal x, qreal y) const;
   // Show 'menu' at a point of the scene and wait until it closes.
   void popup(QMenu *menu, qreal x, qreal y) const;
 
+signals:
+  void toolTipChanged();
+
 private:
   QQuickWidget *mView;
+  QString mToolTipText;
+  QRectF mToolTipRect;
+  bool mToolTipVisible = false;
 };
 
 namespace QmlSupport {
@@ -52,13 +69,15 @@ QQuickWidget *createView(const QString &name, const QVariantMap &context,
 // Get the host object of a view created with createView().
 QmlHost *host(QQuickWidget *view);
 
-// Views that are big enough for menus, like the view of the main window,
-// draw them with qrc:/qml/ContextMenu.qml instead of showing native menus.
-void setDrawsMenus(QQuickWidget *view, bool draws);
+// Views that are big enough for popups, like the view of the main window,
+// draw menus with qrc:/qml/ContextMenu.qml and tool tips from the host
+// instead of showing native ones.
+void setDrawsPopups(QQuickWidget *view, bool draws);
+bool drawsPopups(QQuickWidget *view);
 
 // Show the actions of 'menu' at 'pos' on the screen and wait until the
 // menu closes, like QMenu::exec(). The menu is drawn by the view at 'pos'
-// if it draws menus. Returns the triggered action.
+// if it draws popups. Returns the triggered action.
 QAction *execMenu(QMenu *menu, const QPoint &pos);
 
 // Images for QML at "image://images/<key>". Remove them when they're no

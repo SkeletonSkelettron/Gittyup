@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls.Basic as Controls
 import QtQuick.Layouts
 import Gittyup
 
@@ -12,6 +13,44 @@ Rectangle {
     readonly property int sideBarWidth: 240
 
     color: Theme.base
+
+    // The tool tip of the item under the mouse, below it, or above it when
+    // there's no room below.
+    Controls.Popup {
+        id: toolTip
+
+        readonly property rect target: host.toolTipRect
+
+        x: Math.max(8, Math.min(target.x, root.width - width - 8))
+        y: target.y + target.height + 4 + height <= root.height - 8
+           ? target.y + target.height + 4 : target.y - height - 4
+        width: Math.min(implicitWidth, 440)
+        padding: 6
+        leftPadding: 9
+        rightPadding: 9
+        margins: 8
+        focus: false
+        closePolicy: Controls.Popup.NoAutoClose
+        visible: host.toolTipVisible
+
+        enter: Transition {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 90 }
+        }
+
+        contentItem: Text {
+            text: host.toolTipText
+            textFormat: Text.AutoText
+            wrapMode: Text.Wrap
+            color: Theme.tooltipText
+            font.pixelSize: 12
+        }
+
+        background: Rectangle {
+            radius: 6
+            color: Theme.tooltip
+            border.color: Theme.border
+        }
+    }
 
     ColumnLayout {
         anchors.fill: parent
