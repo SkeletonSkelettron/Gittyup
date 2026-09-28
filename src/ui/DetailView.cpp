@@ -9,6 +9,7 @@
 //
 
 #include "DetailView.h"
+#include "SpellCheck.h"
 #include "ChangedFilesModel.h"
 #include "CommitMessage.h"
 #include "DiffModel.h"
@@ -59,7 +60,8 @@ DetailView::DetailView(const git::Repository &repo, RepoView *view)
       mFiles(new ChangedFilesModel(ChangedFilesModel::All, this)),
       mStagedFiles(new ChangedFilesModel(ChangedFilesModel::Staged, this)),
       mUnstagedFiles(new ChangedFilesModel(ChangedFilesModel::Unstaged, this)),
-      mTree(new TreeModel(repo, this)), mDiffModel(new DiffModel(view, this)) {
+      mTree(new TreeModel(repo, this)), mDiffModel(new DiffModel(view, this)),
+      mSpellCheck(new SpellCheck(repo, view)) {
   // The template button is only used for its menu of message templates.
   // It has no parent, RepoView would add it as a pane of the splitter.
   mTemplates = new TemplateButton;
@@ -130,6 +132,8 @@ QAbstractItemModel *DetailView::unstagedFiles() const {
 QAbstractItemModel *DetailView::tree() const { return mTree; }
 
 QObject *DetailView::diffModel() const { return mDiffModel; }
+
+QObject *DetailView::spellCheck() const { return mSpellCheck; }
 
 bool DetailView::listMode() const {
   return Settings::instance()

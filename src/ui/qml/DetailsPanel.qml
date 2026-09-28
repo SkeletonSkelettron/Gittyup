@@ -366,6 +366,18 @@ Rectangle {
 
         Component.onCompleted: split(detailView.message)
 
+        // Apply a correction of the spell check.
+        Connections {
+            target: detailView.spellCheck
+
+            function onReplaceRequested(fieldName, start, length, text) {
+                const field = fieldName === "summary" ? summaryField : descriptionField
+                field.remove(start, start + length)
+                field.insert(start, text)
+                wip.edited()
+            }
+        }
+
         Connections {
             target: detailView
 
@@ -566,6 +578,20 @@ Rectangle {
                     onTextEdited: wip.edited()
                     Keys.onReturnPressed: descriptionField.forceActiveFocus()
 
+                    SpellUnderlines {
+                        field: summaryField
+                    }
+
+                    TapHandler {
+                        acceptedButtons: Qt.RightButton
+                        onTapped: (eventPoint) => {
+                            const p = eventPoint.position
+                            detailView.spellCheck.showMenu("summary", summaryField.text,
+                                                           summaryField.positionAt(p.x, p.y),
+                                                           p.x, p.y)
+                        }
+                    }
+
                     Text {
                         anchors.fill: parent
                         verticalAlignment: Text.AlignVCenter
@@ -618,6 +644,21 @@ Rectangle {
                         topPadding: 8
                         background: null
                         onTextChanged: wip.edited()
+
+                        SpellUnderlines {
+                            field: descriptionField
+                        }
+
+                        TapHandler {
+                            acceptedButtons: Qt.RightButton
+                            onTapped: (eventPoint) => {
+                                const p = eventPoint.position
+                                detailView.spellCheck.showMenu("description", descriptionField.text,
+                                                               descriptionField.positionAt(p.x, p.y),
+                                                               p.x, p.y)
+                            }
+                        }
+
                         Keys.onPressed: (event) => {
                             if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
                                     && (event.modifiers & Qt.ControlModifier)) {

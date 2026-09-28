@@ -18,6 +18,7 @@
 
 class ChangedFilesModel;
 class DiffModel;
+class SpellCheck;
 class TemplateButton;
 class TreeModel;
 
@@ -58,6 +59,7 @@ class DetailView : public QObject {
   Q_PROPERTY(QAbstractItemModel *unstagedFiles READ unstagedFiles CONSTANT)
   Q_PROPERTY(QAbstractItemModel *tree READ tree CONSTANT)
   Q_PROPERTY(QObject *diff READ diffModel CONSTANT)
+  Q_PROPERTY(QObject *spellCheck READ spellCheck CONSTANT)
   Q_PROPERTY(QString selectedFile READ file NOTIFY selectedFileChanged)
   Q_PROPERTY(bool listMode READ listMode NOTIFY settingsChanged)
   Q_PROPERTY(bool hideUntracked READ hideUntracked NOTIFY settingsChanged)
@@ -146,6 +148,7 @@ public:
   QAbstractItemModel *unstagedFiles() const;
   QAbstractItemModel *tree() const;
   QObject *diffModel() const;
+  QObject *spellCheck() const;
   bool listMode() const;
   bool hideUntracked() const;
 
@@ -217,6 +220,7 @@ private:
   ChangedFilesModel *mUnstagedFiles;
   TreeModel *mTree;
   DiffModel *mDiffModel;
+  SpellCheck *mSpellCheck;
   TemplateButton *mTemplates;
 
   QString mSummary;

@@ -26,6 +26,7 @@ add_library(
   RemoteCallbacks.cpp
   SearchField.cpp
   SideBar.cpp
+  SpellCheck.cpp
   StateAction.cpp
   SyntaxHighlighter.cpp
   SpellChecker.cpp
