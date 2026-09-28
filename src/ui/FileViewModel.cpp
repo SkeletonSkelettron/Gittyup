@@ -6,7 +6,6 @@
 //
 
 #include "FileViewModel.h"
-#include "RepoView.h"
 #include "SyntaxHighlighter.h"
 #include "app/Application.h"
 #include "app/Theme.h"
@@ -64,9 +63,8 @@ private:
   std::atomic<bool> mCanceled{false};
 };
 
-FileViewModel::FileViewModel(RepoView *view, QObject *parent)
-    : QAbstractListModel(parent), mView(view),
-      mCanceler(new BlameCanceler) {
+FileViewModel::FileViewModel(const git::Repository &repo, QObject *parent)
+    : QAbstractListModel(parent), mRepo(repo), mCanceler(new BlameCanceler) {
   connect(&mBlameWatcher, &QFutureWatcher<git::Blame>::finished, this, [this] {
     QFuture<git::Blame> future = mBlameWatcher.future();
     git::Blame blame = future.isValid() && future.resultCount() > 0
@@ -74,6 +72,7 @@ FileViewModel::FileViewModel(RepoView *view, QObject *parent)
                            : git::Blame();
 
     // Mark the lines that were changed in the working copy.
+    mSourceBlame = blame;
     if (blame.isValid() && !mCommit.isValid())
       blame = blame.updated(mContent);
 
@@ -91,8 +90,6 @@ FileViewModel::FileViewModel(RepoView *view, QObject *parent)
 FileViewModel::~FileViewModel() { cancelBlame(); }
 
 void FileViewModel::load(const QString &path, const git::Commit &commit) {
-  git::Repository repo = mView->repo();
-
   QByteArray content;
   bool readable = false;
   qint64 size = 0;
@@ -104,7 +101,7 @@ void FileViewModel::load(const QString &path, const git::Commit &commit) {
       readable = true;
     }
   } else {
-    QFile file(repo.workdir().filePath(path));
+    QFile file(mRepo.workdir().filePath(path));
     if (file.open(QFile::ReadOnly)) {
       size = file.size();
       content = size > kMaxSize ? file.read(kMaxReadBinary) : file.readAll();
@@ -116,24 +113,14 @@ void FileViewModel::load(const QString &path, const git::Commit &commit) {
   // status of the working copy is refreshed.
   bool sameCommit = commit.isValid() ? mCommit.isValid() && commit == mCommit
                                      : !mCommit.isValid();
-  if (path == mPath && sameCommit && readable && content == mContent &&
-      (!mLines.isEmpty() || !mNotice.isEmpty()))
+  if (!mEditing && path == mPath && sameCommit && readable &&
+      content == mContent && (!mLines.isEmpty() || !mNotice.isEmpty()))
     return;
 
   cancelBlame();
   beginResetModel();
-  mPath = path;
-  mCommit = commit;
-  mContent = content;
-  mNotice.clear();
-  mMaxLineLength = 0;
-  mLines.clear();
-  mStyles.clear();
-  mBlame = git::Blame();
-  mBlocks.clear();
-  mLineBlocks.clear();
-  mLineOffsets.clear();
-  mSelectedCommit.clear();
+  reset(path, commit, content);
+  mEditing = false;
 
   if (!readable) {
     mNotice = tr("This file doesn't exist in this version.");
@@ -145,68 +132,120 @@ void FileViewModel::load(const QString &path, const git::Commit &commit) {
   } else if (content.isEmpty()) {
     mNotice = tr("Empty file");
   } else {
-    // Split into lines without their line endings.
-    QByteArray text;
-    int tabWidth = SyntaxHighlighter::tabWidth();
-    for (QByteArray line : content.split('\n')) {
-      if (line.endsWith('\r'))
-        line.chop(1);
-      mLines.append(line);
-
-      int length = line.size() + line.count('\t') * (tabWidth - 1);
-      mMaxLineLength = qMax(mMaxLineLength, length);
-    }
-
-    // The last line ending doesn't start a new line.
-    if (content.endsWith('\n'))
-      mLines.removeLast();
-
-    QList<QPair<int, int>> spans;
-    for (const QByteArray &line : mLines) {
-      spans.append({static_cast<int>(text.size()),
-                    static_cast<int>(line.size())});
-      text += line;
-      text += '\n';
-    }
-
-    if (!mHighlighter)
-      mHighlighter.reset(new SyntaxHighlighter);
-    QByteArray styles = mHighlighter->style(path, text);
-    for (const auto &span : spans)
-      mStyles.append(styles.mid(span.first, span.second));
+    setLines(content, true);
   }
 
   endResetModel();
   emit fileChanged();
   emit selectedCommitChanged();
+  startBlame();
+}
 
-  // Find the commits of the lines in the background.
-  if (!mLines.isEmpty() && repo.isValid()) {
-    mBlameLoading = true;
-    mBlameWatcher.setFuture(QtConcurrent::run(
-        &git::Repository::blame, repo, path, commit, mCanceler.data()));
-  }
+void FileViewModel::setEditorText(const QString &path,
+                                  const git::Commit &commit,
+                                  const QByteArray &content) {
+  cancelBlame();
+  beginResetModel();
+  reset(path, commit, content);
+  mEditing = true;
+  setLines(content, false);
+  endResetModel();
+
+  emit fileChanged();
+  emit selectedCommitChanged();
+  startBlame();
+}
+
+void FileViewModel::updateEditorText(const QByteArray &content) {
+  if (!mEditing || content == mContent)
+    return;
+
+  // Move the blame of the source to the lines of the edited text.
+  beginResetModel();
+  mContent = content;
+  mLines.clear();
+  setLines(content, false);
+  git::Blame blame = mSourceBlame.isValid() && !mBlameLoading
+                         ? mSourceBlame.updated(content)
+                         : git::Blame();
+  updateBlocks(blame);
+  endResetModel();
   emit blameChanged();
 }
 
-void FileViewModel::clear() {
-  if (mPath.isEmpty())
-    return;
-
-  cancelBlame();
-  beginResetModel();
-  mPath.clear();
-  mCommit = git::Commit();
-  mContent.clear();
+void FileViewModel::reset(const QString &path, const git::Commit &commit,
+                          const QByteArray &content) {
+  mPath = path;
+  mCommit = commit;
+  mContent = content;
   mNotice.clear();
   mMaxLineLength = 0;
   mLines.clear();
   mStyles.clear();
   mBlame = git::Blame();
+  mSourceBlame = git::Blame();
   mBlocks.clear();
   mLineBlocks.clear();
   mLineOffsets.clear();
   mSelectedCommit.clear();
+}
+
+void FileViewModel::setLines(const QByteArray &content, bool highlight) {
+  // Split into lines without their line endings.
+  int tabWidth = SyntaxHighlighter::tabWidth();
+  mMaxLineLength = 0;
+  for (QByteArray line : content.split('\n')) {
+    if (line.endsWith('\r'))
+      line.chop(1);
+    mLines.append(line);
+
+    int length = line.size() + line.count('\t') * (tabWidth - 1);
+    mMaxLineLength = qMax(mMaxLineLength, length);
+  }
+
+  // The last line ending doesn't start a new line.
+  if (content.endsWith('\n') || content.isEmpty())
+    mLines.removeLast();
+
+  if (!highlight)
+    return;
+
+  QByteArray text;
+  QList<QPair<int, int>> spans;
+  for (const QByteArray &line : mLines) {
+    spans.append({static_cast<int>(text.size()),
+                  static_cast<int>(line.size())});
+    text += line;
+    text += '\n';
+  }
+
+  if (!mHighlighter)
+    mHighlighter.reset(new SyntaxHighlighter);
+  QByteArray styles = mHighlighter->style(mPath, text);
+  for (const auto &span : spans)
+    mStyles.append(styles.mid(span.first, span.second));
+}
+
+void FileViewModel::startBlame() {
+  // Find the commits of the lines in the background.
+  if (!mLines.isEmpty() && mRepo.isValid() && !mPath.isEmpty()) {
+    mBlameLoading = true;
+    mBlameWatcher.setFuture(QtConcurrent::run(&git::Repository::blame, mRepo,
+                                              mPath, mCommit,
+                                              mCanceler.data()));
+  }
+
+  emit blameChanged();
+}
+
+void FileViewModel::clear() {
+  if (mPath.isEmpty() && mLines.isEmpty())
+    return;
+
+  cancelBlame();
+  beginResetModel();
+  reset(QString(), git::Commit(), QByteArray());
+  mEditing = false;
   endResetModel();
 
   emit fileChanged();
@@ -244,7 +283,7 @@ void FileViewModel::showCommit(const QString &id) {
   url.setScheme("id");
   url.setPath(id);
   url.setQuery(query);
-  mView->visitLink(url.toString());
+  emit linkActivated(url.toString());
 }
 
 int FileViewModel::rowCount(const QModelIndex &parent) const {
@@ -263,10 +302,9 @@ QVariant FileViewModel::data(const QModelIndex &index, int role) const {
     if (!mHighlighter)
       return QString();
 
-    git::Repository repo = mView->repo();
     return mHighlighter->html(
         mLines.at(row), mStyles.value(row),
-        [&repo](const QByteArray &bytes) { return repo.decode(bytes); });
+        [this](const QByteArray &bytes) { return decode(bytes); });
   }
 
   if (role == MatchesRole)
@@ -333,7 +371,7 @@ QString FileViewModel::findRowText(int row) const {
   if (row < 0 || row >= mLines.size())
     return QString();
 
-  return SyntaxHighlighter::expandTabs(mView->repo().decode(mLines.at(row)));
+  return SyntaxHighlighter::expandTabs(decode(mLines.at(row)));
 }
 
 void FileViewModel::setFindState(const QString &text, int row, int start) {
@@ -373,6 +411,18 @@ void FileViewModel::cancelBlame() {
 
 void FileViewModel::setBlame(const git::Blame &blame) {
   mBlameLoading = false;
+  updateBlocks(blame);
+
+  if (!mLines.isEmpty())
+    emit dataChanged(index(0), index(mLines.size() - 1));
+  emit blameChanged();
+}
+
+QString FileViewModel::decode(const QByteArray &text) const {
+  return mRepo.isValid() ? mRepo.decode(text) : QString::fromUtf8(text);
+}
+
+void FileViewModel::updateBlocks(const git::Blame &blame) {
   mBlame = blame;
   mBlocks.clear();
   mLineBlocks = QList<int>(mLines.size(), -1);
@@ -459,8 +509,4 @@ void FileViewModel::setBlame(const git::Blame &blame) {
                         .name();
     }
   }
-
-  if (!mLines.isEmpty())
-    emit dataChanged(index(0), index(mLines.size() - 1));
-  emit blameChanged();
 }

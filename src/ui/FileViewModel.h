@@ -11,12 +11,12 @@
 #include "FindController.h"
 #include "git/Blame.h"
 #include "git/Commit.h"
+#include "git/Repository.h"
 #include <QAbstractListModel>
 #include <QDateTime>
 #include <QFutureWatcher>
 #include <QScopedPointer>
 
-class RepoView;
 class SyntaxHighlighter;
 
 // The lines of a file at a commit or in the working copy, highlighted and
@@ -57,12 +57,19 @@ public:
     MatchesRole
   };
 
-  FileViewModel(RepoView *view, QObject *parent = nullptr);
+  FileViewModel(const git::Repository &repo, QObject *parent = nullptr);
   ~FileViewModel() override;
 
   // Load 'path' at 'commit', or from the working copy if it's invalid.
   void load(const QString &path, const git::Commit &commit);
   void clear();
+
+  // Show the lines of 'content' in an editor, with the blame of 'path' at
+  // 'commit', or in the working copy. The lines aren't highlighted.
+  void setEditorText(const QString &path, const git::Commit &commit,
+                     const QByteArray &content);
+  // Move the blame to the lines of the edited text.
+  void updateEditorText(const QByteArray &content);
 
   QString path() const { return mPath; }
   QString revision() const;
@@ -88,6 +95,8 @@ public:
 
 signals:
   void fileChanged();
+  // Show the commit of a line.
+  void linkActivated(const QString &link);
   void blameChanged();
   void selectedCommitChanged();
 
@@ -103,10 +112,16 @@ private:
     QString color;
   };
 
+  void reset(const QString &path, const git::Commit &commit,
+             const QByteArray &content);
+  void setLines(const QByteArray &content, bool highlight);
+  void startBlame();
   void cancelBlame();
   void setBlame(const git::Blame &blame);
+  void updateBlocks(const git::Blame &blame);
+  QString decode(const QByteArray &text) const;
 
-  RepoView *mView;
+  git::Repository mRepo;
   QScopedPointer<SyntaxHighlighter> mHighlighter;
 
   QString mPath;
@@ -119,6 +134,9 @@ private:
 
   // The block of each line.
   git::Blame mBlame;
+  // The blame of the committed file, before the lines were edited.
+  git::Blame mSourceBlame;
+  bool mEditing = false;
   QList<Block> mBlocks;
   QList<int> mLineBlocks;
   QList<int> mLineOffsets;

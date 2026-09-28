@@ -49,6 +49,10 @@ public:
 
   FindController(const TargetFunc &target, QObject *parent = nullptr);
 
+  // The text to find, shared by all find bars.
+  static QString text() { return sText; }
+  static void setText(const QString &text) { sText = text; }
+
   bool isVisible() const { return mVisible; }
   QString searchText() const;
   QString hitsText() const;
@@ -89,6 +93,8 @@ private:
 
   QList<Match> mMatches;
   int mCurrent = -1;
+
+  static QString sText;
 };
 
 #endif

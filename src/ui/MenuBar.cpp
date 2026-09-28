@@ -8,10 +8,10 @@
 //
 
 #include "MenuBar.h"
-#include "BlameEditor.h"
 #include "CommitList.h"
 #include "EditorWindow.h"
-#include "FindWidget.h"
+#include "FileEditor.h"
+#include "FindController.h"
 #include "History.h"
 #include "HotkeyManager.h"
 #include "MainWindow.h"
@@ -29,7 +29,6 @@
 #include "dialogs/RemoteDialog.h"
 #include "dialogs/SettingsDialog.h"
 #include "dialogs/UpdateSubmodulesDialog.h"
-#include "editor/TextEditor.h"
 #include "git/Reference.h"
 #include "git/Remote.h"
 #include "git/RevWalk.h"
@@ -347,7 +346,7 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
   saveHotkey.use(mSave);
   mSave->setEnabled(false);
   connect(mSave, &QAction::triggered,
-          [this] { static_cast<EditorWindow *>(window())->widget()->save(); });
+          [this] { static_cast<EditorWindow *>(window())->editor()->save(); });
 
   file->addSeparator();
 
@@ -372,9 +371,7 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
   undoHotkey.use(mUndo);
   connect(mUndo, &QAction::triggered, [] {
     QWidget *widget = QApplication::focusWidget();
-    if (TextEditor *editor = qobject_cast<TextEditor *>(widget)) {
-      editor->undo();
-    } else if (QLineEdit *editor = qobject_cast<QLineEdit *>(widget)) {
+    if (QLineEdit *editor = qobject_cast<QLineEdit *>(widget)) {
       editor->undo();
     } else if (QTextEdit *editor = qobject_cast<QTextEdit *>(widget)) {
       editor->undo();
@@ -387,9 +384,7 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
   redoHotkey.use(mRedo);
   connect(mRedo, &QAction::triggered, [] {
     QWidget *widget = QApplication::focusWidget();
-    if (TextEditor *editor = qobject_cast<TextEditor *>(widget)) {
-      editor->redo();
-    } else if (QTextEdit *editor = qobject_cast<QTextEdit *>(widget)) {
+    if (QTextEdit *editor = qobject_cast<QTextEdit *>(widget)) {
       editor->redo();
     } else if (QLineEdit *editor = qobject_cast<QLineEdit *>(widget)) {
       editor->redo();
@@ -404,9 +399,7 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
   cutHotkey.use(mCut);
   connect(mCut, &QAction::triggered, [] {
     QWidget *widget = QApplication::focusWidget();
-    if (TextEditor *editor = qobject_cast<TextEditor *>(widget)) {
-      editor->cut();
-    } else if (QTextEdit *editor = qobject_cast<QTextEdit *>(widget)) {
+    if (QTextEdit *editor = qobject_cast<QTextEdit *>(widget)) {
       editor->cut();
     } else if (QLineEdit *editor = qobject_cast<QLineEdit *>(widget)) {
       editor->cut();
@@ -419,9 +412,7 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
   copyHotkey.use(mCopy);
   connect(mCopy, &QAction::triggered, [] {
     QWidget *widget = QApplication::focusWidget();
-    if (TextEditor *editor = qobject_cast<TextEditor *>(widget)) {
-      editor->copy();
-    } else if (QTextEdit *editor = qobject_cast<QTextEdit *>(widget)) {
+    if (QTextEdit *editor = qobject_cast<QTextEdit *>(widget)) {
       editor->copy();
     } else if (QLineEdit *editor = qobject_cast<QLineEdit *>(widget)) {
       editor->copy();
@@ -434,9 +425,7 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
   pasteHotkey.use(mPaste);
   connect(mPaste, &QAction::triggered, [] {
     QWidget *widget = QApplication::focusWidget();
-    if (TextEditor *editor = qobject_cast<TextEditor *>(widget)) {
-      editor->paste();
-    } else if (QTextEdit *editor = qobject_cast<QTextEdit *>(widget)) {
+    if (QTextEdit *editor = qobject_cast<QTextEdit *>(widget)) {
       editor->paste();
     } else if (QLineEdit *editor = qobject_cast<QLineEdit *>(widget)) {
       editor->paste();
@@ -449,9 +438,7 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
   selectAllHotkey.use(mSelectAll);
   connect(mSelectAll, &QAction::triggered, [] {
     QWidget *widget = QApplication::focusWidget();
-    if (TextEditor *editor = qobject_cast<TextEditor *>(widget)) {
-      editor->selectAll();
-    } else if (QTextEdit *editor = qobject_cast<QTextEdit *>(widget)) {
+    if (QTextEdit *editor = qobject_cast<QTextEdit *>(widget)) {
       editor->selectAll();
     } else if (QLineEdit *editor = qobject_cast<QLineEdit *>(widget)) {
       editor->selectAll();
@@ -470,7 +457,7 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
     if (MainWindow *window = qobject_cast<MainWindow *>(widget)) {
       window->currentView()->find();
     } else if (EditorWindow *window = qobject_cast<EditorWindow *>(widget)) {
-      window->widget()->find();
+      window->editor()->find();
     }
   });
 
@@ -481,7 +468,7 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
     if (MainWindow *window = qobject_cast<MainWindow *>(widget)) {
       window->currentView()->findNext();
     } else if (EditorWindow *window = qobject_cast<EditorWindow *>(widget)) {
-      window->widget()->findNext();
+      window->editor()->findNext();
     }
   });
 
@@ -492,7 +479,7 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
     if (MainWindow *window = qobject_cast<MainWindow *>(widget)) {
       window->currentView()->findPrevious();
     } else if (EditorWindow *window = qobject_cast<EditorWindow *>(widget)) {
-      window->widget()->findPrevious();
+      window->editor()->findPrevious();
     }
   });
 
@@ -500,14 +487,12 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
   findSelectionHotkey.use(mFindSelection);
   connect(mFindSelection, &QAction::triggered, [this] {
     QWidget *widget = QApplication::focusWidget();
-    if (TextEditor *editor = qobject_cast<TextEditor *>(widget)) {
-      FindWidget::setText(editor->getSelText());
-    } else if (QTextEdit *editor = qobject_cast<QTextEdit *>(widget)) {
-      FindWidget::setText(editor->textCursor().selectedText());
+    if (QTextEdit *editor = qobject_cast<QTextEdit *>(widget)) {
+      FindController::setText(editor->textCursor().selectedText());
     } else if (QLineEdit *editor = qobject_cast<QLineEdit *>(widget)) {
-      FindWidget::setText(editor->selectedText());
+      FindController::setText(editor->selectedText());
     } else if (QQuickItem *item = focusTextItem()) {
-      FindWidget::setText(item->property("selectedText").toString());
+      FindController::setText(item->property("selectedText").toString());
     }
 
     // Update next/prev.
@@ -979,7 +964,7 @@ void MenuBar::updateFile() { mClose->setEnabled(QApplication::activeWindow()); }
 
 void MenuBar::updateSave() {
   EditorWindow *win = qobject_cast<EditorWindow *>(window());
-  mSave->setEnabled(win && win->widget()->editor()->modify());
+  mSave->setEnabled(win && win->editor()->isModified());
 }
 
 void MenuBar::updateUndoRedo() {
@@ -987,10 +972,7 @@ void MenuBar::updateUndoRedo() {
   mRedo->setEnabled(false);
 
   QWidget *widget = QApplication::focusWidget();
-  if (TextEditor *editor = qobject_cast<TextEditor *>(widget)) {
-    mUndo->setEnabled(editor->canUndo());
-    mRedo->setEnabled(editor->canRedo());
-  } else if (QTextEdit *editor = qobject_cast<QTextEdit *>(widget)) {
+  if (QTextEdit *editor = qobject_cast<QTextEdit *>(widget)) {
     mUndo->setEnabled(editor->document()->isUndoAvailable());
     mRedo->setEnabled(editor->document()->isRedoAvailable());
   } else if (QLineEdit *editor = qobject_cast<QLineEdit *>(widget)) {
@@ -1010,12 +992,7 @@ void MenuBar::updateCutCopyPaste() {
 
   QWidget *widget = QApplication::focusWidget();
   bool canPaste = !QApplication::clipboard()->text().isEmpty();
-  if (TextEditor *editor = qobject_cast<TextEditor *>(widget)) {
-    mCut->setEnabled(!editor->selectionEmpty() && !editor->readOnly());
-    mCopy->setEnabled(!editor->selectionEmpty());
-    mPaste->setEnabled(canPaste && editor->canPaste());
-    mFindSelection->setEnabled(!editor->selectionEmpty());
-  } else if (QTextEdit *editor = qobject_cast<QTextEdit *>(widget)) {
+  if (QTextEdit *editor = qobject_cast<QTextEdit *>(widget)) {
     bool selection = editor->textCursor().hasSelection();
     mCut->setEnabled(selection && !editor->isReadOnly());
     mCopy->setEnabled(selection);
@@ -1038,8 +1015,7 @@ void MenuBar::updateCutCopyPaste() {
 
 void MenuBar::updateSelectAll() {
   QWidget *widget = QApplication::focusWidget();
-  mSelectAll->setEnabled(qobject_cast<TextEditor *>(widget) ||
-                         qobject_cast<QTextEdit *>(widget) ||
+  mSelectAll->setEnabled(qobject_cast<QTextEdit *>(widget) ||
                          qobject_cast<QLineEdit *>(widget) || focusTextItem());
 }
 
@@ -1047,7 +1023,7 @@ void MenuBar::updateFind() {
   MainWindow *win = qobject_cast<MainWindow *>(window());
   EditorWindow *editor = qobject_cast<EditorWindow *>(window());
   RepoView *view = win ? win->currentView() : nullptr;
-  bool empty = FindWidget::text().isEmpty();
+  bool empty = FindController::text().isEmpty();
   mFind->setEnabled(view || editor);
   mFindNext->setEnabled((view || editor) && !empty);
   mFindPrevious->setEnabled((view || editor) && !empty);

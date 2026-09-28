@@ -20,7 +20,7 @@
 #include "git/Remote.h"
 #include "git/Submodule.h"
 #include "index/Index.h"
-#include "ui/BlameEditor.h"
+#include "ui/FileEditor.h"
 #include "ui/EditorWindow.h"
 #include "ui/RepoView.h"
 #include <QDir>
@@ -106,7 +106,7 @@ void ConfigDialog::setGitConfig(const QString &key, const QString &value) {
 void ConfigDialog::editConfigFile() {
   QString file = mRepo.dir().filePath("config");
   if (EditorWindow *window = mView->openEditor(file))
-    connect(window->widget(), &BlameEditor::saved, this,
+    connect(window->editor(), &FileEditor::saved, this,
             &ConfigDialog::generalChanged);
 }
 

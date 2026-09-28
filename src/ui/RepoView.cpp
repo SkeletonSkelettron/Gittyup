@@ -8,10 +8,10 @@
 //
 
 #include "RepoView.h"
-#include "BlameEditor.h"
 #include "CommitList.h"
 #include "DetailView.h"
 #include "EditorWindow.h"
+#include "FileEditor.h"
 #include "FileContextMenu.h"
 #include "History.h"
 #include "MainWindow.h"
@@ -37,7 +37,6 @@
 #include "dialogs/RenameBranchDialog.h"
 #include "dialogs/SettingsDialog.h"
 #include "dialogs/TagDialog.h"
-#include "editor/TextEditor.h"
 #include "git/Config.h"
 #include "git/Index.h"
 #include "git/Rebase.h"
@@ -2716,16 +2715,13 @@ EditorWindow *RepoView::openEditor(const QString &path, int line,
   if (!window)
     return nullptr;
 
-  // Scroll line into view.
-  BlameEditor *widget = window->widget();
-  if (line >= 0) {
-    TextEditor *editor = widget->editor();
-    editor->ensureVisibleEnforcePolicy(line - 1);
-    editor->gotoLine(line - 1);
-  }
+  // Show the line.
+  FileEditor *editor = window->editor();
+  if (line >= 0)
+    editor->goToLine(line);
 
-  connect(widget, &BlameEditor::linkActivated, this, &RepoView::visitLink);
-  connect(widget, &BlameEditor::saved, this, [this] {
+  connect(editor, &FileEditor::linkActivated, this, &RepoView::visitLink);
+  connect(editor, &FileEditor::saved, this, [this] {
     // Notify window that the head branch is changed.
     emit mRepo.notifier()->referenceUpdated(mRepo.head());
   });

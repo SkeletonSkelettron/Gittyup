@@ -6,7 +6,6 @@
 //
 
 #include "FindController.h"
-#include "FindWidget.h"
 #include <QVariantMap>
 
 QVariantList FindTarget::findMatches(const QString &text, int row,
@@ -27,10 +26,12 @@ QVariantList FindTarget::findMatches(const QString &text, int row,
   return matches;
 }
 
+QString FindController::sText;
+
 FindController::FindController(const TargetFunc &target, QObject *parent)
     : QObject(parent), mTarget(target) {}
 
-QString FindController::searchText() const { return FindWidget::text(); }
+QString FindController::searchText() const { return FindController::text(); }
 
 QString FindController::hitsText() const {
   if (searchText().isEmpty())
@@ -69,10 +70,10 @@ void FindController::hide() {
 }
 
 void FindController::search(const QString &text) {
-  if (text == FindWidget::text())
+  if (text == FindController::text())
     return;
 
-  FindWidget::setText(text);
+  FindController::setText(text);
   emit searchTextChanged();
   update();
 }

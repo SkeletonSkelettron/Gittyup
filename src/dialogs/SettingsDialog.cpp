@@ -18,7 +18,7 @@
 #include "cred/CredentialHelper.h"
 #include "git/Config.h"
 #include "tools/ExternalTool.h"
-#include "ui/BlameEditor.h"
+#include "ui/FileEditor.h"
 #include "ui/EditorWindow.h"
 #include "ui/MainWindow.h"
 #include "ui/RepoView.h"
@@ -458,9 +458,9 @@ bool SettingsDialog::isSingleInstanceVisible() const {
 }
 
 void SettingsDialog::editConfigFile() {
-  EditorWindow *window = EditorWindow::open(git::Config::globalPath());
-  connect(window->widget(), &BlameEditor::saved, this,
-          &SettingsDialog::configChanged);
+  if (EditorWindow *window = EditorWindow::open(git::Config::globalPath()))
+    connect(window->editor(), &FileEditor::saved, this,
+            &SettingsDialog::configChanged);
 }
 
 void SettingsDialog::showPrivacyPolicy() {

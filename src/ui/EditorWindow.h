@@ -15,16 +15,20 @@
 #include "git/Commit.h"
 #include "git/Repository.h"
 
-class BlameEditor;
+class FileEditor;
+class QQuickWidget;
 
+// A window to edit a file, or to look at a version of it, drawn by
+// qrc:/qml/EditorPage.qml.
 class EditorWindow : public QMainWindow {
   Q_OBJECT
 
 public:
   EditorWindow(const git::Repository &repo = git::Repository(),
                QWidget *parent = nullptr);
+  ~EditorWindow() override;
 
-  BlameEditor *widget() const;
+  FileEditor *editor() const { return mEditor; }
 
   void updateWindowTitle();
 
@@ -36,6 +40,10 @@ public:
 protected:
   void showEvent(QShowEvent *event) override;
   void closeEvent(QCloseEvent *event) override;
+
+private:
+  FileEditor *mEditor;
+  QQuickWidget *mView;
 };
 
 #endif

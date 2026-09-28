@@ -226,117 +226,25 @@ Rectangle {
                 }
 
                 // The gutter stays in place when the lines scroll sideways.
-                Rectangle {
+                BlameGutter {
                     x: list.contentX
-                    width: root.gutterWidth
                     height: parent.height
-                    color: Theme.base
-
-                    // The commit of the line.
-                    Rectangle {
-                        id: blame
-
-                        visible: root.showBlame
-                        width: root.blameWidth
-                        height: parent.height
-                        color: row.blameId !== "" && row.blameId === root.content.selectedCommit
-                               ? Theme.selected
-                               : row.blameOffset >= 0 && row.blameId === root.hoveredCommit
-                                 ? Theme.hover : Theme.panel
-
-                        // The age of the commit, from cold to hot.
-                        Rectangle {
-                            visible: row.blameOffset >= 0
-                            x: 3
-                            y: row.blameFirst ? 3 : 0
-                            width: 3
-                            height: parent.height - (row.blameFirst ? 3 : 0) - (row.blameLast ? 3 : 0)
-                            radius: 1.5
-                            color: row.blameColor !== "" ? row.blameColor : Theme.textDisabled
-                        }
-
-                        RowLayout {
-                            visible: row.blameFirst || (row.blameOffset === 1 && row.blameCommitted)
-                            anchors.fill: parent
-                            anchors.leftMargin: 14
-                            anchors.rightMargin: 8
-                            spacing: 8
-
-                            Text {
-                                Layout.fillWidth: true
-                                text: row.blameFirst ? row.blameSummary : row.blameAuthor
-                                elide: Text.ElideRight
-                                color: row.blameFirst && row.blameCommitted ? Theme.text
-                                                                            : Theme.textMuted
-                                font.pixelSize: row.blameFirst ? 12 : 11
-                            }
-
-                            Text {
-                                visible: row.blameFirst && row.blameDate !== ""
-                                text: row.blameDate
-                                color: Theme.textMuted
-                                font.pixelSize: 11
-                            }
-                        }
-
-                        Rectangle {
-                            visible: row.blameLast
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.bottom: parent.bottom
-                            height: 1
-                            color: Theme.border
-                        }
-
-                        MouseArea {
-                            id: blameMouse
-
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            onContainsMouseChanged: {
-                                if (containsMouse)
-                                    root.hoveredCommit = row.blameId
-                                else if (root.hoveredCommit === row.blameId)
-                                    root.hoveredCommit = ""
-                            }
-                            onClicked: {
-                                if (row.blameCommitted)
-                                    root.content.selectedCommit =
-                                        root.content.selectedCommit === row.blameId ? "" : row.blameId
-                            }
-                            onDoubleClicked: {
-                                if (row.blameCommitted)
-                                    root.content.showCommit(row.blameId)
-                            }
-                            onExited: host.hideToolTip()
-                        }
-
-                        HoverTip {
-                            target: blame
-                            text: row.blameTip
-                            hovered: blameMouse.containsMouse
-                        }
-                    }
-
-                    Text {
-                        x: root.blameWidth
-                        width: root.numberWidth
-                        height: parent.height
-                        rightPadding: 8
-                        horizontalAlignment: Text.AlignRight
-                        verticalAlignment: Text.AlignVCenter
-                        text: row.number
-                        color: Theme.textMuted
-                        font.family: Theme.codeFont
-                        font.pointSize: Math.max(7, Theme.codeFontSize - 1)
-                    }
-
-                    Rectangle {
-                        anchors.right: parent.right
-                        width: 1
-                        height: parent.height
-                        color: Theme.border
-                    }
+                    blame: root.content
+                    blameWidth: root.blameWidth
+                    numberWidth: root.numberWidth
+                    hoveredCommit: root.hoveredCommit
+                    number: row.number
+                    blameId: row.blameId
+                    blameFirst: row.blameFirst
+                    blameLast: row.blameLast
+                    blameOffset: row.blameOffset
+                    blameCommitted: row.blameCommitted
+                    blameSummary: row.blameSummary
+                    blameAuthor: row.blameAuthor
+                    blameDate: row.blameDate
+                    blameColor: row.blameColor
+                    blameTip: row.blameTip
+                    onHoverRequested: (id) => root.hoveredCommit = id
                 }
             }
         }

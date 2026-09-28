@@ -59,8 +59,11 @@ DetailView::DetailView(const git::Repository &repo, RepoView *view)
       mStagedFiles(new ChangedFilesModel(ChangedFilesModel::Staged, this)),
       mUnstagedFiles(new ChangedFilesModel(ChangedFilesModel::Unstaged, this)),
       mTree(new TreeModel(repo, this)), mDiffModel(new DiffModel(view, this)),
-      mContentModel(new FileViewModel(view, this)),
+      mContentModel(new FileViewModel(repo, this)),
       mSpellCheck(new SpellCheck(repo, view)) {
+  connect(mContentModel, &FileViewModel::linkActivated, view,
+          &RepoView::visitLink);
+
   // Find in the diff, or in the content in tree mode.
   mFinder = new FindController(
       [this]() -> FindTarget * {

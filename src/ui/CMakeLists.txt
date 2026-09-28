@@ -1,18 +1,17 @@
 add_library(
   ui
-  BlameEditor.cpp
-  BlameMargin.cpp
   ChangedFilesModel.cpp
   CommitList.cpp
+  CodeHighlighter.cpp
   CommitMessage.cpp
   DetailView.cpp
   DiffLines.cpp
   DiffModel.cpp
   EditorWindow.cpp
   FileContextMenu.cpp
+  FileEditor.cpp
   FileViewModel.cpp
   FindController.cpp
-  FindWidget.cpp
   History.cpp
   IgnoreDialog.cpp
   HotkeyManager.cpp
@@ -20,7 +19,6 @@ add_library(
   LogPanel.cpp
   MainWindow.cpp
   MenuBar.cpp
-  ProgressIndicator.cpp
   QmlPopup.cpp
   RefsPanel.cpp
   RepoView.cpp

@@ -8,20 +8,26 @@
 //
 
 #include "EditorWindow.h"
-#include "dialogs/ConfirmDialog.h"
-#include "BlameEditor.h"
+#include "FileEditor.h"
 #include "MenuBar.h"
-#include "editor/TextEditor.h"
+#include "dialogs/ConfirmDialog.h"
 #include "git/Reference.h"
+#include "qml/QmlSupport.h"
+#include <QCloseEvent>
+#include <QDir>
+#include <QFileInfo>
+#include <QQuickWidget>
 
 EditorWindow::EditorWindow(const git::Repository &repo, QWidget *parent)
-    : QMainWindow(parent) {
+    : QMainWindow(parent), mEditor(new FileEditor(repo, this)) {
   setAttribute(Qt::WA_DeleteOnClose);
   resize(800, 800);
 
-  BlameEditor *widget = new BlameEditor(repo, this);
-  connect(widget, &BlameEditor::saved, [this, repo] {
-    updateWindowTitle();
+  connect(mEditor, &FileEditor::fileChanged, this,
+          &EditorWindow::updateWindowTitle);
+  connect(mEditor, &FileEditor::modifiedChanged, this,
+          [this] { setWindowModified(mEditor->isModified()); });
+  connect(mEditor, &FileEditor::saved, [repo] {
     if (!repo.isValid())
       return;
 
@@ -29,29 +35,31 @@ EditorWindow::EditorWindow(const git::Repository &repo, QWidget *parent)
     emit repo.notifier()->referenceUpdated(repo.head());
   });
 
-  TextEditor *editor = widget->editor();
-  connect(editor, &TextEditor::savePointChanged, this,
-          &QWidget::setWindowModified);
-
   // Connect menu bar actions.
-  if (MenuBar *menuBar = MenuBar::instance(this)) {
-    connect(editor, &TextEditor::savePointChanged, menuBar,
+  if (MenuBar *menuBar = MenuBar::instance(this))
+    connect(mEditor, &FileEditor::modifiedChanged, menuBar,
             &MenuBar::updateSave);
-    connect(editor, &TextEditor::updateUi, menuBar, &MenuBar::updateUndoRedo);
-    connect(editor, &TextEditor::updateUi, menuBar,
-            &MenuBar::updateCutCopyPaste);
-  }
 
-  setCentralWidget(widget);
+  mView = QmlSupport::createView(
+      "EditorPage", {{"editor", QVariant::fromValue<QObject *>(mEditor)}},
+      this);
+  setCentralWidget(mView);
+  mView->setFocus();
 }
 
-BlameEditor *EditorWindow::widget() const {
-  return static_cast<BlameEditor *>(centralWidget());
+EditorWindow::~EditorWindow() {
+  // The QML view references the editor, so it has to go first.
+  delete mView;
 }
 
 void EditorWindow::updateWindowTitle() {
-  BlameEditor *editor = widget();
-  setWindowTitle(QString("%1: %2[*]").arg(editor->name(), editor->revision()));
+  QString name = mEditor->name();
+  if (name.isEmpty())
+    name = tr("Untitled");
+
+  QString revision = mEditor->revision();
+  setWindowTitle(revision.isEmpty() ? QString("%1[*]").arg(name)
+                                    : QString("%1: %2[*]").arg(name, revision));
 }
 
 EditorWindow *EditorWindow::open(const QString &path, const git::Blob &blob,
@@ -63,10 +71,9 @@ EditorWindow *EditorWindow::open(const QString &path, const git::Blob &blob,
     return nullptr;
 
   EditorWindow *window = new EditorWindow(repo);
-  BlameEditor *widget = window->widget();
 
   // Try to load the content.
-  if (!widget->load(path, blob, commit)) {
+  if (!window->editor()->load(path, blob, commit)) {
     delete window;
     return nullptr;
   }
@@ -83,13 +90,13 @@ void EditorWindow::showEvent(QShowEvent *event) {
 
 void EditorWindow::closeEvent(QCloseEvent *event) {
   // Prompt to save.
-  BlameEditor *editor = widget();
-  if (editor->editor()->modify()) {
+  if (mEditor->isModified()) {
     QString text =
         tr("'%1' has been modified. Do you want to save your changes?");
+    QString name = mEditor->name().isEmpty() ? tr("Untitled") : mEditor->name();
     ConfirmDialog dialog(this);
     dialog.setTitle(tr("Save Changes?"));
-    dialog.setText(text.arg(editor->name()));
+    dialog.setText(text.arg(name));
     dialog.setWarning(true);
     dialog.setAcceptText(tr("Save"));
     dialog.addButton(tr("Don't Save"));
@@ -100,12 +107,13 @@ void EditorWindow::closeEvent(QCloseEvent *event) {
       return;
     }
 
-    // The alternative button discards the changes.
-    if (result == QDialog::Accepted)
-      editor->save();
+    // The alternative button discards the changes. Keep the window if the
+    // file wasn't saved.
+    if (result == QDialog::Accepted && !mEditor->save()) {
+      event->ignore();
+      return;
+    }
   }
-
-  editor->cancelBlame();
 
   QMainWindow::closeEvent(event);
 }
