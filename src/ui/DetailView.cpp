@@ -15,6 +15,7 @@
 #include "DiffModel.h"
 #include "FileContextMenu.h"
 #include "FileViewModel.h"
+#include "FindController.h"
 #include "MenuBar.h"
 #include "CommitTemplates.h"
 #include "TreeModel.h"
@@ -60,6 +61,23 @@ DetailView::DetailView(const git::Repository &repo, RepoView *view)
       mTree(new TreeModel(repo, this)), mDiffModel(new DiffModel(view, this)),
       mContentModel(new FileViewModel(view, this)),
       mSpellCheck(new SpellCheck(repo, view)) {
+  // Find in the diff, or in the content in tree mode.
+  mFinder = new FindController(
+      [this]() -> FindTarget * {
+        if (mFile.isEmpty())
+          return nullptr;
+        if (mViewMode == RepoView::Tree)
+          return mContentModel;
+        return mDiffModel;
+      },
+      this);
+  connect(this, &DetailView::selectedFileChanged, mFinder,
+          &FindController::refresh);
+  connect(mDiffModel, &QAbstractItemModel::modelReset, mFinder,
+          &FindController::refresh);
+  connect(mContentModel, &QAbstractItemModel::modelReset, mFinder,
+          &FindController::refresh);
+
   mTemplates = new CommitTemplates(this);
   connect(mTemplates, &CommitTemplates::templateChanged, this,
           [this](const QString &text) {
@@ -130,6 +148,8 @@ QAbstractItemModel *DetailView::tree() const { return mTree; }
 QObject *DetailView::diffModel() const { return mDiffModel; }
 
 QObject *DetailView::contentModel() const { return mContentModel; }
+
+QObject *DetailView::finder() const { return mFinder; }
 
 QObject *DetailView::spellCheck() const { return mSpellCheck; }
 
@@ -289,11 +309,20 @@ void DetailView::setLoading() {
 
 void DetailView::cancelBackgroundTasks() { mDescription.waitForFinished(); }
 
-void DetailView::find() {}
+void DetailView::find() {
+  if (!mFile.isEmpty())
+    mFinder->show();
+}
 
-void DetailView::findNext() {}
+void DetailView::findNext() {
+  if (!mFile.isEmpty())
+    mFinder->next();
+}
 
-void DetailView::findPrevious() {}
+void DetailView::findPrevious() {
+  if (!mFile.isEmpty())
+    mFinder->previous();
+}
 
 void DetailView::updateFiles() {
   bool list = listMode();
@@ -656,6 +685,7 @@ void DetailView::closeFile() {
   if (mFile.isEmpty())
     return;
 
+  mFinder->hide();
   mFile.clear();
   mDiffModel->setDiff(git::Diff(), QString());
   mContentModel->clear();

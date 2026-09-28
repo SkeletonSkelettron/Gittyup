@@ -35,6 +35,22 @@ Rectangle {
         font.pixelSize: 12
     }
 
+    // Scroll to the current match of the find bar.
+    Connections {
+        target: detailView.finder
+        enabled: root.visible
+
+        function onCurrentChanged(row, start, length) {
+            list.positionViewAtIndex(row, ListView.Contain)
+            const x = root.gutterWidth + start * root.charWidth
+            const right = x + length * root.charWidth
+            if (right > list.contentX + list.width)
+                list.contentX = Math.min(right - list.width + 40, list.contentWidth - list.width)
+            else if (x < list.contentX + root.gutterWidth)
+                list.contentX = Math.max(0, x - root.gutterWidth - 40)
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -129,6 +145,12 @@ Rectangle {
                 height: 1
                 color: Theme.border
             }
+        }
+
+        FindBar {
+            Layout.fillWidth: true
+            visible: finder.visible
+            finder: detailView.finder
         }
 
         // Binary files, large diffs and the like.
@@ -321,6 +343,7 @@ Rectangle {
                 required property int resolution
                 required property bool chosen
                 required property var diagnostics
+                required property var matches
 
                 readonly property bool isHunk: kind === root.hunkRow
                 readonly property color background: {
@@ -557,15 +580,27 @@ Rectangle {
                             font.bold: true
                         }
 
-                        Text {
+                        Item {
+                            width: codeText.implicitWidth
                             height: parent.height
-                            verticalAlignment: Text.AlignVCenter
-                            textFormat: Text.RichText
-                            text: row.html
-                            color: Theme.text
-                            font.family: Theme.monoFont
-                            font.pixelSize: 12
-                            font.strikeout: !row.chosen
+
+                            FindMatches {
+                                matches: row.matches
+                                charWidth: root.charWidth
+                            }
+
+                            Text {
+                                id: codeText
+
+                                height: parent.height
+                                verticalAlignment: Text.AlignVCenter
+                                textFormat: Text.RichText
+                                text: row.html
+                                color: Theme.text
+                                font.family: Theme.monoFont
+                                font.pixelSize: 12
+                                font.strikeout: !row.chosen
+                            }
                         }
                     }
                 }

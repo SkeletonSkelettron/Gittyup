@@ -45,6 +45,9 @@ public:
                const QVector<bool> &marked = QVector<bool>(),
                const QColor &markColor = QColor()) const;
 
+  // 'text' as html() shows it, with tabs expanded.
+  static QString expandTabs(const QString &text);
+
   // The hidden editor, for example to run plugins on text.
   TextEditor *editor() const { return mEditor; }
 

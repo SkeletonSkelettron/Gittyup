@@ -19,6 +19,7 @@
 class ChangedFilesModel;
 class DiffModel;
 class FileViewModel;
+class FindController;
 class SpellCheck;
 class CommitTemplates;
 class TreeModel;
@@ -62,6 +63,8 @@ class DetailView : public QObject {
   Q_PROPERTY(QObject *diff READ diffModel CONSTANT)
   // The content of the selected file in tree mode.
   Q_PROPERTY(QObject *content READ contentModel CONSTANT)
+  // Finds text in the diff or the content of the selected file.
+  Q_PROPERTY(QObject *finder READ finder CONSTANT)
   Q_PROPERTY(QObject *spellCheck READ spellCheck CONSTANT)
   Q_PROPERTY(QString selectedFile READ file NOTIFY selectedFileChanged)
   Q_PROPERTY(bool listMode READ listMode NOTIFY settingsChanged)
@@ -152,6 +155,7 @@ public:
   QAbstractItemModel *tree() const;
   QObject *diffModel() const;
   QObject *contentModel() const;
+  QObject *finder() const;
   QObject *spellCheck() const;
   bool listMode() const;
   bool hideUntracked() const;
@@ -228,6 +232,7 @@ private:
   TreeModel *mTree;
   DiffModel *mDiffModel;
   FileViewModel *mContentModel;
+  FindController *mFinder;
   SpellCheck *mSpellCheck;
   CommitTemplates *mTemplates;
 

@@ -2,14 +2,18 @@ import QtQuick
 import QtQuick.Layouts
 import Gittyup
 
-// Find text in the editor. 'findBar' is the C++ FindWidget.
+// Find text in the editor or the diff. 'finder' is the C++ FindWidget or
+// FindController.
 Rectangle {
     id: root
 
+    property QtObject finder: null
+
+    implicitHeight: 44
     color: Theme.panel
 
     Connections {
-        target: findBar
+        target: root.finder
 
         function onFocusRequested() {
             field.forceActiveFocus()
@@ -34,9 +38,9 @@ Rectangle {
         Item { Layout.fillWidth: true }
 
         Text {
-            visible: findBar.hitsText !== ""
-            text: findBar.hitsText
-            color: findBar.hasMatches ? Theme.textMuted : Theme.deleted
+            visible: (root.finder?.hitsText ?? "") !== ""
+            text: root.finder?.hitsText ?? ""
+            color: root.finder?.hasMatches ? Theme.textMuted : Theme.deleted
             font.pixelSize: 12
         }
 
@@ -44,20 +48,20 @@ Rectangle {
             compact: true
             implicitWidth: 28
             implicitHeight: 28
-            enabled: findBar.hasMatches
+            enabled: root.finder?.hasMatches ?? false
             icon: "chevron-up"
             tip: qsTr("Previous match")
-            onClicked: findBar.previous()
+            onClicked: root.finder.previous()
         }
 
         ActionButton {
             compact: true
             implicitWidth: 28
             implicitHeight: 28
-            enabled: findBar.hasMatches
+            enabled: root.finder?.hasMatches ?? false
             icon: "chevron-down"
             tip: qsTr("Next match")
-            onClicked: findBar.next()
+            onClicked: root.finder.next()
         }
 
         TextField {
@@ -67,10 +71,10 @@ Rectangle {
             implicitHeight: 30
             leftPadding: 30
             placeholderText: qsTr("Find")
-            text: findBar.searchText
-            onTextEdited: findBar.search(text)
-            onAccepted: findBar.next()
-            Keys.onEscapePressed: findBar.hide()
+            text: root.finder?.searchText ?? ""
+            onTextEdited: root.finder.search(text)
+            onAccepted: root.finder.next()
+            Keys.onEscapePressed: root.finder.hide()
 
             Icon {
                 anchors.left: parent.left
@@ -85,7 +89,7 @@ Rectangle {
         PushButton {
             implicitHeight: 30
             text: qsTr("Done")
-            onClicked: findBar.hide()
+            onClicked: root.finder.hide()
         }
     }
 }

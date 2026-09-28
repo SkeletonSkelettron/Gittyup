@@ -139,3 +139,20 @@ QString SyntaxHighlighter::html(
 
   return html;
 }
+
+QString SyntaxHighlighter::expandTabs(const QString &text) {
+  if (!text.contains('\t'))
+    return text;
+
+  QString result;
+  for (QChar ch : text) {
+    if (ch == '\t') {
+      result += QString(kTabWidth - (result.size() % kTabWidth), ' ');
+      continue;
+    }
+
+    result += ch;
+  }
+
+  return result;
+}

@@ -9,6 +9,7 @@
 #define DIFFMODEL_H
 
 #include "DiffLines.h"
+#include "FindController.h"
 #include "SyntaxHighlighter.h"
 #include "plugins/Plugin.h"
 #include "git/Diff.h"
@@ -20,7 +21,7 @@ class RepoView;
 // The diff of a single file as rows of hunk headers and lines. For the
 // uncommitted changes, single lines, hunks and the whole file can be staged,
 // unstaged and discarded. Used by qrc:/qml/DiffPanel.qml.
-class DiffModel : public QAbstractListModel {
+class DiffModel : public QAbstractListModel, public FindTarget {
   Q_OBJECT
 
   Q_PROPERTY(QString path READ path NOTIFY diffChanged)
@@ -58,7 +59,9 @@ public:
     HunkStateRole,
     ResolutionRole,
     ChosenRole,
-    DiagnosticsRole
+    DiagnosticsRole,
+    // The matches of the find bar in the line.
+    MatchesRole
   };
 
   DiffModel(RepoView *view, QObject *parent = nullptr);
@@ -115,6 +118,10 @@ public:
                 int role = Qt::DisplayRole) const override;
   QHash<int, QByteArray> roleNames() const override;
 
+  int findRowCount() const override { return mRows.size(); }
+  QString findRowText(int row) const override;
+  void setFindState(const QString &text, int row, int start) override;
+
 signals:
   void diffChanged();
   void stageStateChanged();
@@ -164,6 +171,10 @@ private:
   QString mOldImageInfo;
   QString mNewImageInfo;
   bool mCanLoadAnyway = false;
+
+  QString mFindText;
+  int mFindRow = -1;
+  int mFindStart = -1;
   bool mUntracked = false;
   bool mLoadAnyway = false;
   int mAdditions = 0;

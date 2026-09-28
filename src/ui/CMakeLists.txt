@@ -11,6 +11,7 @@ add_library(
   EditorWindow.cpp
   FileContextMenu.cpp
   FileViewModel.cpp
+  FindController.cpp
   FindWidget.cpp
   History.cpp
   IgnoreDialog.cpp

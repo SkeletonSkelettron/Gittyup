@@ -32,6 +32,7 @@
 #include "log/LogEntry.h"
 #include "ui/IgnoreDialog.h"
 #include "ui/DetailView.h"
+#include "ui/FindController.h"
 #include "ui/MainWindow.h"
 #include "ui/RepoView.h"
 #include "ui/TabStrip.h"
@@ -133,7 +134,16 @@ void TestQmlViews::mainWindow() {
   QVERIFY(content->property("hasBlame").toBool());
   QCOMPARE(content->index(0, 0).data(Qt::UserRole + 3).toString().isEmpty(),
            false);
+
+  // Find in the file.
+  FindController *finder = qobject_cast<FindController *>(details->finder());
+  finder->show();
+  finder->search("change");
+  QVERIFY(finder->hasMatches());
+  QCOMPARE(finder->hitsText(), QString("1 of 1"));
+  qWait(100);
   details->closeFile();
+  QVERIFY(!finder->isVisible());
   view->setViewMode(RepoView::DoubleTree);
   qWait(100);
 

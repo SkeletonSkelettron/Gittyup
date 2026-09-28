@@ -774,6 +774,7 @@ QVariant DiffModel::data(const QModelIndex &index, int role) const {
       case ChosenRole:
         return true;
       case DiagnosticsRole:
+      case MatchesRole:
         return QVariantList();
     }
 
@@ -811,6 +812,8 @@ QVariant DiffModel::data(const QModelIndex &index, int role) const {
           row.line < mDiagnostics.at(row.hunk).size())
         return mDiagnostics.at(row.hunk).at(row.line);
       return QVariantList();
+    case MatchesRole:
+      return findMatches(mFindText, index.row(), mFindRow, mFindStart);
   }
 
   return QVariant();
@@ -823,5 +826,39 @@ QHash<int, QByteArray> DiffModel::roleNames() const {
           {StagedRole, "staged"},     {StageableRole, "stageable"},
           {HeaderRole, "header"},     {HunkStateRole, "hunkState"},
           {ResolutionRole, "resolution"}, {ChosenRole, "chosen"},
-          {DiagnosticsRole, "diagnostics"}};
+          {DiagnosticsRole, "diagnostics"}, {MatchesRole, "matches"}};
+}
+
+QString DiffModel::findRowText(int row) const {
+  if (row < 0 || row >= mRows.size() || mRows.at(row).kind != LineRow)
+    return QString();
+
+  const Row &current = mRows.at(row);
+  const DiffLines::Line &line = mHunks.at(current.hunk).at(current.line);
+  return SyntaxHighlighter::expandTabs(
+      mView->repo().decode(chomp(line.content)));
+}
+
+void DiffModel::setFindState(const QString &text, int row, int start) {
+  if (text == mFindText && row == mFindRow && start == mFindStart)
+    return;
+
+  // Only the rows of the current match change when moving between matches.
+  int previous = mFindRow;
+  bool all = (text != mFindText);
+  mFindText = text;
+  mFindRow = row;
+  mFindStart = start;
+  if (mRows.isEmpty())
+    return;
+
+  if (all) {
+    emit dataChanged(index(0), index(mRows.size() - 1), {MatchesRole});
+    return;
+  }
+
+  for (int changed : {previous, row}) {
+    if (changed >= 0 && changed < mRows.size())
+      emit dataChanged(index(changed), index(changed), {MatchesRole});
+  }
 }

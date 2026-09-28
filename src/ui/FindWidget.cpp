@@ -12,6 +12,7 @@
 #include "editor/TextEditor.h"
 #include "qml/QmlSupport.h"
 #include <QHideEvent>
+#include <QQuickItem>
 #include <QQuickWidget>
 #include <QShowEvent>
 #include <QVBoxLayout>
@@ -28,8 +29,9 @@ FindWidget::FindWidget(EditorProvider *provider, QWidget *parent)
     : QWidget(parent), mEditorProvider(provider) {
   setFixedHeight(kHeight);
 
-  mView = QmlSupport::createView(
-      "FindBar", {{"findBar", QVariant::fromValue<QObject *>(this)}}, this);
+  mView = QmlSupport::createView("FindBar", {}, this);
+  mView->rootObject()->setProperty("finder",
+                                   QVariant::fromValue<QObject *>(this));
   QVBoxLayout *layout = new QVBoxLayout(this);
   layout->setContentsMargins(0, 0, 0, 0);
   layout->addWidget(mView);

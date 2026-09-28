@@ -17,6 +17,7 @@ Rectangle {
     readonly property bool showBlame: content.hasBlame || content.blameLoading
     readonly property int blameWidth: showBlame ? 300 : 0
     readonly property int gutterWidth: blameWidth + numberWidth
+    readonly property int codeX: gutterWidth + 12
 
     // The commit of the lines under the mouse.
     property string hoveredCommit
@@ -31,6 +32,23 @@ Rectangle {
 
         font.family: Theme.monoFont
         font.pixelSize: 12
+    }
+
+    // Scroll to the current match of the find bar. The gutter covers the
+    // left of the view.
+    Connections {
+        target: detailView.finder
+        enabled: root.visible
+
+        function onCurrentChanged(row, start, length) {
+            list.positionViewAtIndex(row, ListView.Contain)
+            const x = root.codeX + start * root.charWidth
+            const right = x + length * root.charWidth
+            if (right > list.contentX + list.width)
+                list.contentX = Math.min(right - list.width + 40, list.contentWidth - list.width)
+            else if (x < list.contentX + root.codeX)
+                list.contentX = Math.max(0, x - root.codeX - 40)
+        }
     }
 
     ColumnLayout {
@@ -125,6 +143,12 @@ Rectangle {
             }
         }
 
+        FindBar {
+            Layout.fillWidth: true
+            visible: finder.visible
+            finder: detailView.finder
+        }
+
         // Binary, large and empty files.
         Item {
             Layout.fillWidth: true
@@ -150,7 +174,7 @@ Rectangle {
             reuseItems: true
             boundsBehavior: Flickable.StopAtBounds
             flickableDirection: Flickable.AutoFlickIfNeeded
-            contentWidth: Math.max(width, root.gutterWidth
+            contentWidth: Math.max(width, root.codeX
                                           + root.content.maxLineLength * root.charWidth + 40)
 
             Controls.ScrollBar.vertical: ThinScrollBar {}
@@ -172,19 +196,32 @@ Rectangle {
                 required property string blameDate
                 required property string blameColor
                 required property string blameTip
+                required property var matches
 
                 width: list.contentWidth
                 height: root.lineHeight
 
-                Text {
-                    x: root.gutterWidth + 12
+                Item {
+                    x: root.codeX
+                    width: codeText.implicitWidth
                     height: parent.height
-                    verticalAlignment: Text.AlignVCenter
-                    textFormat: Text.RichText
-                    text: row.html
-                    color: Theme.text
-                    font.family: Theme.monoFont
-                    font.pixelSize: 12
+
+                    FindMatches {
+                        matches: row.matches
+                        charWidth: root.charWidth
+                    }
+
+                    Text {
+                        id: codeText
+
+                        height: parent.height
+                        verticalAlignment: Text.AlignVCenter
+                        textFormat: Text.RichText
+                        text: row.html
+                        color: Theme.text
+                        font.family: Theme.monoFont
+                        font.pixelSize: 12
+                    }
                 }
 
                 // The gutter stays in place when the lines scroll sideways.

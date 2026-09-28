@@ -8,6 +8,7 @@
 #ifndef FILEVIEWMODEL_H
 #define FILEVIEWMODEL_H
 
+#include "FindController.h"
 #include "git/Blame.h"
 #include "git/Commit.h"
 #include <QAbstractListModel>
@@ -21,7 +22,7 @@ class SyntaxHighlighter;
 // The lines of a file at a commit or in the working copy, highlighted and
 // annotated with the commit that last changed them. qrc:/qml/FileView.qml
 // draws it as 'detailView.file'.
-class FileViewModel : public QAbstractListModel {
+class FileViewModel : public QAbstractListModel, public FindTarget {
   Q_OBJECT
 
   Q_PROPERTY(QString path READ path NOTIFY fileChanged)
@@ -51,7 +52,9 @@ public:
     BlameDateRole,
     // The age of the commit in the heat map, empty if it's disabled.
     BlameColorRole,
-    BlameTipRole
+    BlameTipRole,
+    // The matches of the find bar in the line.
+    MatchesRole
   };
 
   FileViewModel(RepoView *view, QObject *parent = nullptr);
@@ -78,6 +81,10 @@ public:
   int rowCount(const QModelIndex &parent = QModelIndex()) const override;
   QVariant data(const QModelIndex &index, int role) const override;
   QHash<int, QByteArray> roleNames() const override;
+
+  int findRowCount() const override { return mLines.size(); }
+  QString findRowText(int row) const override;
+  void setFindState(const QString &text, int row, int start) override;
 
 signals:
   void fileChanged();
@@ -116,6 +123,10 @@ private:
   QList<int> mLineBlocks;
   QList<int> mLineOffsets;
   QString mSelectedCommit;
+
+  QString mFindText;
+  int mFindRow = -1;
+  int mFindStart = -1;
 
   QByteArray mContent;
   bool mBlameLoading = false;

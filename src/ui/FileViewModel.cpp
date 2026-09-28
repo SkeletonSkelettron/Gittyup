@@ -262,6 +262,9 @@ QVariant FileViewModel::data(const QModelIndex &index, int role) const {
         [&repo](const QByteArray &bytes) { return repo.decode(bytes); });
   }
 
+  if (role == MatchesRole)
+    return findMatches(mFindText, row, mFindRow, mFindStart);
+
   int block = mLineBlocks.value(row, -1);
   if (block < 0) {
     switch (role) {
@@ -315,7 +318,39 @@ QHash<int, QByteArray> FileViewModel::roleNames() const {
           {BlameAuthorRole, "blameAuthor"},
           {BlameDateRole, "blameDate"},
           {BlameColorRole, "blameColor"},
-          {BlameTipRole, "blameTip"}};
+          {BlameTipRole, "blameTip"},
+          {MatchesRole, "matches"}};
+}
+
+QString FileViewModel::findRowText(int row) const {
+  if (row < 0 || row >= mLines.size())
+    return QString();
+
+  return SyntaxHighlighter::expandTabs(mView->repo().decode(mLines.at(row)));
+}
+
+void FileViewModel::setFindState(const QString &text, int row, int start) {
+  if (text == mFindText && row == mFindRow && start == mFindStart)
+    return;
+
+  // Only the rows of the current match change when moving between matches.
+  int previous = mFindRow;
+  bool all = (text != mFindText);
+  mFindText = text;
+  mFindRow = row;
+  mFindStart = start;
+  if (mLines.isEmpty())
+    return;
+
+  if (all) {
+    emit dataChanged(index(0), index(mLines.size() - 1), {MatchesRole});
+    return;
+  }
+
+  for (int changed : {previous, row}) {
+    if (changed >= 0 && changed < mLines.size())
+      emit dataChanged(index(changed), index(changed), {MatchesRole});
+  }
 }
 
 void FileViewModel::cancelBlame() {
