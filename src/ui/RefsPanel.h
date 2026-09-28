@@ -46,7 +46,9 @@ public:
     BehindRole,
     CountRole,
     ExpandedRole,
-    ExpandableRole
+    ExpandableRole,
+    // The branch is soloed in the graph.
+    SoloRole
   };
 
   struct Item {
@@ -73,6 +75,9 @@ public:
   void toggle(int row);
   void update();
 
+  // The qualified names of the soloed branches.
+  void setSolo(const QStringList &solo);
+
   int rowCount(const QModelIndex &parent = QModelIndex()) const override;
   QVariant data(const QModelIndex &index,
                 int role = Qt::DisplayRole) const override;
@@ -88,6 +93,7 @@ private:
   QString mFilter;
   QSet<QString> mCollapsed;
   QList<Item> mItems;
+  QStringList mSolo;
 };
 
 // Controller for the references panel. It replaces the reference drop-down
@@ -96,6 +102,8 @@ class RefsPanel : public QObject {
   Q_OBJECT
 
   Q_PROPERTY(QAbstractItemModel *model READ model CONSTANT)
+  // Branches are soloed, and the others are hidden in the graph.
+  Q_PROPERTY(bool soloActive READ isSoloActive NOTIFY soloChanged)
 
 public:
   RefsPanel(const git::Repository &repo, RepoView *view);
@@ -113,6 +121,11 @@ public:
   // The + button of a section header.
   Q_INVOKABLE void add(int section);
 
+  bool isSoloActive() const { return mSoloActive; }
+  void setSolo(const QStringList &solo);
+  // Solo or unsolo the branch of a row.
+  Q_INVOKABLE void toggleSolo(int row);
+
 signals:
   // The reference that the commit graph should show changed.
   void referenceChanged(const git::Reference &ref);
@@ -121,12 +134,15 @@ signals:
   // A stash was clicked; select it in the list of stashes.
   void stashSelected(int index);
 
+  void soloChanged();
+
 private:
   void setCurrent(const git::Reference &ref);
 
   RepoView *mView;
   git::Repository mRepo;
   RefsModel *mModel;
+  bool mSoloActive = false;
   git::Reference mEmitted;
 };
 

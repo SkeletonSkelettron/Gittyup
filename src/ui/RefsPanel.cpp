@@ -288,9 +288,21 @@ QVariant RefsModel::data(const QModelIndex &index, int role) const {
       return item.key.isEmpty() || isExpanded(item.key);
     case ExpandableRole:
       return !item.key.isEmpty();
+    case SoloRole:
+      return (item.kind == Branch || item.kind == RemoteBranch) &&
+             item.ref.isValid() && mSolo.contains(item.ref.qualifiedName());
   }
 
   return QVariant();
+}
+
+void RefsModel::setSolo(const QStringList &solo) {
+  if (solo == mSolo)
+    return;
+
+  mSolo = solo;
+  if (!mItems.isEmpty())
+    emit dataChanged(index(0), index(mItems.size() - 1), {SoloRole});
 }
 
 QHash<int, QByteArray> RefsModel::roleNames() const {
@@ -299,7 +311,8 @@ QHash<int, QByteArray> RefsModel::roleNames() const {
           {DepthRole, "depth"},         {HeadRole, "isHead"},
           {CurrentRole, "isCurrent"},   {AheadRole, "ahead"},
           {BehindRole, "behind"},       {CountRole, "count"},
-          {ExpandedRole, "expanded"},   {ExpandableRole, "expandable"}};
+          {ExpandedRole, "expanded"},   {ExpandableRole, "expandable"},
+          {SoloRole, "soloed"}};
 }
 
 RefsPanel::RefsPanel(const git::Repository &repo, RepoView *view)
@@ -420,6 +433,29 @@ void RefsPanel::toggle(int row) { mModel->toggle(row); }
 
 void RefsPanel::setFilter(const QString &filter) { mModel->setFilter(filter); }
 
+void RefsPanel::setSolo(const QStringList &solo) {
+  mModel->setSolo(solo);
+  if (solo.isEmpty() == !mSoloActive)
+    return;
+
+  mSoloActive = !solo.isEmpty();
+  emit soloChanged();
+}
+
+void RefsPanel::toggleSolo(int row) {
+  if (row < 0 || row >= mModel->rowCount())
+    return;
+
+  const RefsModel::Item &item = mModel->item(row);
+  if ((item.kind != RefsModel::Branch && item.kind != RefsModel::RemoteBranch) ||
+      !item.ref.isValid())
+    return;
+
+  CommitList *commits = mView->commitList();
+  QString name = item.ref.qualifiedName();
+  commits->setSoloed(name, !commits->isSoloed(name));
+}
+
 void RefsPanel::showContextMenu(int row, qreal x, qreal y) {
   if (row < 0 || row >= mModel->rowCount())
     return;
@@ -468,6 +504,22 @@ void RefsPanel::showContextMenu(int row, qreal x, qreal y) {
     case RefsModel::Branch:
     case RefsModel::RemoteBranch:
     case RefsModel::Tag: {
+      // Show the branch alone in the graph, like GitKraken.
+      if (item.kind != RefsModel::Tag) {
+        CommitList *commits = view->commitList();
+        QString name = ref.qualifiedName();
+        bool soloed = commits->isSoloed(name);
+        menu.addAction(soloed ? tr("Unsolo") : tr("Solo"),
+                       [commits, name, soloed] {
+                         commits->setSoloed(name, !soloed);
+                       });
+
+        if (!commits->solo().isEmpty())
+          menu.addAction(tr("Unsolo All"), [commits] { commits->unsoloAll(); });
+
+        menu.addSeparator();
+      }
+
       QAction *checkout =
           menu.addAction(tr("Checkout"), [view, ref] { view->checkout(ref); });
       checkout->setEnabled(!item.head && !mRepo.isBare());

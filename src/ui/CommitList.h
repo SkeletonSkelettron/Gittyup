@@ -43,6 +43,10 @@ class CommitList : public QObject {
   Q_PROPERTY(QString refsFilterName READ refsFilterName NOTIFY settingsChanged)
   Q_PROPERTY(QString sortName READ sortName NOTIFY settingsChanged)
   Q_PROPERTY(bool filtered READ isFiltered NOTIFY modelChanged)
+  // The branches that are shown alone in the graph, like 'solo' in
+  // GitKraken, by their qualified names.
+  Q_PROPERTY(QStringList solo READ solo NOTIFY soloChanged)
+  Q_PROPERTY(QString soloText READ soloText NOTIFY soloChanged)
 
 public:
   enum Role {
@@ -135,6 +139,13 @@ public:
   Q_INVOKABLE void showSortMenu(qreal x, qreal y);
   Q_INVOKABLE void showSettingsMenu(qreal x, qreal y);
 
+  QStringList solo() const { return mSolo; }
+  // The soloed branch, or how many branches are soloed.
+  QString soloText() const;
+  bool isSoloed(const QString &name) const;
+  Q_INVOKABLE void setSoloed(const QString &name, bool soloed);
+  Q_INVOKABLE void unsoloAll();
+
 signals:
   void statusChanged(bool dirty);
   void diffSelected(const git::Diff diff, const QString &file = QString(),
@@ -151,6 +162,7 @@ signals:
   void selectionRevisionChanged();
   void laneCountChanged();
   void settingsChanged();
+  void soloChanged();
 
   // Ask the view to scroll so that the row is visible.
   void scrollRequested(int row);
@@ -164,6 +176,7 @@ private:
   void updateLaneCount();
   void setLoading(bool loading);
   void setConfigValue(const QString &key, const QVariant &value);
+  void setSolo(const QStringList &solo);
 
   QModelIndexList sortedIndexes() const;
 
@@ -188,6 +201,8 @@ private:
 
   // Reference badges for each commit.
   QMap<git::Id, QVariantList> mRefs;
+
+  QStringList mSolo;
 
   bool mRestoreSelection{true};
 

@@ -34,6 +34,9 @@
 
 namespace {
 
+// The branches that are soloed, separated by spaces.
+const QString kSoloKey = "solo.refs";
+
 // FIXME: Factor out into theme?
 const QColor kTaintedColor = Qt::gray;
 
@@ -210,6 +213,15 @@ public:
     resetWalker();
   }
 
+  // Walk only these branches and their upstream branches.
+  void setSolo(const QStringList &solo) {
+    if (solo == mSolo)
+      return;
+
+    mSolo = solo;
+    resetWalker();
+  }
+
   void suppressResetWalker(bool suppress) { mSuppressResetWalker = suppress; }
 
   bool isResetWalkerSuppressed() { return mSuppressResetWalker; }
@@ -259,8 +271,10 @@ public:
   }
 
   void fetchMore(const QModelIndex &parent) {
-    FetchResult fetched = fetchRows(mWalker, mParents, mRows, mPathspec,
-                                    mGraphVisible, mRefsFilter);
+    FetchResult fetched =
+        fetchRows(mWalker, mParents, mRows, mPathspec, mGraphVisible,
+                  mSolo.isEmpty() ? mRefsFilter
+                                  : CommitList::RefsFilter::AllRefs);
 
     // Update the model.
     if (!fetched.rows.isEmpty()) {
@@ -449,6 +463,7 @@ private:
     bool graphVisible;
     bool sortDate;
     CommitList::RefsFilter refsFilter;
+    QStringList solo;
     bool showCleanStatus;
     git::Repository repo;
     git::Diff statusDiff;
@@ -663,30 +678,71 @@ private:
   static ResetResult computeReset(const ResetContext &ctx) {
     ResetResult result;
 
-    // Update status row.
+    // Soloed branches are shown alone, with their upstream branches.
+    QList<git::Reference> solo;
+    for (const QString &name : ctx.solo) {
+      git::Reference ref = ctx.repo.lookupRef(name);
+      if (!ref.isValid())
+        continue;
+
+      solo.append(ref);
+      if (ref.isLocalBranch()) {
+        if (git::Branch upstream = git::Branch(ref).upstream())
+          solo.append(upstream);
+      }
+    }
+
+    // The uncommitted changes are shown on top of HEAD, when its branch is
+    // soloed.
+    git::Reference statusRef = ctx.ref;
     bool head = (!ctx.ref.isValid() || ctx.ref.isHead());
+    if (!solo.isEmpty()) {
+      git::Reference repoHead = ctx.repo.head();
+      statusRef = git::Reference();
+      head = false;
+      for (const git::Reference &ref : solo) {
+        if (repoHead.isValid() &&
+            ref.qualifiedName() == repoHead.qualifiedName()) {
+          statusRef = repoHead;
+          head = true;
+        }
+      }
+    }
+
+    // Update status row.
     bool valid = (!ctx.statusCheckFinished || ctx.statusDiff.isValid());
     if (ctx.showCleanStatus && head && valid && ctx.pathspec.isEmpty()) {
       QVector<Column> row;
-      if (ctx.graphVisible && ctx.ref.isValid() && ctx.statusCheckFinished) {
+      if (ctx.graphVisible && statusRef.isValid() && ctx.statusCheckFinished) {
         row.append({Segment(Bottom, kTaintedColor), Segment(Dot, QColor())});
         result.parents.append(
-            Parent(ctx.ref.target(), nextColor(result.parents), true));
+            Parent(statusRef.target(), nextColor(result.parents), true));
       }
       result.rows.append(Row(git::Commit(), row)); // Uncommitted changes
     }
 
+    int sort = GIT_SORT_NONE;
+    if (ctx.graphVisible) {
+      sort |= GIT_SORT_TOPOLOGICAL;
+      if (ctx.sortDate)
+        sort |= GIT_SORT_TIME;
+    } else if (!ctx.sortDate) {
+      sort |= GIT_SORT_TOPOLOGICAL;
+    }
+
     // Begin walking commits.
-    if (ctx.ref.isValid()) {
-      int sort = GIT_SORT_NONE;
-      if (ctx.graphVisible) {
-        sort |= GIT_SORT_TOPOLOGICAL;
-        if (ctx.sortDate)
-          sort |= GIT_SORT_TIME;
-      } else if (!ctx.sortDate) {
-        sort |= GIT_SORT_TOPOLOGICAL;
+    if (!solo.isEmpty()) {
+      result.walker = solo.first().walker(sort);
+      for (int i = 1; i < solo.size(); ++i)
+        result.walker.push(solo.at(i));
+
+      if (head) {
+        // Add merge head.
+        if (git::Reference mergeHead = ctx.repo.lookupRef("MERGE_HEAD"))
+          result.walker.push(mergeHead);
       }
 
+    } else if (ctx.ref.isValid()) {
       result.walker = ctx.ref.walker(
           sort,
           ctx.refsFilter == CommitList::RefsFilter::SelectedRefIgnoreMerge);
@@ -711,9 +767,11 @@ private:
     }
 
     if (result.walker.isValid()) {
-      FetchResult fetched =
-          fetchRows(result.walker, result.parents, result.rows, ctx.pathspec,
-                    ctx.graphVisible, ctx.refsFilter);
+      // Soloed branches show all their parents.
+      FetchResult fetched = fetchRows(
+          result.walker, result.parents, result.rows, ctx.pathspec,
+          ctx.graphVisible,
+          solo.isEmpty() ? ctx.refsFilter : CommitList::RefsFilter::AllRefs);
       result.rows.append(fetched.rows);
       if (fetched.exhausted)
         result.walker = git::RevWalk();
@@ -733,6 +791,7 @@ private:
                      mGraphVisible,
                      mSortDate,
                      mRefsFilter,
+                     mSolo,
                      mShowCleanStatus,
                      mRepo,
                      status(),
@@ -774,6 +833,7 @@ private:
   // walker settings
   bool mSuppressResetWalker{false};
   CommitList::RefsFilter mRefsFilter{CommitList::RefsFilter::AllRefs};
+  QStringList mSolo;
   bool mSortDate = true;
   bool mShowCleanStatus = true;
   bool mGraphVisible = true;
@@ -861,6 +921,14 @@ CommitList::CommitList(Index *index, RepoView *view)
   mList = new ListModel(&mRefs, this);
   mModel = new CommitModel(repo, &mRefs, this);
 
+  // Restore the soloed branches that still exist.
+  QString solo = repo.appConfig().value<QString>(kSoloKey, QString());
+  for (const QString &name : solo.split(' ', Qt::SkipEmptyParts)) {
+    if (repo.lookupRef(name).isValid())
+      mSolo.append(name);
+  }
+  static_cast<CommitModel *>(mModel)->setSolo(mSolo);
+
   setModel(mModel);
   updateRefs();
 
@@ -908,6 +976,17 @@ CommitList::CommitList(Index *index, RepoView *view)
           &CommitList::updateRefs);
   connect(notifier, &git::RepositoryNotifier::referenceRemoved, this,
           &CommitList::updateRefs);
+
+  // Stop soloing branches that are gone.
+  connect(notifier, &git::RepositoryNotifier::referenceRemoved, this, [this] {
+    QStringList solo;
+    git::Repository repo = mView->repo();
+    for (const QString &name : mSolo) {
+      if (repo.lookupRef(name).isValid())
+        solo.append(name);
+    }
+    setSolo(solo);
+  });
 
   QShortcut *shortcut = new QShortcut(view);
   selectCommitDownHotKey.use(shortcut);
@@ -1316,6 +1395,37 @@ void CommitList::showContextMenu(int row, qreal x, qreal y) {
       }
     });
 
+    // Solo the branches of the commit, or stop soloing.
+    QList<git::Reference> branches;
+    for (const git::Reference &ref : view->repo().refs()) {
+      if ((ref.isLocalBranch() || ref.isRemoteBranch()) &&
+          !ref.name().endsWith("/HEAD") && ref.target() == commit)
+        branches.append(ref);
+    }
+
+    if (!branches.isEmpty() || !mSolo.isEmpty())
+      menu.addSeparator();
+
+    if (branches.size() == 1) {
+      QString name = branches.first().qualifiedName();
+      bool soloed = isSoloed(name);
+      QString text = soloed ? tr("Unsolo %1") : tr("Solo %1");
+      menu.addAction(text.arg(branches.first().name()),
+                     [this, name, soloed] { setSoloed(name, !soloed); });
+    } else if (branches.size() > 1) {
+      QMenu *soloMenu = menu.addMenu(tr("Solo"));
+      for (const git::Reference &ref : branches) {
+        QString name = ref.qualifiedName();
+        QAction *action = soloMenu->addAction(
+            ref.name(), [this, name](bool checked) { setSoloed(name, checked); });
+        action->setCheckable(true);
+        action->setChecked(isSoloed(name));
+      }
+    }
+
+    if (!mSolo.isEmpty())
+      menu.addAction(tr("Unsolo All"), [this] { unsoloAll(); });
+
     // single selection
     if (selectedIndexes().size() <= 1) {
       menu.addSeparator();
@@ -1532,6 +1642,41 @@ void CommitList::showSettingsMenu(qreal x, qreal y) {
   QmlSupport::execMenu(&menu, mView->mapFromPage(x, y));
 }
 
+QString CommitList::soloText() const {
+  if (mSolo.size() == 1)
+    return mView->repo().lookupRef(mSolo.first()).name();
+
+  return tr("%1 branches").arg(mSolo.size());
+}
+
+bool CommitList::isSoloed(const QString &name) const {
+  return mSolo.contains(name);
+}
+
+void CommitList::setSoloed(const QString &name, bool soloed) {
+  QStringList solo = mSolo;
+  if (soloed && !solo.contains(name))
+    solo.append(name);
+  else if (!soloed)
+    solo.removeAll(name);
+
+  setSolo(solo);
+}
+
+void CommitList::unsoloAll() { setSolo(QStringList()); }
+
+void CommitList::setSolo(const QStringList &solo) {
+  if (solo == mSolo)
+    return;
+
+  mSolo = solo;
+  mView->repo().appConfig().setValue(kSoloKey, solo.join(' '));
+
+  updateRefs();
+  static_cast<CommitModel *>(mModel)->setSolo(solo);
+  emit soloChanged();
+}
+
 void CommitList::setConfigValue(const QString &key, const QVariant &value) {
   git::Config config = mView->repo().appConfig();
   if (value.typeId() == QMetaType::Bool) {
@@ -1637,12 +1782,28 @@ void CommitList::updateRefs() {
         {"name", head.name()}, {"head", true}, {"local", true}});
   }
 
+  // Only the soloed branches and their upstream branches are shown while
+  // soloing.
+  QSet<QString> solo;
+  for (const QString &name : mSolo) {
+    solo.insert(name);
+    git::Reference ref = repo.lookupRef(name);
+    if (ref.isLocalBranch()) {
+      if (git::Branch upstream = git::Branch(ref).upstream())
+        solo.insert(upstream.qualifiedName());
+    }
+  }
+
   // Merge local branches with remote branches of the same name, the way
   // GitKraken shows them.
   QMap<git::Id, QVariantList> remotes;
   for (const git::Reference &ref : repo.refs()) {
     git::Commit target = ref.target();
     if (!target.isValid() || ref.isStash())
+      continue;
+
+    if (!solo.isEmpty() && (ref.isLocalBranch() || ref.isRemoteBranch()) &&
+        !solo.contains(ref.qualifiedName()))
       continue;
 
     if (ref.isRemoteBranch()) {

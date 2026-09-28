@@ -43,8 +43,88 @@ Rectangle {
                 anchors.rightMargin: 8
                 spacing: 4
 
+                // The branches shown alone, with a button to show all again.
+                Rectangle {
+                    id: soloChip
+
+                    visible: !commitList.filtered && commitList.solo.length > 0
+                    implicitWidth: soloRow.implicitWidth + 20
+                    implicitHeight: 26
+                    radius: 13
+                    color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.14)
+                    border.color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.7)
+
+                    HoverHandler {
+                        id: soloHover
+                    }
+
+                    HoverTip {
+                        target: soloChip
+                        text: qsTr("Only the soloed branches are shown:") + "<br>"
+                              + commitList.solo.map((name) => name.replace(/^refs\/(heads|remotes)\//, ""))
+                                                .join("<br>")
+                        hovered: soloHover.hovered && !unsoloMouse.containsMouse
+                    }
+
+                    Row {
+                        id: soloRow
+
+                        anchors.centerIn: parent
+                        spacing: 6
+
+                        Icon {
+                            anchors.verticalCenter: parent.verticalCenter
+                            name: "solo"
+                            size: 13
+                            color: Theme.accent
+                        }
+
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("Solo: %1").arg(commitList.soloText)
+                            color: Theme.accent
+                            font.pixelSize: 12
+                            font.bold: true
+                        }
+
+                        Rectangle {
+                            id: unsolo
+
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 18
+                            height: 18
+                            radius: 9
+                            color: unsoloMouse.containsMouse
+                                   ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.25)
+                                   : "transparent"
+
+                            Icon {
+                                anchors.centerIn: parent
+                                name: "close"
+                                size: 10
+                                color: Theme.accent
+                            }
+
+                            MouseArea {
+                                id: unsoloMouse
+
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                onClicked: commitList.unsoloAll()
+                                onExited: host.hideToolTip()
+                            }
+
+                            HoverTip {
+                                target: unsolo
+                                text: qsTr("Unsolo all branches")
+                                hovered: unsoloMouse.containsMouse
+                            }
+                        }
+                    }
+                }
+
                 MenuButton {
-                    visible: !commitList.filtered
+                    visible: !commitList.filtered && commitList.solo.length === 0
                     icon: "branch"
                     text: commitList.refsFilterName
                     tip: qsTr("Which branches to show")

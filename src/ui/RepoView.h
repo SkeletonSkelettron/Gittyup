@@ -323,6 +323,9 @@ public:
   QAbstractItemModel *pathModel() const;
   Q_INVOKABLE void showPathContextMenu(const QString &path, qreal x, qreal y);
 
+  // The commit graph, which also knows the soloed branches.
+  CommitList *commitList() const;
+
   // Map a point in the scene of the QML page to global coordinates.
   QPoint mapFromPage(qreal x, qreal y) const;
 
@@ -396,7 +399,6 @@ private:
   };
 
   ToolBar *toolBar() const;
-  CommitList *commitList() const;
 
   void notifyReferenceUpdated(const QString &name);
 

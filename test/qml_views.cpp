@@ -32,6 +32,8 @@
 #include "log/LogEntry.h"
 #include "ui/IgnoreDialog.h"
 #include "ui/DetailView.h"
+#include "git/Config.h"
+#include "ui/CommitList.h"
 #include "ui/FindController.h"
 #include "ui/MainWindow.h"
 #include "ui/RepoView.h"
@@ -80,6 +82,7 @@ private slots:
   void settings();
   void search();
   void menu();
+  void solo();
   void dragTab();
   void cleanupTestCase();
 
@@ -294,6 +297,46 @@ void TestQmlViews::menu() {
 
   QCOMPARE(QmlSupport::execMenu(&menu, pos), first);
   QVERIFY(triggered);
+  QVERIFY2(sMessages.isEmpty(), qPrintable(sMessages.join('\n')));
+}
+
+void TestQmlViews::solo() {
+  RepoView *view = mWindow->currentView();
+  git::Repository repo = view->repo();
+  CommitList *commits = view->commitList();
+  QAbstractItemModel *model = commits->model();
+
+  // A branch at HEAD that isn't checked out.
+  git::Branch other = repo.createBranch("other", repo.head().target());
+  QVERIFY(other.isValid());
+  QTRY_VERIFY(!commits->isLoading());
+  QTRY_COMPARE(model->rowCount(), 2); // The uncommitted changes and a commit.
+
+  // Soloing it hides the uncommitted changes of HEAD.
+  commits->setSoloed(other.qualifiedName(), true);
+  QCOMPARE(commits->solo(), QStringList({other.qualifiedName()}));
+  QCOMPARE(commits->soloText(), QString("other"));
+  QTRY_COMPARE(model->rowCount(), 1);
+  QVERIFY(model->index(0, 0).data(CommitList::CommitRole).value<git::Commit>()
+              .isValid());
+
+  // It's saved in the repository.
+  QCOMPARE(repo.appConfig().value<QString>("solo.refs"),
+           other.qualifiedName());
+
+  // Soloing HEAD's branch too shows them again.
+  commits->setSoloed(repo.head().qualifiedName(), true);
+  QCOMPARE(commits->soloText(), QString("2 branches"));
+  QTRY_COMPARE(model->rowCount(), 2);
+
+  commits->unsoloAll();
+  QVERIFY(commits->solo().isEmpty());
+  QTRY_COMPARE(model->rowCount(), 2);
+
+  // Deleting a soloed branch stops soloing it.
+  commits->setSoloed(other.qualifiedName(), true);
+  other.remove();
+  QTRY_VERIFY(commits->solo().isEmpty());
   QVERIFY2(sMessages.isEmpty(), qPrintable(sMessages.join('\n')));
 }
 

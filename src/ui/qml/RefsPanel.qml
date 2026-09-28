@@ -73,9 +73,15 @@ Rectangle {
                 required property int count
                 required property bool expanded
                 required property bool expandable
+                required property bool soloed
 
                 readonly property bool isHeader: kind === root.kindHeader
+                readonly property bool isBranch: kind === root.kindBranch
+                                                 || kind === root.kindRemoteBranch
                 readonly property bool hovered: mouse.containsMouse || addMouse.containsMouse
+                                                || soloMouse.containsMouse
+                // Branches that are hidden in the graph while others are soloed.
+                readonly property bool dimmed: refsPanel.soloActive && isBranch && !soloed
 
                 width: ListView.view.width
                 height: isHeader ? 30 : 26
@@ -123,7 +129,7 @@ Rectangle {
                 HoverTip {
                     target: row
                     text: row.isHeader ? "" : row.toolTip
-                    hovered: mouse.containsMouse && !row.isHeader
+                    hovered: mouse.containsMouse && !row.isHeader && !soloMouse.containsMouse
                 }
 
                 RowLayout {
@@ -131,6 +137,7 @@ Rectangle {
                     anchors.leftMargin: 10 + Math.max(0, row.depth - 1) * 14
                     anchors.rightMargin: 12
                     spacing: 6
+                    opacity: row.dimmed ? 0.45 : 1
 
                     Icon {
                         visible: row.expandable
@@ -164,6 +171,33 @@ Rectangle {
                         font.bold: row.isHeader || row.isHead
                         font.capitalization: row.isHeader ? Font.AllUppercase : Font.MixedCase
                         font.letterSpacing: row.isHeader ? 0.8 : 0
+                    }
+
+                    // Show the branch alone in the graph, like GitKraken.
+                    Icon {
+                        id: soloIcon
+
+                        visible: row.isBranch && (row.soloed || row.hovered)
+                        name: "solo"
+                        size: 14
+                        color: row.soloed ? Theme.accent
+                               : soloMouse.containsMouse ? Theme.text : Theme.textMuted
+
+                        MouseArea {
+                            id: soloMouse
+
+                            anchors.fill: parent
+                            anchors.margins: -4
+                            hoverEnabled: true
+                            onClicked: refsPanel.toggleSolo(row.index)
+                            onExited: host.hideToolTip()
+                        }
+
+                        HoverTip {
+                            target: soloIcon
+                            text: row.soloed ? qsTr("Unsolo") : qsTr("Solo")
+                            hovered: soloMouse.containsMouse
+                        }
                     }
 
                     // Commits ahead and behind of the upstream branch.

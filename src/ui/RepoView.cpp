@@ -252,6 +252,11 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
   connect(mRefs, &RefsPanel::referenceSelected, mCommits,
           &CommitList::selectReference);
   connect(mRefs, &RefsPanel::stashSelected, mCommits, &CommitList::selectRow);
+
+  // The references panel marks the soloed branches.
+  mRefs->setSolo(mCommits->solo());
+  connect(mCommits, &CommitList::soloChanged, mRefs,
+          [this] { mRefs->setSolo(mCommits->solo()); });
   connect(mCommits, &CommitList::statusChanged, this, &RepoView::statusChanged);
   connect(mCommits, &CommitList::loadingChanged, this,
           &RepoView::loadingChanged);
