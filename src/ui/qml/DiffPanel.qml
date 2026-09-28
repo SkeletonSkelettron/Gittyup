@@ -169,25 +169,9 @@ Rectangle {
             contentWidth: Math.max(width, root.gutterWidth
                                           + root.diff.maxLineLength * root.charWidth + 40)
 
-            Controls.ScrollBar.vertical: Controls.ScrollBar {
-                policy: Controls.ScrollBar.AsNeeded
-                contentItem: Rectangle {
-                    implicitWidth: 7
-                    radius: 3.5
-                    color: Theme.textMuted
-                    opacity: parent.pressed ? 0.7 : parent.hovered ? 0.5 : 0.3
-                }
-            }
+            Controls.ScrollBar.vertical: ThinScrollBar {}
 
-            Controls.ScrollBar.horizontal: Controls.ScrollBar {
-                policy: Controls.ScrollBar.AsNeeded
-                contentItem: Rectangle {
-                    implicitHeight: 7
-                    radius: 3.5
-                    color: Theme.textMuted
-                    opacity: parent.pressed ? 0.7 : parent.hovered ? 0.5 : 0.3
-                }
-            }
+            Controls.ScrollBar.horizontal: ThinScrollBar {}
 
             delegate: Item {
                 id: row

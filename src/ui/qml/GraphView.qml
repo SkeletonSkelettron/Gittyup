@@ -15,9 +15,10 @@ Rectangle {
     // then the graph give way when the view is narrow.
     readonly property int messageMinWidth: 220
     readonly property int available: width - 20 - refsWidth
+    // Wide enough for the column title.
     readonly property int graphWidth: commitList.laneCount > 0
-        ? Math.min(commitList.laneCount * laneWidth + 6,
-                   Math.max(laneWidth * 3, available * 0.28)) : 0
+        ? Math.max(64, Math.min(commitList.laneCount * laneWidth + 6,
+                                Math.max(laneWidth * 3, available * 0.28))) : 0
     readonly property int spare: available - graphWidth - messageMinWidth
     readonly property int authorWidth: commitList.showAuthor && spare >= 140 ? 140 : 0
     readonly property int dateWidth: commitList.showDate && spare - authorWidth >= 96 ? 96 : 0
@@ -200,15 +201,7 @@ Rectangle {
                 }
             }
 
-            Controls.ScrollBar.vertical: Controls.ScrollBar {
-                policy: Controls.ScrollBar.AsNeeded
-                contentItem: Rectangle {
-                    implicitWidth: 7
-                    radius: 3.5
-                    color: Theme.textMuted
-                    opacity: parent.pressed ? 0.7 : parent.hovered ? 0.5 : 0.3
-                }
-            }
+            Controls.ScrollBar.vertical: ThinScrollBar {}
 
             delegate: Item {
                 id: row

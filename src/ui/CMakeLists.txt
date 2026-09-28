@@ -34,11 +34,13 @@ add_library(
   StateAction.cpp
   SpellChecker.cpp
   TabBar.cpp
+  TabStrip.cpp
   TabWidget.cpp
   TemplateButton.cpp
   TemplateDialog.cpp
   ToolBar.cpp
   TreeModel.cpp
+  WelcomePage.cpp
   ConfigKeys.cpp
   qml/CommitGraphItem.cpp
   qml/QmlSupport.cpp

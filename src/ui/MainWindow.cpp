@@ -14,6 +14,7 @@
 #include "RepoView.h"
 #include "SearchField.h"
 #include "SideBar.h"
+#include "TabStrip.h"
 #include "TabWidget.h"
 #include "ToolBar.h"
 #include "conf/RecentRepositories.h"
@@ -78,7 +79,11 @@ MainWindow::MainWindow(const git::Repository &repo, QWidget *parent,
   mMenuBar = MenuBar::instance(this);
   mMenuBar->registerActions(this);
 
-  // Create tool bar.
+  // Create the tabs and the tool bar below them.
+  mTabStrip = new TabStrip(this);
+  addToolBar(Qt::TopToolBarArea, mTabStrip);
+  addToolBarBreak(Qt::TopToolBarArea);
+
   mToolBar = new ToolBar(this);
   addToolBar(Qt::TopToolBarArea, mToolBar);
 
@@ -134,6 +139,7 @@ MainWindow::MainWindow(const git::Repository &repo, QWidget *parent,
 
   // Create tab container.
   TabWidget *tabs = new TabWidget(splitter);
+  mTabStrip->setTabWidget(tabs);
   connect(tabs, &TabWidget::currentChanged, [this](int index) {
     updateInterface();
     MenuBar::instance(this)->update();

@@ -22,6 +22,8 @@ namespace git {
 class Submodule;
 }
 
+class TabStrip;
+
 class MainWindow : public QMainWindow {
   Q_OBJECT
 
@@ -73,6 +75,7 @@ private:
   QStringList paths() const;
   QString windowGroup() const;
 
+  TabStrip *mTabStrip;
   ToolBar *mToolBar;
   MenuBar *mMenuBar;
 

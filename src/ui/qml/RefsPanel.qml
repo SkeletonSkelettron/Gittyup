@@ -55,15 +55,7 @@ Rectangle {
             boundsBehavior: Flickable.StopAtBounds
             model: refsPanel.model
 
-            Controls.ScrollBar.vertical: Controls.ScrollBar {
-                policy: Controls.ScrollBar.AsNeeded
-                contentItem: Rectangle {
-                    implicitWidth: 6
-                    radius: 3
-                    color: Theme.textMuted
-                    opacity: parent.pressed ? 0.7 : parent.hovered ? 0.5 : 0.3
-                }
-            }
+            Controls.ScrollBar.vertical: ThinScrollBar { thickness: 6 }
 
             delegate: Item {
                 id: row
