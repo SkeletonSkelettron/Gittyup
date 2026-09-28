@@ -8,6 +8,7 @@
 //
 
 #include "Application.h"
+#include "dialogs/ConfirmDialog.h"
 #include "conf/Settings.h"
 #include "git/Id.h"
 #include "git/Repository.h"
@@ -24,7 +25,6 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QFontDatabase>
-#include <QMessageBox>
 #include <QNetworkAccessManager>
 #include <QNetworkProxyFactory>
 #include <QNetworkReply>
@@ -531,15 +531,18 @@ void Application::handleSslErrors(QNetworkReply *reply,
   QString title = tr("SSL Errors");
   QString text =
       tr("Failed to set up SSL session. Do you want to ignore these errors?");
-  auto buttons = QMessageBox::Abort | QMessageBox::Ignore;
-  QMessageBox msg(QMessageBox::Warning, title, text, buttons);
+  ConfirmDialog dialog;
+  dialog.setTitle(title);
+  dialog.setText(text);
+  dialog.setWarning(true);
+  dialog.setAcceptText(tr("Ignore"));
 
-  QString message;
+  QStringList message;
   for (const QSslError &error : errors)
-    message.append(QString("<p>%1</p>").arg(error.errorString()));
-  msg.setInformativeText(message);
+    message.append(error.errorString());
+  dialog.setDetailedText(message.join('\n'));
 
-  if (msg.exec()) {
+  if (dialog.exec() == QDialog::Accepted) {
     reply->ignoreSslErrors(errors);
     settings.setValue("ssl/ignore", true);
   }

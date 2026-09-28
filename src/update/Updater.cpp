@@ -23,7 +23,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QMessageBox>
+#include "dialogs/ConfirmDialog.h"
 #include <QNetworkReply>
 #include <QProcess>
 #include <QTemporaryFile>
@@ -97,9 +97,7 @@ Updater::Updater(QObject *parent) : QObject(parent) {
 
   connect(this, &Updater::updateError,
           [](const QString &text, const QString &detail) {
-            QMessageBox mb(QMessageBox::Critical, tr("Update Failed"), text);
-            mb.setInformativeText(detail);
-            mb.exec();
+            ConfirmDialog::warning(nullptr, tr("Update Failed"), text, detail);
           });
 }
 

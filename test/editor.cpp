@@ -16,7 +16,7 @@
 #include <QDialogButtonBox>
 #include <QLabel>
 #include <QLineEdit>
-#include <QMessageBox>
+#include "dialogs/ConfirmDialog.h"
 #include <QPushButton>
 
 using namespace QTest;
@@ -78,17 +78,13 @@ void TestEditor::find() {
 void TestEditor::cleanupTestCase() {
   // Set up timer to dismiss the dialog.
   QTimer::singleShot(0, [] {
-    QMessageBox *dialog =
-        qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+    ConfirmDialog *dialog =
+        qobject_cast<ConfirmDialog *>(QApplication::activeModalWidget());
     QVERIFY(dialog && qWaitForWindowActive(dialog));
 
-    QDialogButtonBox *buttons = dialog->findChild<QDialogButtonBox *>();
-    QVERIFY(buttons);
-
-    QPushButton *discard = buttons->button(QDialogButtonBox::Discard);
-    QVERIFY(discard);
-
-    mouseClick(discard, Qt::LeftButton);
+    // Don't save.
+    QCOMPARE(dialog->buttons().size(), 1);
+    dialog->clickButton(0);
     QVERIFY(!dialog->isVisible());
   });
 

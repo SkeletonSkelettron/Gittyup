@@ -8,11 +8,11 @@
 //
 
 #include "EditorWindow.h"
+#include "dialogs/ConfirmDialog.h"
 #include "BlameEditor.h"
 #include "MenuBar.h"
 #include "editor/TextEditor.h"
 #include "git/Reference.h"
-#include <QMessageBox>
 
 EditorWindow::EditorWindow(const git::Repository &repo, QWidget *parent)
     : QMainWindow(parent) {
@@ -87,20 +87,22 @@ void EditorWindow::closeEvent(QCloseEvent *event) {
   if (editor->editor()->modify()) {
     QString text =
         tr("'%1' has been modified. Do you want to save your changes?");
-    QMessageBox::StandardButton button = QMessageBox::warning(
-        this, tr("Save Changes?"), text.arg(editor->name()),
-        QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
-    switch (button) {
-      case QMessageBox::Cancel:
-        event->ignore();
-        return;
-      case QMessageBox::Save:
-        editor->save();
-        break;
-      default:
-        // no-op
-        break;
+    ConfirmDialog dialog(this);
+    dialog.setTitle(tr("Save Changes?"));
+    dialog.setText(text.arg(editor->name()));
+    dialog.setWarning(true);
+    dialog.setAcceptText(tr("Save"));
+    dialog.addButton(tr("Don't Save"));
+
+    int result = dialog.exec();
+    if (result == QDialog::Rejected) {
+      event->ignore();
+      return;
     }
+
+    // The alternative button discards the changes.
+    if (result == QDialog::Accepted)
+      editor->save();
   }
 
   editor->cancelBlame();
