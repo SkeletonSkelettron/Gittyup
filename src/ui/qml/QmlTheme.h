@@ -13,7 +13,7 @@
 #include <QVariantMap>
 
 // Exposes the current theme's colors to QML as the "Theme" singleton of the
-// "Gittyup" module. Themes are only applied at startup, so every property is
+// "Gittyup" module. Themes are only applied at startup, so the colors are
 // constant.
 class QmlTheme : public QObject {
   Q_OBJECT
@@ -54,6 +54,9 @@ class QmlTheme : public QObject {
   Q_PROPERTY(QColor diffOurs READ diffOurs CONSTANT)
   Q_PROPERTY(QColor diffTheirs READ diffTheirs CONSTANT)
   Q_PROPERTY(QString monoFont READ monoFont CONSTANT)
+  // The font of code in diffs and files, from the editor settings.
+  Q_PROPERTY(QString codeFont READ codeFont NOTIFY codeFontChanged)
+  Q_PROPERTY(int codeFontSize READ codeFontSize NOTIFY codeFontChanged)
 
   Q_PROPERTY(QColor tooltip READ tooltip CONSTANT)
   Q_PROPERTY(QColor tooltipText READ tooltipText CONSTANT)
@@ -97,6 +100,8 @@ public:
   QColor diffOurs() const { return color("diff_ours"); }
   QColor diffTheirs() const { return color("diff_theirs"); }
   QString monoFont() const { return mMonoFont; }
+  QString codeFont() const { return mCodeFont; }
+  int codeFontSize() const { return mCodeFontSize; }
 
   QColor tooltip() const { return color("tooltip"); }
   QColor tooltipText() const { return color("tooltip_text"); }
@@ -104,13 +109,20 @@ public:
   // Look up a color by its theme['ui'] key.
   QColor color(const QString &key) const;
 
+signals:
+  void codeFontChanged();
+
 private:
   QmlTheme();
+
+  void updateCodeFont();
 
   bool mDark = false;
   bool mProvisional = false;
   QVariantMap mColors;
   QString mMonoFont;
+  QString mCodeFont;
+  int mCodeFontSize = 10;
 };
 
 #endif

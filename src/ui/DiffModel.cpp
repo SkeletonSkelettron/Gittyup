@@ -13,6 +13,7 @@
 #include "app/Application.h"
 #include "app/Theme.h"
 #include "conf/Constants.h"
+#include "conf/Settings.h"
 #include "git/Blob.h"
 #include "git/Commit.h"
 #include "git/Index.h"
@@ -34,7 +35,6 @@ namespace {
 
 // Diffs with more lines are only loaded on request.
 const int kMaxLines = 20000;
-const int kTabWidth = 4;
 
 QByteArray chomp(const QByteArray &line) {
   QByteArray result = line;
@@ -50,6 +50,13 @@ DiffModel::DiffModel(RepoView *view, QObject *parent)
   git::RepositoryNotifier *notifier = view->repo().notifier();
   connect(notifier, &git::RepositoryNotifier::indexChanged, this,
           &DiffModel::updateIndex);
+
+  // Draw the lines with the new tab width or whitespace setting.
+  connect(Settings::instance(), &Settings::settingsChanged, this, [this] {
+    if (!mRows.isEmpty())
+      emit dataChanged(index(0), index(mRows.size() - 1),
+                       {HtmlRole, MatchesRole});
+  });
 }
 
 void DiffModel::setDiff(const git::Diff &diff, const QString &path) {
@@ -169,6 +176,7 @@ void DiffModel::load() {
       loadStaged();
 
       int maxLine = 0;
+      int tabWidth = SyntaxHighlighter::tabWidth();
       for (int h = 0; h < mPatch.count(); ++h) {
         QList<DiffLines::Line> lines = DiffLines::lines(mPatch, h, mStaged);
         mRows.append({HunkRow, h, -1});
@@ -178,7 +186,7 @@ void DiffModel::load() {
 
           // Approximate the width, tabs are expanded when drawn.
           const QByteArray &content = lines.at(l).content;
-          int length = content.size() + content.count('\t') * (kTabWidth - 1);
+          int length = content.size() + content.count('\t') * (tabWidth - 1);
           mMaxLineLength = qMax(mMaxLineLength, length);
         }
 

@@ -6,30 +6,35 @@
 //
 
 #include "SyntaxHighlighter.h"
+#include "conf/Settings.h"
 #include "editor/TextEditor.h"
+#include "qml/QmlTheme.h"
 
 namespace {
-
-const int kTabWidth = 4;
 
 QColor fromScintilla(sptr_t colour) {
   return QColor(colour & 0xff, (colour >> 8) & 0xff, (colour >> 16) & 0xff);
 }
 
 // Append 'text' to 'html', escaped, with tabs expanded and spaces kept.
-void appendText(QString &html, const QString &text, int &column) {
+// Visible whitespace is drawn with 'whitespace', a span for a character.
+void appendText(QString &html, const QString &text, int &column,
+                int tabWidth, const QString &whitespace) {
   for (QChar ch : text) {
     if (ch == '\t') {
-      int spaces = kTabWidth - (column % kTabWidth);
+      int spaces = tabWidth - (column % tabWidth);
       for (int i = 0; i < spaces; ++i)
-        html += "&nbsp;";
+        html += (i == 0 && !whitespace.isEmpty())
+                    ? whitespace.arg(QChar(0x2192))
+                    : QString("&nbsp;");
       column += spaces;
       continue;
     }
 
     switch (ch.unicode()) {
       case ' ':
-        html += "&nbsp;";
+        html += whitespace.isEmpty() ? QString("&nbsp;")
+                                     : whitespace.arg(QChar(0x00b7));
         break;
       case '<':
         html += "&lt;";
@@ -103,6 +108,12 @@ QString SyntaxHighlighter::html(
     return pos < marked.size() && marked.at(pos);
   };
 
+  int tabWidth = SyntaxHighlighter::tabWidth();
+  QString whitespace;
+  if (Settings::instance()->value(Setting::Id::ShowWhitespaceInEditor).toBool())
+    whitespace = QString("<span style='color:%1'>%2</span>")
+                     .arg(QmlTheme::instance()->textDisabled().name(), "%1");
+
   // Emit runs of bytes with the same style and mark.
   QString html;
   int column = 0;
@@ -130,7 +141,8 @@ QString SyntaxHighlighter::html(
 
     if (!css.isEmpty())
       html += QString("<span style='%1'>").arg(css);
-    appendText(html, decode(line.mid(pos, end - pos)), column);
+    appendText(html, decode(line.mid(pos, end - pos)), column, tabWidth,
+               whitespace);
     if (!css.isEmpty())
       html += "</span>";
 
@@ -140,14 +152,20 @@ QString SyntaxHighlighter::html(
   return html;
 }
 
+int SyntaxHighlighter::tabWidth() {
+  int width = Settings::instance()->value(Setting::Id::TabWidth).toInt();
+  return width > 0 ? width : 4;
+}
+
 QString SyntaxHighlighter::expandTabs(const QString &text) {
   if (!text.contains('\t'))
     return text;
 
+  int tabWidth = SyntaxHighlighter::tabWidth();
   QString result;
   for (QChar ch : text) {
     if (ch == '\t') {
-      result += QString(kTabWidth - (result.size() % kTabWidth), ' ');
+      result += QString(tabWidth - (result.size() % tabWidth), ' ');
       continue;
     }
 

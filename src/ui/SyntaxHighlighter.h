@@ -48,6 +48,9 @@ public:
   // 'text' as html() shows it, with tabs expanded.
   static QString expandTabs(const QString &text);
 
+  // The width of tabs from the editor settings.
+  static int tabWidth();
+
   // The hidden editor, for example to run plugins on text.
   TextEditor *editor() const { return mEditor; }
 

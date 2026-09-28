@@ -8,6 +8,7 @@
 #include "QmlTheme.h"
 #include "app/Application.h"
 #include "app/Theme.h"
+#include "conf/Settings.h"
 #include <QFontDatabase>
 #include <QPalette>
 
@@ -121,6 +122,26 @@ QmlTheme::QmlTheme() : mProvisional(!Application::theme()) {
   }
 
   mMonoFont = QFontDatabase::systemFont(QFontDatabase::FixedFont).family();
+  updateCodeFont();
+  connect(Settings::instance(), &Settings::settingsChanged, this,
+          &QmlTheme::updateCodeFont);
+}
+
+void QmlTheme::updateCodeFont() {
+  Settings *settings = Settings::instance();
+  QString family = settings->value(Setting::Id::FontFamily).toString();
+  int size = settings->value(Setting::Id::FontSize).toInt();
+  if (family.isEmpty())
+    family = mMonoFont;
+  if (size <= 0)
+    size = 10;
+
+  if (family == mCodeFont && size == mCodeFontSize)
+    return;
+
+  mCodeFont = family;
+  mCodeFontSize = size;
+  emit codeFontChanged();
 }
 
 QColor QmlTheme::color(const QString &key) const {

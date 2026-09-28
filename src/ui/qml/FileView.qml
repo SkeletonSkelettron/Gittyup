@@ -11,8 +11,9 @@ Rectangle {
 
     readonly property var content: detailView.content
 
-    readonly property int lineHeight: 20
-    readonly property real charWidth: metrics.averageCharacterWidth
+    // Fit the code font of the editor settings.
+    readonly property int lineHeight: Math.max(20, Math.ceil(metrics.height) + 4)
+    readonly property real charWidth: metrics.advanceWidth("0")
     readonly property int numberWidth: charWidth * content.lineNumberWidth + 16
     readonly property bool showBlame: content.hasBlame || content.blameLoading
     readonly property int blameWidth: showBlame ? 300 : 0
@@ -30,8 +31,8 @@ Rectangle {
     FontMetrics {
         id: metrics
 
-        font.family: Theme.monoFont
-        font.pixelSize: 12
+        font.family: Theme.codeFont
+        font.pointSize: Theme.codeFontSize
     }
 
     // Scroll to the current match of the find bar. The gutter covers the
@@ -219,8 +220,8 @@ Rectangle {
                         textFormat: Text.RichText
                         text: row.html
                         color: Theme.text
-                        font.family: Theme.monoFont
-                        font.pixelSize: 12
+                        font.family: Theme.codeFont
+                        font.pointSize: Theme.codeFontSize
                     }
                 }
 
@@ -326,8 +327,8 @@ Rectangle {
                         verticalAlignment: Text.AlignVCenter
                         text: row.number
                         color: Theme.textMuted
-                        font.family: Theme.monoFont
-                        font.pixelSize: 11
+                        font.family: Theme.codeFont
+                        font.pointSize: Math.max(7, Theme.codeFontSize - 1)
                     }
 
                     Rectangle {

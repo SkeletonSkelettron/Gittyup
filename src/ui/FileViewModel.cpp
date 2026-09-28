@@ -27,7 +27,6 @@ namespace {
 
 // Larger files aren't shown.
 const qint64 kMaxSize = 4 * 1024 * 1024;
-const int kTabWidth = 4;
 
 QString relativeDate(const QDateTime &dateTime) {
   qint64 secs = dateTime.secsTo(QDateTime::currentDateTime());
@@ -79,6 +78,13 @@ FileViewModel::FileViewModel(RepoView *view, QObject *parent)
       blame = blame.updated(mContent);
 
     setBlame(blame);
+  });
+
+  // Draw the lines with the new tab width or whitespace setting.
+  connect(Settings::instance(), &Settings::settingsChanged, this, [this] {
+    if (!mLines.isEmpty())
+      emit dataChanged(index(0), index(mLines.size() - 1),
+                       {HtmlRole, MatchesRole});
   });
 }
 
@@ -141,12 +147,13 @@ void FileViewModel::load(const QString &path, const git::Commit &commit) {
   } else {
     // Split into lines without their line endings.
     QByteArray text;
+    int tabWidth = SyntaxHighlighter::tabWidth();
     for (QByteArray line : content.split('\n')) {
       if (line.endsWith('\r'))
         line.chop(1);
       mLines.append(line);
 
-      int length = line.size() + line.count('\t') * (kTabWidth - 1);
+      int length = line.size() + line.count('\t') * (tabWidth - 1);
       mMaxLineLength = qMax(mMaxLineLength, length);
     }
 

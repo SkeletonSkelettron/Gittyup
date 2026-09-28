@@ -15,10 +15,11 @@ Rectangle {
     readonly property int partiallyStaged: 1
     readonly property int staged: 2
 
-    readonly property int lineHeight: 20
+    // Fit the code font of the editor settings.
+    readonly property int lineHeight: Math.max(20, Math.ceil(metrics.height) + 4)
     readonly property int numberWidth: charWidth * diff.lineNumberWidth + 12
     readonly property int gutterWidth: numberWidth * 2 + (diff.editable ? 22 : 0) + 34
-    readonly property real charWidth: metrics.averageCharacterWidth
+    readonly property real charWidth: metrics.advanceWidth("0")
 
     // Row of the last line that was clicked, to stage ranges with Shift.
     property int anchorRow: -1
@@ -31,8 +32,8 @@ Rectangle {
     FontMetrics {
         id: metrics
 
-        font.family: Theme.monoFont
-        font.pixelSize: 12
+        font.family: Theme.codeFont
+        font.pointSize: Theme.codeFontSize
     }
 
     // Scroll to the current match of the find bar.
@@ -382,8 +383,8 @@ Rectangle {
                         text: row.header
                         elide: Text.ElideRight
                         color: Theme.textMuted
-                        font.family: Theme.monoFont
-                        font.pixelSize: 11
+                        font.family: Theme.codeFont
+                        font.pointSize: Math.max(7, Theme.codeFontSize - 1)
                     }
 
                     Row {
@@ -467,8 +468,8 @@ Rectangle {
                             verticalAlignment: Text.AlignVCenter
                             text: row.oldLine > 0 ? row.oldLine : ""
                             color: Theme.textMuted
-                            font.family: Theme.monoFont
-                            font.pixelSize: 11
+                            font.family: Theme.codeFont
+                            font.pointSize: Math.max(7, Theme.codeFontSize - 1)
                         }
 
                         Text {
@@ -479,8 +480,8 @@ Rectangle {
                             verticalAlignment: Text.AlignVCenter
                             text: row.newLine > 0 ? row.newLine : ""
                             color: Theme.textMuted
-                            font.family: Theme.monoFont
-                            font.pixelSize: 11
+                            font.family: Theme.codeFont
+                            font.pointSize: Math.max(7, Theme.codeFontSize - 1)
                         }
 
                         // Stage state of the line.
@@ -575,8 +576,8 @@ Rectangle {
                             verticalAlignment: Text.AlignVCenter
                             text: row.origin === "+" || row.origin === "-" ? row.origin : ""
                             color: row.origin === "+" ? Theme.added : Theme.deleted
-                            font.family: Theme.monoFont
-                            font.pixelSize: 12
+                            font.family: Theme.codeFont
+                            font.pointSize: Theme.codeFontSize
                             font.bold: true
                         }
 
@@ -597,8 +598,8 @@ Rectangle {
                                 textFormat: Text.RichText
                                 text: row.html
                                 color: Theme.text
-                                font.family: Theme.monoFont
-                                font.pixelSize: 12
+                                font.family: Theme.codeFont
+                                font.pointSize: Theme.codeFontSize
                                 font.strikeout: !row.chosen
                             }
                         }
