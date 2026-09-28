@@ -188,9 +188,32 @@ bool drawsPopups(QQuickWidget *view) {
   return view->property("drawsPopups").toBool();
 }
 
+// The view that draws popups at 'pos' on the screen, preferring the active
+// window. Windows can be partly outside of the screens.
+static QQuickWidget *popupViewAt(const QPoint &pos) {
+  QQuickWidget *found = nullptr;
+  for (QWidget *window : QApplication::topLevelWidgets()) {
+    if (!window->isVisible())
+      continue;
+
+    for (QQuickWidget *view : window->findChildren<QQuickWidget *>()) {
+      QRect rect(view->mapToGlobal(QPoint()), view->size());
+      if (!view->isVisible() || !drawsPopups(view) || !rect.contains(pos))
+        continue;
+
+      if (window->isActiveWindow())
+        return view;
+      if (!found)
+        found = view;
+    }
+  }
+
+  return found;
+}
+
 QAction *execMenu(QMenu *menu, const QPoint &pos) {
-  QQuickWidget *view = qobject_cast<QQuickWidget *>(QApplication::widgetAt(pos));
-  if (!view || !view->rootObject() || !drawsPopups(view)) {
+  QQuickWidget *view = popupViewAt(pos);
+  if (!view || !view->rootObject()) {
     QToolTip::hideText();
     return menu->exec(pos);
   }

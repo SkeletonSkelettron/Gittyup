@@ -149,5 +149,14 @@ Controls.Menu {
                 root.addItem(entry)
             }
         }
+
+        // As wide as the widest entry.
+        let widest = 0
+        for (let i = 0; i < root.count; ++i) {
+            const item = root.itemAt(i)
+            if (item)
+                widest = Math.max(widest, item.implicitWidth)
+        }
+        root.width = Math.max(200, Math.min(520, widest + root.leftPadding + root.rightPadding))
     }
 }
