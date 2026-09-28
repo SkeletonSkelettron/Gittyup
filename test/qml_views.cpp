@@ -32,6 +32,7 @@
 #include "ui/IgnoreDialog.h"
 #include "ui/MainWindow.h"
 #include "ui/RepoView.h"
+#include "ui/TabStrip.h"
 #include "ui/TabWidget.h"
 #include "ui/TemplateDialog.h"
 #include "update/UpdateDialog.h"
@@ -68,6 +69,7 @@ private slots:
   void mainWindow();
   void dialogs();
   void settings();
+  void dragTab();
   void cleanupTestCase();
 
 private:
@@ -169,6 +171,37 @@ void TestQmlViews::settings() {
   for (int i = ConfigDialog::General; i <= ConfigDialog::Lfs; ++i)
     config->setSection(i);
   check(config, "ConfigDialog");
+}
+
+void TestQmlViews::dragTab() {
+  // A second tab.
+  ScratchRepository other;
+  QVERIFY(mWindow->addTab(other));
+  QCOMPARE(mWindow->count(), 2);
+  mWindow->resize(1000, 700);
+  qWait(100);
+
+  QString first = mWindow->tabWidget()->tabText(0);
+  QString second = mWindow->tabWidget()->tabText(1);
+
+  TabStrip *strip = mWindow->findChild<TabStrip *>();
+  QVERIFY(strip);
+  QQuickWidget *view = strip->findChild<QQuickWidget *>();
+  QVERIFY(view);
+
+  // Drag the first tab past the second one.
+  QPoint start(40, 20);
+  mousePress(view, Qt::LeftButton, Qt::NoModifier, start);
+  for (int x = 10; x <= 240; x += 10)
+    mouseMove(view, start + QPoint(x, 0));
+  mouseRelease(view, Qt::LeftButton, Qt::NoModifier, start + QPoint(240, 0));
+  qWait(100);
+
+  QCOMPARE(mWindow->tabWidget()->tabText(0), second);
+  QCOMPARE(mWindow->tabWidget()->tabText(1), first);
+
+  mWindow->tabWidget()->widget(1)->close();
+  qWait(100);
 }
 
 void TestQmlViews::cleanupTestCase() {

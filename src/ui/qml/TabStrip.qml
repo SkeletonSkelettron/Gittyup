@@ -31,14 +31,22 @@ Rectangle {
         property bool current: false
         // Hide the separator before the current tab and the one after it.
         property bool separator: true
+        // The position of a tab that can be dragged to another position.
+        property int tabIndex: -1
+
+        property real dragOffset: 0
+        readonly property bool dragging: dragOffset !== 0
 
         signal activated()
         signal closed()
         signal menuRequested(real x, real y)
+        signal moveRequested(int to)
 
         width: root.tabWidth
         height: parent.height
         clip: true
+        z: dragging ? 1 : 0
+        transform: Translate { x: tab.dragOffset }
 
         Rectangle {
             anchors.fill: parent
@@ -75,10 +83,42 @@ Rectangle {
         MouseArea {
             id: mouse
 
+            // The x of the press in the parent of the tab.
+            property real pressX
+            property bool moved: false
+
             anchors.fill: parent
             hoverEnabled: true
             acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
+            onPressed: (event) => {
+                pressX = mapToItem(tab.parent, event.x, 0).x
+                moved = false
+            }
+            onPositionChanged: (event) => {
+                if (!pressed || tab.tabIndex < 0 || !(pressedButtons & Qt.LeftButton))
+                    return
+                const offset = mapToItem(tab.parent, event.x, 0).x - pressX
+                if (!moved && Math.abs(offset) < 6)
+                    return
+                moved = true
+                const count = tabStrip.tabs.length
+                // Keep the tab in the strip.
+                const min = -tab.tabIndex * root.tabWidth
+                const max = (count - 1 - tab.tabIndex) * root.tabWidth
+                tab.dragOffset = Math.max(min, Math.min(max, offset))
+            }
+            onReleased: {
+                if (moved) {
+                    const to = tab.tabIndex + Math.round(tab.dragOffset / root.tabWidth)
+                    tab.dragOffset = 0
+                    if (to !== tab.tabIndex)
+                        tab.moveRequested(to)
+                }
+            }
+            onCanceled: tab.dragOffset = 0
             onClicked: (event) => {
+                if (moved)
+                    return
                 if (event.button === Qt.MiddleButton) {
                     tab.closed()
                 } else if (event.button === Qt.RightButton) {
@@ -173,11 +213,13 @@ Rectangle {
 
                 name: modelData.name
                 tip: modelData.path
+                tabIndex: index
                 current: !tabStrip.welcome && index === tabStrip.current
                 separator: tabStrip.welcome || index + 1 !== tabStrip.current
                 onActivated: tabStrip.selectTab(index)
                 onClosed: tabStrip.closeTab(index)
                 onMenuRequested: (x, y) => tabStrip.showMenu(index, x, y)
+                onMoveRequested: (to) => tabStrip.moveTab(index, to)
             }
         }
 
