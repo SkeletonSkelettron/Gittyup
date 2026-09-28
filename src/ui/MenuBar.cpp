@@ -44,7 +44,6 @@
 #include <QDesktopServices>
 #include <QFileDialog>
 #include <QLineEdit>
-#include <QMessageBox>
 #include <QTextEdit>
 
 namespace {

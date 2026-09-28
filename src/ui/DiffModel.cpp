@@ -6,6 +6,7 @@
 //
 
 #include "DiffModel.h"
+#include "dialogs/ConfirmDialog.h"
 #include "RepoView.h"
 #include "app/Application.h"
 #include "app/Theme.h"
@@ -17,7 +18,6 @@
 #include "git/Tree.h"
 #include "git2/diff.h"
 #include <QDir>
-#include <QMessageBox>
 #include <QPushButton>
 #include <QSaveFile>
 #include <QTextStream>
@@ -458,16 +458,16 @@ void DiffModel::discardHunk(int hunk) {
       mPatch.isUntracked()
           ? tr("Are you sure you want to remove '%1'?").arg(mPath)
           : tr("Are you sure you want to discard this hunk of '%1'?").arg(mPath);
-  QMessageBox *dialog =
-      new QMessageBox(QMessageBox::Warning, tr("Discard Hunk?"), text,
-                      QMessageBox::Cancel, mView);
+  ConfirmDialog *dialog = new ConfirmDialog(mView);
   dialog->setAttribute(Qt::WA_DeleteOnClose);
+  dialog->setTitle(tr("Discard Hunk?"));
+  dialog->setText(text);
   dialog->setInformativeText(tr("This action cannot be undone."));
+  dialog->setAcceptText(tr("Discard Hunk"));
+  dialog->setDanger(true);
 
-  QPushButton *discard =
-      dialog->addButton(tr("Discard Hunk"), QMessageBox::AcceptRole);
   QList<bool> lines(mHunks.at(hunk).size(), true);
-  connect(discard, &QPushButton::clicked, this,
+  connect(dialog, &QDialog::accepted, this,
           [this, hunk, lines] { this->discard(hunk, lines); });
 
   dialog->open();
@@ -484,17 +484,17 @@ void DiffModel::discardLines(int first, int last) {
       lines[mRows.at(row).line] = true;
   }
 
-  QMessageBox *dialog = new QMessageBox(
-      QMessageBox::Warning, tr("Discard Lines?"),
-      tr("Are you sure you want to discard the selected lines of '%1'?")
-          .arg(mPath),
-      QMessageBox::Cancel, mView);
+  ConfirmDialog *dialog = new ConfirmDialog(mView);
   dialog->setAttribute(Qt::WA_DeleteOnClose);
+  dialog->setTitle(tr("Discard Lines?"));
+  dialog->setText(
+      tr("Are you sure you want to discard the selected lines of '%1'?")
+          .arg(mPath));
   dialog->setInformativeText(tr("This action cannot be undone."));
+  dialog->setAcceptText(tr("Discard Lines"));
+  dialog->setDanger(true);
 
-  QPushButton *discard =
-      dialog->addButton(tr("Discard Lines"), QMessageBox::AcceptRole);
-  connect(discard, &QPushButton::clicked, this,
+  connect(dialog, &QDialog::accepted, this,
           [this, hunk, lines] { this->discard(hunk, lines); });
 
   dialog->open();

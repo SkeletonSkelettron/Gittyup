@@ -8,6 +8,7 @@
 //
 
 #include "SideBar.h"
+#include "dialogs/ConfirmDialog.h"
 #include "MainWindow.h"
 #include "RepoView.h"
 #include "TabWidget.h"
@@ -21,7 +22,6 @@
 #include <QAbstractItemModel>
 #include <QFileDialog>
 #include <QMenu>
-#include <QMessageBox>
 #include <QPushButton>
 #include <QQuickWidget>
 #include <QSettings>
@@ -841,16 +841,15 @@ void SideBar::remove(const QModelIndex &index) {
                      "association for %1?</p><p>The local clone itself will "
                      "not be affected.</p>");
 
-    QMessageBox *dialog = new QMessageBox(
-        QMessageBox::Warning, tr("Remove Repository Association?"),
-        fmt.arg(repo->fullName()), QMessageBox::Cancel, this);
+    ConfirmDialog *dialog = new ConfirmDialog(this);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->setTitle(tr("Remove Repository Association?"));
+    dialog->setText(fmt.arg(repo->fullName()));
+    dialog->setAcceptText(tr("Remove"));
+    dialog->setDanger(true);
 
-    QPushButton *remove =
-        dialog->addButton(tr("Remove"), QMessageBox::AcceptRole);
-    remove->setFocus();
     int row = index.row();
-    connect(remove, &QPushButton::clicked, [row, repo] {
+    connect(dialog, &QDialog::accepted, [row, repo] {
       repo->account()->setRepositoryPath(row, QString());
     });
 
@@ -937,16 +936,14 @@ void SideBar::promptToRemoveAccount(Account *account) {
          "<p>Only the account association will be removed. Remote "
          "configurations and local clones will not be affected.</p>");
 
-  QMessageBox *dialog = new QMessageBox(
-      QMessageBox::Warning, tr("Remove Account?"),
-      fmt.arg(Account::name(account->kind()), account->username()),
-      QMessageBox::Cancel, this);
+  ConfirmDialog *dialog = new ConfirmDialog(this);
   dialog->setAttribute(Qt::WA_DeleteOnClose);
+  dialog->setTitle(tr("Remove Account?"));
+  dialog->setText(fmt.arg(Account::name(account->kind()), account->username()));
+  dialog->setAcceptText(tr("Remove"));
+  dialog->setDanger(true);
 
-  QPushButton *remove =
-      dialog->addButton(tr("Remove"), QMessageBox::AcceptRole);
-  remove->setFocus();
-  connect(remove, &QPushButton::clicked,
+  connect(dialog, &QDialog::accepted,
           [account] { Accounts::instance()->removeAccount(account); });
 
   dialog->open();

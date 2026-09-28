@@ -8,6 +8,7 @@
 //
 
 #include "MainWindow.h"
+#include "dialogs/ConfirmDialog.h"
 #include "AdvancedSearchWidget.h"
 #include "IndexCompleter.h"
 #include "MenuBar.h"
@@ -28,7 +29,6 @@
 #include <QGuiApplication>
 #include <QScreen>
 #include <QCryptographicHash>
-#include <QMessageBox>
 #include <QMimeData>
 #include <QSettings>
 #include <QTimeLine>
@@ -487,7 +487,7 @@ void MainWindow::dropEvent(QDropEvent *event) {
 void MainWindow::warnInvalidRepo(const QString &path) {
   QString title = tr("Invalid Git Repository");
   QString text = tr("%1 does not contain a valid git repository.");
-  QMessageBox::warning(nullptr, title, text.arg(path));
+  ConfirmDialog::warning(activeWindow(), title, text.arg(path));
 }
 
 void MainWindow::updateTabNames() {
