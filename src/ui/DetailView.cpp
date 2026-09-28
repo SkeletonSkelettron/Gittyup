@@ -35,6 +35,7 @@
 #include <QCryptographicHash>
 #include <QFileInfo>
 #include <QMenu>
+#include <QRegularExpression>
 #include <QtConcurrent>
 
 namespace {
@@ -49,6 +50,32 @@ QString initialsOf(const QString &name) {
   if (parts.size() > 1)
     initials += parts.last().left(1);
   return initials.toUpper();
+}
+
+// Join the lines of paragraphs that were wrapped for a terminal, so that the
+// text wraps to the width of the panel. Lists, indented lines and trailers
+// like 'Signed-off-by:' keep their lines.
+QString reflow(const QString &text) {
+  static const QRegularExpression kSeparate(
+      "^(\\s|[-*+]\\s|\\d+[.)]\\s|[A-Za-z][A-Za-z-]*:\\s)");
+
+  QStringList lines = text.split('\n');
+  QString result;
+  for (int i = 0; i < lines.size(); ++i) {
+    const QString &line = lines.at(i);
+    if (i > 0) {
+      const QString &previous = lines.at(i - 1);
+      bool join = !previous.trimmed().isEmpty() &&
+                  !line.trimmed().isEmpty() &&
+                  !previous.at(0).isSpace() &&
+                  !kSeparate.match(line).hasMatch();
+      result += join ? QChar(' ') : QChar('\n');
+    }
+
+    result += line;
+  }
+
+  return result;
 }
 
 } // namespace
@@ -405,7 +432,7 @@ void DetailView::setCommits(const QList<git::Commit> &commits) {
   git::Signature author = commit.author();
   git::Signature committer = commit.committer();
   mSummary = commit.summary(git::Commit::SubstituteEmoji);
-  mBody = commit.body(git::Commit::SubstituteEmoji).trimmed();
+  mBody = reflow(commit.body(git::Commit::SubstituteEmoji).trimmed());
   mAuthorName = author.name();
   mAuthorEmail = author.email();
   mInitials = initialsOf(author.name());
