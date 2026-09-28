@@ -8,7 +8,23 @@ DialogPage {
     title: dialog.title
     acceptText: dialog.acceptText
     danger: dialog.danger
+    rejectVisible: dialog.cancelVisible
     contentWidth: 400
+
+    // Alternative actions.
+    extraButtons: Repeater {
+        model: dialog.buttons
+
+        delegate: PushButton {
+            required property int index
+            required property string modelData
+
+            implicitHeight: 32
+            minimumWidth: 88
+            text: modelData
+            onClicked: dialog.clickButton(index)
+        }
+    }
 
     RowLayout {
         Layout.fillWidth: true
@@ -21,11 +37,12 @@ DialogPage {
             radius: 18
             color: Qt.rgba(accent.r, accent.g, accent.b, 0.16)
 
-            readonly property color accent: dialog.danger ? Theme.deleted : Theme.accent
+            readonly property color accent: dialog.danger ? Theme.deleted
+                                            : dialog.warning ? Theme.modified : Theme.accent
 
             Icon {
                 anchors.centerIn: parent
-                name: dialog.danger ? "warning" : "info"
+                name: dialog.danger || dialog.warning ? "warning" : "info"
                 size: 18
                 color: parent.accent
             }

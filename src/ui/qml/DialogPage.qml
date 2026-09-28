@@ -13,6 +13,7 @@ Rectangle {
     property string rejectText: qsTr("Cancel")
     property bool acceptEnabled: true
     property bool acceptVisible: true
+    property bool rejectVisible: true
     // The accept button destroys or discards something.
     property bool danger: false
     // The width of the content. Text wraps within it.
@@ -99,6 +100,7 @@ Rectangle {
             Item { Layout.fillWidth: true }
 
             PushButton {
+                visible: root.rejectVisible
                 implicitHeight: 32
                 minimumWidth: 88
                 text: root.rejectText

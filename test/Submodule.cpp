@@ -22,8 +22,7 @@
 #include <QToolButton>
 #include <QMenu>
 #include <QLineEdit>
-#include <QMessageBox>
-#include <QPushButton>
+#include "dialogs/ConfirmDialog.h"
 
 #define INIT_REPO(repoPath)                                                    \
   QString path = Test::extractRepository(repoPath);                            \
@@ -208,11 +207,9 @@ void TestSubmodule::discardFile() {
 
     // Discard README.md and confirm.
     details->discardFiles(DetailView::UnstagedFiles, readme);
-    QMessageBox *popup = repoView->findChild<QMessageBox *>();
+    ConfirmDialog *popup = repoView->findChild<ConfirmDialog *>();
     QVERIFY(popup);
-    QPushButton *discard = popup->findChild<QPushButton *>("DiscardButton");
-    QVERIFY(discard);
-    discard->click();
+    popup->accept();
   }
 
   QFile file(repo.workdir().filePath("GittyupTestRepo/README.md"));

@@ -29,6 +29,7 @@
 #include "dialogs/AmendDialog.h"
 #include "dialogs/CheckoutDialog.h"
 #include "dialogs/CommitDialog.h"
+#include "dialogs/ConfirmDialog.h"
 #include "dialogs/DeleteBranchDialog.h"
 #include "dialogs/DeleteTagDialog.h"
 #include "dialogs/NewBranchDialog.h"
@@ -55,7 +56,6 @@
 #include <QCheckBox>
 #include <QCloseEvent>
 #include <QDesktopServices>
-#include <QMessageBox>
 #include <QtNetwork>
 #include <QPushButton>
 #include <QQuickWidget>
@@ -314,19 +314,15 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
             QString info = tr("This will result in the addition of %1 files.");
             QString arg =
                 (count < 0) ? tr("more than 100") : QString::number(count);
-            QMessageBox dialog(QMessageBox::Question, title, text.arg(dir),
-                               QMessageBox::Cancel, this);
+            ConfirmDialog dialog(this);
+            dialog.setTitle(title);
+            dialog.setText(text.arg(dir));
             dialog.setInformativeText(info.arg(arg));
-            QPushButton *button = dialog.addButton(tr("Stage Directory"),
-                                                   QMessageBox::AcceptRole);
+            dialog.setAcceptText(tr("Stage Directory"));
+            dialog.setCheckText(tr("Stop prompting to stage directories"));
 
-            QString cbText = tr("Stop prompting to stage directories");
-            QCheckBox *cb = new QCheckBox(cbText, &dialog);
-            dialog.setCheckBox(cb);
-
-            dialog.exec();
-            allow = (dialog.clickedButton() == button);
-            if (cb->isChecked())
+            allow = (dialog.exec() == QDialog::Accepted);
+            if (dialog.isChecked())
               Settings::instance()->setPrompt(Prompt::Kind::Directories, false);
           });
 
@@ -340,30 +336,26 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
             QString fmt =
                 tr("Are you sure you want to stage '%1' with a size of %2?");
             QString text = fmt.arg(file, locale().formattedDataSize(size));
-            QMessageBox dialog(QMessageBox::Question, title, text,
-                               QMessageBox::Cancel, this);
-            QPushButton *stage =
-                dialog.addButton(tr("Stage"), QMessageBox::AcceptRole);
+            ConfirmDialog dialog(this);
+            dialog.setTitle(title);
+            dialog.setText(text);
+            dialog.setAcceptText(tr("Stage"));
 
-            QPushButton *track = nullptr;
+            int track = -1;
             if (this->repo().lfsIsInitialized()) {
-              track = dialog.addButton(tr("Track with LFS"),
-                                       QMessageBox::RejectRole);
+              track = dialog.addButton(tr("Track with LFS"));
               dialog.setInformativeText(
                   tr("This repository has LFS enabled. Do you "
                      "want to track the file with LFS instead?"));
             }
 
-            QString cbText = tr("Stop prompting to stage large files");
-            QCheckBox *cb = new QCheckBox(cbText, &dialog);
-            dialog.setCheckBox(cb);
+            dialog.setCheckText(tr("Stop prompting to stage large files"));
 
-            dialog.exec();
-            allow = (dialog.clickedButton() == stage);
-            if (cb->isChecked())
+            allow = (dialog.exec() == QDialog::Accepted);
+            if (dialog.isChecked())
               Settings::instance()->setPrompt(Prompt::Kind::LargeFiles, false);
 
-            if (dialog.clickedButton() == track)
+            if (track >= 0 && dialog.clickedButton() == track)
               configureSettings(ConfigDialog::Lfs);
           });
 
@@ -433,24 +425,22 @@ void RepoView::clean(const QStringList &untracked) {
   QString singular = tr("untracked file");
   QString plural = tr("untracked files");
   QString phrase = (untracked.count() == 1) ? singular : plural;
-  QMessageBox *mb = new QMessageBox(
-      QMessageBox::Warning, tr("Remove Untracked Files"),
-      tr("Remove %1 %2?").arg(QString::number(untracked.count()), phrase),
-      QMessageBox::Cancel, this);
-  mb->setAttribute(Qt::WA_DeleteOnClose);
-  mb->setInformativeText(tr("This action cannot be undone."));
-  mb->setDetailedText(untracked.join('\n'));
+  ConfirmDialog *dialog = new ConfirmDialog(this);
+  dialog->setAttribute(Qt::WA_DeleteOnClose);
+  dialog->setTitle(tr("Remove Untracked Files"));
+  dialog->setText(
+      tr("Remove %1 %2?").arg(QString::number(untracked.count()), phrase));
+  dialog->setInformativeText(tr("This action cannot be undone."));
+  dialog->setDetailedText(untracked.join('\n'));
+  dialog->setAcceptText(tr("Remove"));
+  dialog->setDanger(true);
 
-  QPushButton *remove = mb->addButton(tr("Remove"), QMessageBox::AcceptRole);
-  remove->setObjectName("RemoveButton");
-  mb->setDefaultButton(remove);
-
-  connect(remove, &QPushButton::clicked, [this, untracked] {
+  connect(dialog, &QDialog::accepted, this, [this, untracked] {
     for (const QString &name : untracked)
       repo().clean(name);
   });
 
-  mb->show();
+  dialog->show();
 }
 
 void RepoView::selectHead() { mRefs->select(mRepo.head()); }
@@ -670,14 +660,14 @@ void RepoView::visitLink(const QString &link) {
     if (mRepo.isValid()) {
       git::Config config = mRepo.gitConfig();
       config.setValue<bool>("http.sslVerify", false);
-      QMessageBox msg(QMessageBox::Icon::Information, tr("Certificate Error"),
-                      tr("SSL verification disabled for this repository"),
-                      QMessageBox::Button::Ok);
-      msg.setDetailedText(tr("[http]\n"
-                             "  sslVerify = false\n\n"
-                             "was added to %1/config")
-                              .arg(mRepo.dir().path()));
-      msg.exec();
+      ConfirmDialog::information(
+          this, tr("Certificate Error"),
+          tr("SSL verification disabled for this repository"),
+          tr("[http]\n"
+             "  sslVerify = false\n\n"
+             "was added to %1/config")
+              .arg(mRepo.dir().path()))
+          ->exec();
     }
     return;
   }
@@ -686,14 +676,14 @@ void RepoView::visitLink(const QString &link) {
     git::Config config = git::Config::global();
     if (config.isValid()) {
       config.setValue<bool>("http.sslVerify", false);
-      QMessageBox msg(QMessageBox::Icon::Information, tr("Certificate Error"),
-                      tr("SSL verification disabled for all git repositories"),
-                      QMessageBox::Button::Ok);
-      msg.setDetailedText(tr("[http]\n"
-                             "  sslVerify = false\n\n"
-                             "was added to %1")
-                              .arg(config.globalPath()));
-      msg.exec();
+      ConfirmDialog::information(
+          this, tr("Certificate Error"),
+          tr("SSL verification disabled for all git repositories"),
+          tr("[http]\n"
+             "  sslVerify = false\n\n"
+             "was added to %1")
+              .arg(config.globalPath()))
+          ->exec();
     }
     return;
   }
@@ -1588,18 +1578,18 @@ void RepoView::promptToForcePush(const git::Remote &remote,
 
   QString title = tr("Force Push to %1?").arg(remote.name());
   QString text = tr("Are you sure you want to force push?");
-  QMessageBox *dialog = new QMessageBox(QMessageBox::Warning, title, text,
-                                        QMessageBox::Cancel, this);
+  ConfirmDialog *dialog = new ConfirmDialog(this);
   dialog->setAttribute(Qt::WA_DeleteOnClose);
-
+  dialog->setTitle(title);
+  dialog->setText(text);
   dialog->setInformativeText(
       tr("The remote will lose any commits that are reachable only from "
          "the overwritten reference. Dropped commits may be unexpectedly "
          "reintroduced by clones that already contain those commits locally."));
+  dialog->setAcceptText(tr("Force Push"));
+  dialog->setDanger(true);
 
-  QPushButton *accept =
-      dialog->addButton(tr("Force Push"), QMessageBox::AcceptRole);
-  connect(accept, &QPushButton::clicked, this,
+  connect(dialog, &QDialog::accepted, this,
           [this, remote, src] { push(remote, src, QString(), false, true); });
 
   dialog->open();
@@ -1792,18 +1782,17 @@ bool RepoView::commit(const git::Signature &author,
   if (!force && head.isValid() && !head.isLocalBranch()) {
     QString title = tr("Commit?");
     QString text = tr("Are you sure you want to commit on a detached HEAD?");
-    QMessageBox *dialog = new QMessageBox(QMessageBox::Warning, title, text,
-                                          QMessageBox::Cancel, this);
+    ConfirmDialog *dialog = new ConfirmDialog(this);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
-
+    dialog->setTitle(title);
+    dialog->setText(text);
     dialog->setInformativeText(
-        tr("<p>You are in a detached HEAD state. You can still commit, but the "
+        tr("You are in a detached HEAD state. You can still commit, but the "
            "new commit will not be reachable from any branch. If you want to "
-           "commit to an existing branch, checkout the branch first.</p>"));
+           "commit to an existing branch, checkout the branch first."));
+    dialog->setAcceptText(tr("Commit"));
 
-    QPushButton *accept =
-        dialog->addButton(tr("Commit"), QMessageBox::AcceptRole);
-    connect(accept, &QPushButton::clicked, this,
+    connect(dialog, &QDialog::accepted, this,
             [this, message, upstream, parent] {
               this->commit(message, upstream, parent, true);
             });
@@ -1895,15 +1884,12 @@ void RepoView::checkout(const git::Reference &ref, bool detach) {
 
   // Prompt to create a new local branch instead
   // of checking out a remote tracking branch.
-  QMessageBox *dialog = new QMessageBox(this);
+  ConfirmDialog *dialog = new ConfirmDialog(this);
   dialog->setAttribute(Qt::WA_DeleteOnClose);
-  dialog->setIcon(QMessageBox::Question);
-  dialog->setStandardButtons(QMessageBox::Cancel);
-  dialog->setWindowTitle(tr("Checkout Detached HEAD?"));
+  dialog->setTitle(tr("Checkout Detached HEAD?"));
 
-  QPushButton *checkoutButton = dialog->addButton(tr("Checkout Detached HEAD"),
-                                                  QMessageBox::DestructiveRole);
-  connect(checkoutButton, &QPushButton::clicked, this,
+  dialog->addButton(tr("Checkout Detached HEAD"));
+  connect(dialog, &ConfirmDialog::buttonClicked, this,
           [this, ref, detach] { checkout(ref.target(), ref, detach); });
 
   QString name = ref.name();
@@ -1915,9 +1901,8 @@ void RepoView::checkout(const git::Reference &ref, bool detach) {
            "this commit instead?")
             .arg(name, local));
 
-    QPushButton *resetButton =
-        dialog->addButton(tr("Reset Local Branch"), QMessageBox::AcceptRole);
-    connect(resetButton, &QPushButton::clicked, this, [this, ref, local] {
+    dialog->setAcceptText(tr("Reset Local Branch"));
+    connect(dialog, &QDialog::accepted, this, [this, ref, local] {
       createBranch(local, ref.target(), ref, true, true);
     });
   } else {
@@ -1931,9 +1916,8 @@ void RepoView::checkout(const git::Reference &ref, bool detach) {
            "new commits. Check out the detached HEAD to temporarily put your "
            "working directory into the state of the remote branch."));
 
-    QPushButton *createButton =
-        dialog->addButton(tr("Create Local Branch"), QMessageBox::AcceptRole);
-    connect(createButton, &QPushButton::clicked, this, [this, ref, local] {
+    dialog->setAcceptText(tr("Create Local Branch"));
+    connect(dialog, &QDialog::accepted, this, [this, ref, local] {
       createBranch(local, ref.target(), ref, true);
     });
   }
@@ -2203,9 +2187,11 @@ void RepoView::promptToReset(const git::Commit &commit, git_reset_t type) {
 
   QString text =
       tr("Are you sure you want to reset '%1' to '%2'?").arg(head.name(), id);
-  QMessageBox *dialog = new QMessageBox(QMessageBox::Warning, title, text,
-                                        QMessageBox::Cancel, this);
+  ConfirmDialog *dialog = new ConfirmDialog(this);
   dialog->setAttribute(Qt::WA_DeleteOnClose);
+  dialog->setTitle(title);
+  dialog->setText(text);
+  dialog->setDanger(type == GIT_RESET_HARD);
 
   QString info;
   if (head.target() != commit)
@@ -2226,9 +2212,8 @@ void RepoView::promptToReset(const git::Commit &commit, git_reset_t type) {
 
   dialog->setInformativeText(info);
 
-  QString buttonText = tr("Reset");
-  QPushButton *accept = dialog->addButton(buttonText, QMessageBox::AcceptRole);
-  connect(accept, &QPushButton::clicked, this,
+  dialog->setAcceptText(tr("Reset"));
+  connect(dialog, &QDialog::accepted, this,
           [this, commit, type] { reset(commit, type); });
 
   dialog->open();
@@ -2516,7 +2501,10 @@ bool RepoView::openSubmodule(const git::Submodule &submodule) {
     QString text =
         tr("The submodule '%1' doesn't have a valid repository. You may need "
            "to init and/or update the submodule to check out a repository.");
-    QMessageBox::warning(nullptr, title, text.arg(submodule.name()));
+    ConfirmDialog *dialog = ConfirmDialog::information(
+        this, title, text.arg(submodule.name()));
+    dialog->setDanger(true);
+    dialog->open();
     return false;
   }
 
@@ -2642,23 +2630,15 @@ void RepoView::openTerminal() {
   }
 
   if (terminalCmd.isEmpty()) {
-    auto messagebox = new QMessageBox(this);
-    messagebox->setWindowTitle(tr("No terminal executable found"));
-    messagebox->setText(tr("No terminal executable was found. Please configure "
-                           "a terminal in the configuration."));
-    messagebox->setStandardButtons(QMessageBox::Ok);
-    messagebox->addButton(tr("Open Configuration"), QMessageBox::ApplyRole);
-    messagebox->setAttribute(Qt::WA_DeleteOnClose);
-
+    ConfirmDialog *dialog = ConfirmDialog::information(
+        this, tr("No terminal executable found"),
+        tr("No terminal executable was found. Please configure "
+           "a terminal in the configuration."));
+    dialog->addButton(tr("Open Configuration"));
     connect(
-        messagebox, &QMessageBox::buttonClicked, this,
-        [=](QAbstractButton *button) {
-          if (messagebox->buttonRole(button) == QMessageBox::ApplyRole) {
-            SettingsDialog::openSharedInstance();
-          }
-        },
-        Qt::QueuedConnection);
-    messagebox->open();
+        dialog, &ConfirmDialog::buttonClicked, this,
+        [] { SettingsDialog::openSharedInstance(); }, Qt::QueuedConnection);
+    dialog->open();
     return;
   }
 

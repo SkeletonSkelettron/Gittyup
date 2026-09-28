@@ -12,8 +12,7 @@
 #include "ui/DetailView.h"
 #include "ui/MainWindow.h"
 #include "ui/RepoView.h"
-#include <QMessageBox>
-#include <QPushButton>
+#include "dialogs/ConfirmDialog.h"
 
 using namespace Test;
 using namespace QTest;
@@ -81,14 +80,9 @@ void TestLineEndings::testLineEndings() {
   // Discard the file and confirm.
   detailView->discardFiles(DetailView::UnstagedFiles, 0);
 
-  QMessageBox *popup = mRepoView->findChild<QMessageBox *>();
+  ConfirmDialog *popup = mRepoView->findChild<ConfirmDialog *>();
   QVERIFY(popup);
-
-  QPushButton *accept = popup->findChild<QPushButton *>("DiscardButton");
-  QVERIFY(accept);
-
-  mouseClick(accept, Qt::LeftButton, Qt::KeyboardModifiers(), QPoint(),
-             inputDelay);
+  popup->accept();
 
   CommitList *commitList = mRepoView->findChild<CommitList *>();
   QVERIFY(!commitList->status().isValid());

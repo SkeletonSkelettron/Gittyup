@@ -55,3 +55,53 @@ void ConfirmDialog::setDanger(bool danger) {
   mDanger = danger;
   emit changed();
 }
+
+void ConfirmDialog::setWarning(bool warning) {
+  mWarning = warning;
+  emit changed();
+}
+
+void ConfirmDialog::setCancelVisible(bool visible) {
+  mCancelVisible = visible;
+  emit changed();
+}
+
+int ConfirmDialog::addButton(const QString &text) {
+  mButtons.append(text);
+  emit changed();
+  return mButtons.size() - 1;
+}
+
+void ConfirmDialog::clickButton(int index) {
+  if (index < 0 || index >= mButtons.size())
+    return;
+
+  mClicked = index;
+  emit buttonClicked(index);
+  done(QDialog::Accepted + 1 + index);
+}
+
+ConfirmDialog *ConfirmDialog::information(QWidget *parent,
+                                          const QString &title,
+                                          const QString &text,
+                                          const QString &detailedText) {
+  ConfirmDialog *dialog = new ConfirmDialog(parent);
+  dialog->setAttribute(Qt::WA_DeleteOnClose);
+  dialog->setTitle(title);
+  dialog->setText(text);
+  dialog->setDetailedText(detailedText);
+  dialog->setCancelVisible(false);
+  return dialog;
+}
+
+void ConfirmDialog::warning(QWidget *parent, const QString &title,
+                            const QString &text,
+                            const QString &informativeText) {
+  ConfirmDialog dialog(parent);
+  dialog.setTitle(title);
+  dialog.setText(text);
+  dialog.setInformativeText(informativeText);
+  dialog.setWarning(true);
+  dialog.setCancelVisible(false);
+  dialog.exec();
+}
