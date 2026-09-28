@@ -64,10 +64,18 @@ DialogPage {
         clip: true
 
         Controls.ScrollView {
+            id: detailsView
+
             anchors.fill: parent
             anchors.margins: 8
 
-            Controls.ScrollBar.vertical: ThinScrollBar { thickness: 6 }
+            // ScrollView doesn't place a custom scroll bar.
+            Controls.ScrollBar.vertical: ThinScrollBar {
+                parent: detailsView
+                x: detailsView.width - width
+                height: detailsView.height
+                thickness: 6
+            }
 
             Text {
                 id: details

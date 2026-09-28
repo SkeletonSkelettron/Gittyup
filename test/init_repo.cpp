@@ -125,7 +125,7 @@ void TestInitRepo::amendCommit() {
 
   auto dialog = view->findChild<AmendDialog *>();
   QVERIFY(dialog);
-  dialog->findChild<QTextEdit *>()->setText("Some other commit message");
+  dialog->setCommitMessage("Some other commit message");
   dialog->accept();
 
   qWait(300);

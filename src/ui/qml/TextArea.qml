@@ -21,10 +21,19 @@ Rectangle {
     opacity: enabled ? 1 : 0.6
 
     Controls.ScrollView {
+        id: scrollView
+
         anchors.fill: parent
         anchors.margins: 1
 
-        Controls.ScrollBar.vertical: ThinScrollBar { thickness: 6 }
+        // ScrollView doesn't place a custom scroll bar.
+        Controls.ScrollBar.vertical: ThinScrollBar {
+            parent: scrollView
+            x: scrollView.width - width - 2
+            y: 2
+            height: scrollView.height - 4
+            thickness: 6
+        }
 
         Controls.TextArea {
             id: area
