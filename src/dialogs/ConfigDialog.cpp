@@ -12,7 +12,7 @@
 #include "ConfirmDialog.h"
 #include "DeleteBranchDialog.h"
 #include "NewBranchDialog.h"
-#include "PluginsPanel.h"
+#include "PluginsDialog.h"
 #include "conf/Settings.h"
 #include "git/Branch.h"
 #include "git/Config.h"
@@ -25,7 +25,6 @@
 #include "ui/RepoView.h"
 #include <QDir>
 #include <QFutureWatcher>
-#include <QVBoxLayout>
 #include <QtConcurrent>
 #include <array>
 
@@ -477,13 +476,7 @@ void ConfigDialog::removeIndex() {
 }
 
 void ConfigDialog::configurePlugins() {
-  QDialog *dialog = new QDialog(this);
-  dialog->setAttribute(Qt::WA_DeleteOnClose);
-  dialog->setWindowTitle(tr("Plugins"));
-  QVBoxLayout *layout = new QVBoxLayout(dialog);
-  layout->addWidget(new PluginsPanel(mRepo, dialog));
-  dialog->resize(640, 480);
-  dialog->open();
+  (new PluginsDialog(mRepo, this))->open();
 }
 
 bool ConfigDialog::lfsInitialized() const {

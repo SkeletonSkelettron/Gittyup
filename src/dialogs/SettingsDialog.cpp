@@ -12,7 +12,7 @@
 #include "ConfirmDialog.h"
 #include "ExternalToolsDialog.h"
 #include "HotkeysPanel.h"
-#include "PluginsPanel.h"
+#include "PluginsDialog.h"
 #include "app/CustomTheme.h"
 #include "conf/Settings.h"
 #include "cred/CredentialHelper.h"
@@ -480,7 +480,7 @@ void SettingsDialog::showPrivacyPolicy() {
 }
 
 void SettingsDialog::configurePlugins() {
-  showPanel(new PluginsPanel(git::Repository()), tr("Plugins"), this);
+  (new PluginsDialog(git::Repository(), this))->open();
 }
 
 void SettingsDialog::configureHotkeys() {

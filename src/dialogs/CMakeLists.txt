@@ -16,7 +16,7 @@ add_library(
   HotkeysPanel.cpp
   MergeDialog.cpp
   NewBranchDialog.cpp
-  PluginsPanel.cpp
+  PluginsDialog.cpp
   PullRequestDialog.cpp
   QmlDialog.cpp
   ReferenceItems.cpp
