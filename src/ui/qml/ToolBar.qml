@@ -93,6 +93,29 @@ Rectangle {
 
         Separator { visible: !root.tight }
 
+        // Undo and redo the last actions in the repository, like GitKraken.
+        ActionButton {
+            icon: "undo"
+            text: qsTr("Undo")
+            compact: root.narrow
+            enabled: toolbar.canUndo
+            tip: toolbar.canUndo ? qsTr("Undo %1").arg(toolbar.undoText)
+                                 : qsTr("Undo")
+            onClicked: toolbar.undo()
+        }
+
+        ActionButton {
+            icon: "redo"
+            text: qsTr("Redo")
+            compact: root.narrow
+            enabled: toolbar.canRedo
+            tip: toolbar.canRedo ? qsTr("Redo %1").arg(toolbar.redoText)
+                                 : qsTr("Redo")
+            onClicked: toolbar.redo()
+        }
+
+        Separator {}
+
         ActionButton {
             icon: "fetch"
             text: qsTr("Fetch")

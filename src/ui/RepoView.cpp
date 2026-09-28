@@ -19,6 +19,7 @@
 #include "qtsupport.h"
 #include "RefsPanel.h"
 #include "TreeModel.h"
+#include "UndoHistory.h"
 #include "qml/QmlSupport.h"
 #include "RemoteCallbacks.h"
 #include "SearchField.h"
@@ -212,6 +213,11 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
   mHistory = new History(this);
   connect(mHistory, &History::changed, toolBar, &ToolBar::updateHistory);
   connect(mHistory, &History::changed, menuBar, &MenuBar::updateHistory);
+
+  // Record the actions that can be undone.
+  mUndo = new UndoHistory(this);
+  connect(mUndo, &UndoHistory::changed, toolBar, &ToolBar::updateUndo);
+  connect(mUndo, &UndoHistory::changed, menuBar, &MenuBar::updateUndoRedo);
   connect(this, &RepoView::statusChanged, [this](bool dirty) {
     if (!dirty)
       mHistory->clean();
@@ -864,7 +870,13 @@ void RepoView::setLogVisible(bool visible) {
 LogEntry *RepoView::addLogEntry(const QString &text, const QString &title,
                                 LogEntry *parent) {
   LogEntry *root = parent ? parent : mLogRoot;
-  return root->addEntry(text, title);
+  LogEntry *entry = root->addEntry(text, title);
+
+  // Each action starts with an entry in the log.
+  if (!parent && mUndo)
+    mUndo->begin(entry);
+
+  return entry;
 }
 
 LogEntry *RepoView::error(LogEntry *parent, const QString &action,
@@ -1823,6 +1835,11 @@ bool RepoView::commit(const git::Signature &author,
   QString text = tr("<i>no commit</i>");
   LogEntry *entry = addLogEntry(text, tr("Commit"), parent);
 
+  // Undoing a commit keeps its changes in the index.
+  if (!parent && !upstream.isValid() &&
+      mRepo.state() == GIT_REPOSITORY_STATE_NONE)
+    mUndo->setMode(UndoHistory::Soft);
+
   git::Commit commit = mRepo.commit(author, commiter, message, upstream);
 
   if (!commit.isValid()) {
@@ -2119,15 +2136,15 @@ void RepoView::promptToAddTag(const git::Commit &commit) {
     bool force = dialog->force();
     QString name = dialog->name();
     QString msg = dialog->message();
+    QString link = commit.link();
+    LogEntry *entry = addLogEntry(link, tr("Tag"));
     git::TagRef tag =
         mRepo.createTag(commit, name, msg, force, mDetails->overrideUser(),
                         mDetails->overrideEmail());
 
     git::Remote remote = dialog->remote();
-
-    QString link = commit.link();
-    QString text = tag.isValid() ? tr("%1 as %2").arg(link, tag.name()) : link;
-    LogEntry *entry = addLogEntry(text, tr("Tag"));
+    if (tag.isValid())
+      entry->setText(tr("%1 as %2").arg(link, tag.name()));
     if (!tag.isValid())
       error(entry, tr("tag"), link);
     else if (remote.isValid())
@@ -2166,17 +2183,18 @@ void RepoView::amend(const git::Commit &commit, const git::Signature &author,
   Q_ASSERT(head.isValid());
 
   QString title = tr("Amend");
+  LogEntry *entry =
+      addLogEntry(tr("Amending commit %1").arg(commit.link()), title);
+  mUndo->setMode(UndoHistory::Soft);
 
   if (!mRepo.amend(commit, author, committer, commitMessage)) {
-    error(addLogEntry(tr("Amending commit %1").arg(commit.link()), title),
-          tr("amend"), head.name());
+    error(entry, tr("amend"), head.name());
   } else {
     head = mRepo.head();
     Q_ASSERT(head.isValid());
 
-    QString text =
-        tr("%1 to %2", "update ref").arg(head.name(), head.target().link());
-    addLogEntry(text, title);
+    entry->setText(
+        tr("%1 to %2", "update ref").arg(head.name(), head.target().link()));
   }
 }
 
@@ -2246,6 +2264,11 @@ void RepoView::reset(const git::Commit &commit, git_reset_t type,
   QString title = commitToAmend ? tr("Amend") : tr("Reset");
   QString text = tr("%1 to %2").arg(head.name(), commit.link());
   LogEntry *entry = addLogEntry(text, title);
+  if (type == GIT_RESET_SOFT) {
+    mUndo->setMode(UndoHistory::Soft);
+  } else if (type == GIT_RESET_MIXED) {
+    mUndo->setMode(UndoHistory::Mixed);
+  }
 
   if (!commit.reset(type, QStringList(), false))
     error(entry, commitToAmend ? tr("amend") : tr("reset"), head.name());

@@ -44,6 +44,7 @@ class RefsPanel;
 class RemoteCallbacks;
 class TreeModel;
 class ToolBar;
+class UndoHistory;
 struct ContributorInfo;
 
 namespace git {
@@ -89,6 +90,10 @@ public:
 
   git::Repository repo() const { return mRepo; }
   History *history() const { return mHistory; }
+  DetailView *detailView() const { return mDetails; }
+
+  // The actions that can be undone and redone.
+  UndoHistory *undoHistory() const { return mUndo; }
   Index *index() const { return mIndex; }
 
   Repository *remoteRepo();
@@ -433,6 +438,7 @@ private:
   bool mRestartIndexer = false;
 
   History *mHistory;
+  UndoHistory *mUndo = nullptr;
 
   Repository *mRemoteRepo;
   bool mRemoteRepoCached = false;

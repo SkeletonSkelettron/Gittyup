@@ -29,6 +29,10 @@ class ToolBar : public QObject {
   Q_PROPERTY(QString repoName READ repoName NOTIFY stateChanged)
   Q_PROPERTY(QString repoPath READ repoPath NOTIFY stateChanged)
   Q_PROPERTY(QString branchName READ branchName NOTIFY stateChanged)
+  Q_PROPERTY(bool canUndo READ canUndo NOTIFY stateChanged)
+  Q_PROPERTY(bool canRedo READ canRedo NOTIFY stateChanged)
+  Q_PROPERTY(QString undoText READ undoText NOTIFY stateChanged)
+  Q_PROPERTY(QString redoText READ redoText NOTIFY stateChanged)
   Q_PROPERTY(bool canPrev READ canPrev NOTIFY stateChanged)
   Q_PROPERTY(bool canNext READ canNext NOTIFY stateChanged)
   Q_PROPERTY(bool canPull READ canPull NOTIFY stateChanged)
@@ -57,6 +61,10 @@ public:
   QString repoName() const { return mState.repoName; }
   QString repoPath() const { return mState.repoPath; }
   QString branchName() const { return mState.branchName; }
+  bool canUndo() const { return mState.canUndo; }
+  bool canRedo() const { return mState.canRedo; }
+  QString undoText() const { return mState.undoText; }
+  QString redoText() const { return mState.redoText; }
   bool canPrev() const { return mState.canPrev; }
   bool canNext() const { return mState.canNext; }
   bool canPull() const { return mState.canPull; }
@@ -74,6 +82,8 @@ public:
   Q_INVOKABLE void prev();
   Q_INVOKABLE void next();
   Q_INVOKABLE void showHistoryMenu(bool next, qreal x, qreal y);
+  Q_INVOKABLE void undo();
+  Q_INVOKABLE void redo();
   Q_INVOKABLE void fetch();
   Q_INVOKABLE void pull();
   Q_INVOKABLE void showPullMenu(qreal x, qreal y);
@@ -102,6 +112,10 @@ private:
     QString repoName;
     QString repoPath;
     QString branchName;
+    bool canUndo = false;
+    bool canRedo = false;
+    QString undoText;
+    QString redoText;
     bool canPrev = false;
     bool canNext = false;
     bool canPull = false;
@@ -118,6 +132,7 @@ private:
   void updateButtons(int ahead, int behind);
   void updateRemote(int ahead, int behind);
   void updateHistory();
+  void updateUndo();
   void updateStash();
   void updateView();
   void updateSearch();

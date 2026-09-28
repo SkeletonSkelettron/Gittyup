@@ -64,6 +64,8 @@ private:
    * \return
    */
   RepoView *view() const;
+  // The current view of a main window, or null for other windows.
+  RepoView *currentView() const;
   /*!
    * \brief views
    * Return all open views. Needed in the maximize feature

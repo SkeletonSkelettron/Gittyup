@@ -306,6 +306,7 @@ private:
   friend class Object;
   friend class Patch;
   friend class Rebase;
+  friend class RefState;
   friend class Reference;
   friend class Remote;
   friend class Submodule;

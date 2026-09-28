@@ -35,6 +35,7 @@ add_library(
   TemplateDialog.cpp
   ToolBar.cpp
   TreeModel.cpp
+  UndoHistory.cpp
   WelcomePage.cpp
   ConfigKeys.cpp
   qml/CommitGraphItem.cpp

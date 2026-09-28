@@ -15,6 +15,7 @@ add_library(
   Object.cpp
   Patch.cpp
   Rebase.cpp
+  RefState.cpp
   Reference.cpp
   Remote.cpp
   Repository.cpp

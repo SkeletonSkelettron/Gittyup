@@ -12,6 +12,7 @@
 #include "MainWindow.h"
 #include "RepoView.h"
 #include "SearchField.h"
+#include "UndoHistory.h"
 #include "dialogs/PullRequestDialog.h"
 #include "dialogs/SettingsDialog.h"
 #include "git/Branch.h"
@@ -122,6 +123,16 @@ void ToolBar::showHistoryMenu(bool next, qreal x, qreal y) {
     QmlSupport::host(mView)->popup(menu, x, y);
 }
 
+void ToolBar::undo() {
+  if (RepoView *view = currentView())
+    view->undoHistory()->undo();
+}
+
+void ToolBar::redo() {
+  if (RepoView *view = currentView())
+    view->undoHistory()->redo();
+}
+
 void ToolBar::fetch() {
   if (RepoView *view = currentView())
     view->fetch();
@@ -227,6 +238,7 @@ void ToolBar::updateButtons(int ahead, int behind) {
   // Each of these emits stateChanged.
   updateRemote(ahead, behind);
   updateHistory();
+  updateUndo();
   updateStash();
   updateView();
   updateSearch();
@@ -245,6 +257,16 @@ void ToolBar::updateHistory() {
   History *history = view ? view->history() : nullptr;
   mState.canPrev = history && history->hasPrev();
   mState.canNext = history && history->hasNext();
+  emit stateChanged();
+}
+
+void ToolBar::updateUndo() {
+  RepoView *view = currentView();
+  UndoHistory *history = view ? view->undoHistory() : nullptr;
+  mState.canUndo = history && history->canUndo();
+  mState.canRedo = history && history->canRedo();
+  mState.undoText = history ? history->undoText() : QString();
+  mState.redoText = history ? history->redoText() : QString();
   emit stateChanged();
 }
 

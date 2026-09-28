@@ -17,6 +17,7 @@
 #include "MainWindow.h"
 #include "RepoView.h"
 #include "TabWidget.h"
+#include "UndoHistory.h"
 #include "StateAction.h"
 #include "app/Application.h"
 #include "conf/RecentRepositories.h"
@@ -369,7 +370,7 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
 
   mUndo = edit->addAction(tr("Undo"));
   undoHotkey.use(mUndo);
-  connect(mUndo, &QAction::triggered, [] {
+  connect(mUndo, &QAction::triggered, [this] {
     QWidget *widget = QApplication::focusWidget();
     if (QLineEdit *editor = qobject_cast<QLineEdit *>(widget)) {
       editor->undo();
@@ -377,12 +378,15 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
       editor->undo();
     } else if (QQuickItem *item = focusTextItem()) {
       QMetaObject::invokeMethod(item, "undo");
+    } else if (RepoView *view = currentView()) {
+      // Undo the last action in the repository.
+      view->undoHistory()->undo();
     }
   });
 
   mRedo = edit->addAction(tr("Redo"));
   redoHotkey.use(mRedo);
-  connect(mRedo, &QAction::triggered, [] {
+  connect(mRedo, &QAction::triggered, [this] {
     QWidget *widget = QApplication::focusWidget();
     if (QTextEdit *editor = qobject_cast<QTextEdit *>(widget)) {
       editor->redo();
@@ -390,6 +394,8 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
       editor->redo();
     } else if (QQuickItem *item = focusTextItem()) {
       QMetaObject::invokeMethod(item, "redo");
+    } else if (RepoView *view = currentView()) {
+      view->undoHistory()->redo();
     }
   });
 
@@ -972,6 +978,8 @@ void MenuBar::updateSave() {
 void MenuBar::updateUndoRedo() {
   mUndo->setEnabled(false);
   mRedo->setEnabled(false);
+  mUndo->setText(tr("Undo"));
+  mRedo->setText(tr("Redo"));
 
   QWidget *widget = QApplication::focusWidget();
   if (QTextEdit *editor = qobject_cast<QTextEdit *>(widget)) {
@@ -983,6 +991,20 @@ void MenuBar::updateUndoRedo() {
   } else if (QQuickItem *item = focusTextItem()) {
     mUndo->setEnabled(item->property("canUndo").toBool());
     mRedo->setEnabled(item->property("canRedo").toBool());
+  } else if (RepoView *view = currentView()) {
+    // Undo and redo the actions in the repository, like GitKraken.
+    UndoHistory *history = view->undoHistory();
+    auto text = [](const QString &verb, const QString &action) {
+      QString elided = action.length() > 48 ? action.left(47) + "…" : action;
+      return QString("%1 %2").arg(verb, elided);
+    };
+
+    mUndo->setEnabled(history->canUndo());
+    if (history->canUndo())
+      mUndo->setText(text(tr("Undo"), history->undoText()));
+    mRedo->setEnabled(history->canRedo());
+    if (history->canRedo())
+      mRedo->setText(text(tr("Redo"), history->redoText()));
   }
 }
 
@@ -1168,6 +1190,11 @@ QWidget *MenuBar::window() const {
 
 RepoView *MenuBar::view() const {
   return static_cast<MainWindow *>(window())->currentView();
+}
+
+RepoView *MenuBar::currentView() const {
+  MainWindow *win = qobject_cast<MainWindow *>(window());
+  return win ? win->currentView() : nullptr;
 }
 
 QList<RepoView *> MenuBar::views() const {
