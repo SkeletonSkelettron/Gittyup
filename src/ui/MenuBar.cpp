@@ -36,7 +36,6 @@
 #include "git/Submodule.h"
 #include "index/Index.h"
 #include "log/LogEntry.h"
-#include "log/LogView.h"
 #include "update/Updater.h"
 #include "util/Debug.h"
 #include <QApplication>
@@ -399,8 +398,6 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
       editor->copy();
     } else if (QLineEdit *editor = qobject_cast<QLineEdit *>(widget)) {
       editor->copy();
-    } else if (LogView *logView = qobject_cast<LogView *>(widget)) {
-      logView->copy();
     }
   });
 
@@ -991,9 +988,6 @@ void MenuBar::updateCutCopyPaste() {
     mCopy->setEnabled(editor->hasSelectedText());
     mPaste->setEnabled(canPaste);
     mFindSelection->setEnabled(editor->hasSelectedText());
-  } else if (LogView *logView = qobject_cast<LogView *>(widget)) {
-    (void)logView; // unused
-    mCopy->setEnabled(true);
   }
 }
 

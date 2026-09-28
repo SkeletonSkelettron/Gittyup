@@ -21,6 +21,11 @@ Rectangle {
     color: Theme.panel
 
     Keys.onEscapePressed: logPanel.close()
+    // Take the copy shortcut from the Edit menu.
+    Keys.onShortcutOverride: (event) => {
+        if (event.matches(StandardKey.Copy) && root.currentRow >= 0)
+            event.accepted = true
+    }
     Keys.onPressed: (event) => {
         if (event.matches(StandardKey.Copy) && root.currentRow >= 0) {
             logPanel.copy(tree.index(root.currentRow, 0))
