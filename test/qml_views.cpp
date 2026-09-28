@@ -1,0 +1,213 @@
+//
+//          Copyright (c) 2026, Gittyup contributors
+//
+// This software is licensed under the MIT License. The LICENSE.md file
+// describes the conditions under which this software may be distributed.
+//
+
+#include "Test.h"
+#include "dialogs/AboutDialog.h"
+#include "dialogs/AccountDialog.h"
+#include "dialogs/AddRemoteDialog.h"
+#include "dialogs/AmendDialog.h"
+#include "dialogs/CheckoutDialog.h"
+#include "dialogs/CloneDialog.h"
+#include "dialogs/CommitDialog.h"
+#include "dialogs/ConfigDialog.h"
+#include "dialogs/ConfirmDialog.h"
+#include "dialogs/ExternalToolsDialog.h"
+#include "dialogs/MergeDialog.h"
+#include "dialogs/NewBranchDialog.h"
+#include "dialogs/PluginsDialog.h"
+#include "dialogs/RemoteDialog.h"
+#include "dialogs/RenameBranchDialog.h"
+#include "dialogs/SettingsDialog.h"
+#include "dialogs/TagDialog.h"
+#include "dialogs/ThemeDialog.h"
+#include "dialogs/UpdateSubmodulesDialog.h"
+#include "git/Branch.h"
+#include "git/Commit.h"
+#include "git/Index.h"
+#include "log/LogEntry.h"
+#include "ui/IgnoreDialog.h"
+#include "ui/MainWindow.h"
+#include "ui/RepoView.h"
+#include "ui/TabWidget.h"
+#include "ui/TemplateDialog.h"
+#include "update/UpdateDialog.h"
+#include <QFile>
+#include <QQuickItem>
+#include <QQuickWidget>
+
+using namespace Test;
+using namespace QTest;
+
+namespace {
+
+// Warnings and errors of the QML files.
+QStringList sMessages;
+QtMessageHandler sPrevious = nullptr;
+
+void handleMessage(QtMsgType type, const QMessageLogContext &context,
+                   const QString &message) {
+  if (message.contains("qrc:/qml/"))
+    sMessages.append(message);
+  if (sPrevious)
+    sPrevious(type, context, message);
+}
+
+} // namespace
+
+// Opens the main window and every QML dialog and checks that their QML
+// loads without warnings.
+class TestQmlViews : public QObject {
+  Q_OBJECT
+
+private slots:
+  void initTestCase();
+  void mainWindow();
+  void dialogs();
+  void settings();
+  void cleanupTestCase();
+
+private:
+  // Show the dialog and check its QML.
+  void check(QDialog *dialog, const QString &name);
+
+  ScratchRepository mRepo;
+  MainWindow *mWindow = nullptr;
+};
+
+void TestQmlViews::initTestCase() {
+  sPrevious = qInstallMessageHandler(handleMessage);
+
+  // A commit and a change.
+  QFile file(mRepo->workdir().filePath("file.txt"));
+  QVERIFY(file.open(QFile::WriteOnly));
+  file.write("content\n");
+  file.close();
+  mRepo->index().setStaged({"file.txt"}, true);
+  QVERIFY(mRepo->commit("initial"));
+
+  QVERIFY(file.open(QFile::WriteOnly | QFile::Append));
+  file.write("change\n");
+  file.close();
+
+  mWindow = new MainWindow(mRepo);
+  mWindow->show();
+  QVERIFY(qWaitForWindowExposed(mWindow));
+}
+
+void TestQmlViews::mainWindow() {
+  RepoView *view = mWindow->currentView();
+  refresh(view);
+
+  // The commit, the log and the welcome page.
+  view->selectFirstCommit();
+  view->addLogEntry("text", "Title")->addEntry(LogEntry::Error, "error");
+  view->setLogVisible(true);
+  mWindow->tabWidget()->setWelcomeVisible(true);
+  qWait(200);
+  mWindow->tabWidget()->setWelcomeVisible(false);
+  qWait(100);
+
+  QVERIFY2(sMessages.isEmpty(), qPrintable(sMessages.join('\n')));
+}
+
+void TestQmlViews::dialogs() {
+  RepoView *view = mWindow->currentView();
+  git::Repository repo = view->repo();
+  git::Commit head = repo.head().target();
+
+  check(new NewBranchDialog(repo, git::Commit(), view), "NewBranchDialog");
+  check(new TagDialog(repo, head.shortId(), git::Remote(), view), "TagDialog");
+  check(new CheckoutDialog(repo, repo.head(), view), "CheckoutDialog");
+  check(new RenameBranchDialog(repo, repo.head(), view), "RenameBranchDialog");
+  check(new AddRemoteDialog("origin", view), "AddRemoteDialog");
+  check(new MergeDialog(RepoView::Merge, repo, view), "MergeDialog");
+  check(new CloneDialog(CloneDialog::Clone, view), "CloneDialog");
+  check(new CloneDialog(CloneDialog::Init, view), "CloneDialog (init)");
+  check(new AmendDialog(head.author(), head.committer(), head.message(), view),
+        "AmendDialog");
+  check(new CommitDialog("message", Prompt::Kind::Stash, view),
+        "CommitDialog");
+  check(new AccountDialog(nullptr, view), "AccountDialog");
+  check(new RemoteDialog(RemoteDialog::Push, view), "RemoteDialog");
+  check(new UpdateSubmodulesDialog(repo, view), "UpdateSubmodulesDialog");
+  check(new IgnoreDialog("*.log", view), "IgnoreDialog");
+  check(new ThemeDialog(view), "ThemeDialog");
+  check(new AboutDialog(view), "AboutDialog");
+  check(new PluginsDialog(repo, view), "PluginsDialog");
+  check(new ExternalToolsDialog("diff", view), "ExternalToolsDialog");
+  check(new UpdateDialog("linux", "99.0.0", "<p>Notes</p>", "", view),
+        "UpdateDialog");
+
+  ConfirmDialog *confirm = new ConfirmDialog(view);
+  confirm->setTitle("Title");
+  confirm->setText("Text");
+  confirm->setDetailedText("Details");
+  confirm->setCheckText("Check");
+  confirm->addButton("Other");
+  check(confirm, "ConfirmDialog");
+
+  QList<TemplateButton::Template> templates = {{"Name", "Value"}};
+  TemplateDialog *templateDialog = new TemplateDialog(templates, view);
+  check(templateDialog, "TemplateDialog");
+}
+
+void TestQmlViews::settings() {
+  RepoView *view = mWindow->currentView();
+
+  // Every section of the application settings.
+  SettingsDialog *settings = new SettingsDialog(SettingsDialog::General);
+  for (int i = SettingsDialog::General; i <= SettingsDialog::Terminal; ++i)
+    settings->setSection(i);
+  check(settings, "SettingsDialog");
+
+  // Every section of the repository settings.
+  ConfigDialog *config = new ConfigDialog(view);
+  for (int i = ConfigDialog::General; i <= ConfigDialog::Lfs; ++i)
+    config->setSection(i);
+  check(config, "ConfigDialog");
+}
+
+void TestQmlViews::cleanupTestCase() {
+  qInstallMessageHandler(sPrevious);
+  mWindow->close();
+}
+
+void TestQmlViews::check(QDialog *dialog, const QString &name) {
+  sMessages.clear();
+  dialog->setAttribute(Qt::WA_DeleteOnClose, false);
+  dialog->show();
+  QVERIFY2(qWaitForWindowExposed(dialog), qPrintable(name));
+  qWait(50);
+
+  QQuickWidget *view = dialog->findChild<QQuickWidget *>();
+  QVERIFY2(view, qPrintable(name));
+  QVERIFY2(view->status() == QQuickWidget::Ready, qPrintable(name));
+  QVERIFY2(view->rootObject(), qPrintable(name));
+
+  // Switching sections creates their content.
+  if (SettingsDialog *settings = qobject_cast<SettingsDialog *>(dialog)) {
+    for (int i = SettingsDialog::General; i <= SettingsDialog::Terminal; ++i) {
+      settings->setSection(i);
+      qWait(20);
+    }
+  } else if (ConfigDialog *config = qobject_cast<ConfigDialog *>(dialog)) {
+    for (int i = ConfigDialog::General; i <= ConfigDialog::Lfs; ++i) {
+      config->setSection(i);
+      qWait(20);
+    }
+  }
+
+  dialog->hide();
+  delete dialog;
+
+  QVERIFY2(sMessages.isEmpty(),
+           qPrintable(name + ":\n" + sMessages.join('\n')));
+}
+
+TEST_MAIN(TestQmlViews)
+
+#include "qml_views.moc"
