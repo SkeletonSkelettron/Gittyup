@@ -9,6 +9,7 @@ add_library(
   CheckoutDialog.cpp
   CloneDialog.cpp
   CommitDialog.cpp
+  ConfirmDialog.cpp
   ConfigDialog.cpp
   DeleteBranchDialog.cpp
   DeleteTagDialog.cpp

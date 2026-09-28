@@ -15,6 +15,7 @@ Rectangle {
     property bool acceptVisible: true
     // The accept button destroys or discards something.
     property bool danger: false
+    // The width of the content. Text wraps within it.
     property int contentWidth: 420
 
     default property alias content: body.data
@@ -26,7 +27,7 @@ Rectangle {
             dialog.accept()
     }
 
-    implicitWidth: Math.max(root.contentWidth, body.implicitWidth) + 48
+    implicitWidth: root.contentWidth + 48
     implicitHeight: column.implicitHeight + 44
     color: Theme.panel
     focus: true

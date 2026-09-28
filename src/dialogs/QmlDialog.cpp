@@ -9,6 +9,8 @@
 #include "ui/qml/QmlSupport.h"
 #include <QQuickItem>
 #include <QQuickWidget>
+#include <QQuickWindow>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <QtMath>
 
@@ -42,16 +44,33 @@ void QmlDialog::setContent(const QString &name, const QVariantMap &context) {
   mView->setFocus();
 }
 
+void QmlDialog::showEvent(QShowEvent *event) {
+  QDialog::showEvent(event);
+
+  updateSize();
+
+  // A QQuickWidget that is resized before its window is exposed keeps
+  // drawing at its old size, so resize it again after that.
+  QTimer::singleShot(0, this, [this] {
+    if (!mView || mView->quickWindow()->size() == mView->size())
+      return;
+
+    QSize size = mView->size();
+    mView->resize(size + QSize(0, 1));
+    mView->resize(size);
+  });
+}
+
 QQuickItem *QmlDialog::rootItem() const {
   return mView ? mView->rootObject() : nullptr;
 }
 
 void QmlDialog::updateSize() {
   QQuickItem *root = rootItem();
-  if (!root)
+  if (!root || !isVisible())
     return;
 
   QSize size(qCeil(root->implicitWidth()), qCeil(root->implicitHeight()));
   setMinimumSize(size);
-  resize(size.expandedTo(isVisible() ? QSize(width(), 0) : QSize()));
+  resize(size.expandedTo(QSize(width(), 0)));
 }

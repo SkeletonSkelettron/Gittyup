@@ -25,8 +25,10 @@ ReferenceItems::ReferenceItems(const git::Repository &repo, int kinds,
   }
 
   if (kinds & LocalBranches) {
-    for (const git::Branch &branch : repo.branches(GIT_BRANCH_LOCAL))
-      add(branch, "branch");
+    for (const git::Branch &branch : repo.branches(GIT_BRANCH_LOCAL)) {
+      if (!(kinds & ExcludeHead) || !branch.isHead())
+        add(branch, "branch");
+    }
   }
 
   if (kinds & RemoteBranches) {
@@ -59,6 +61,11 @@ int ReferenceItems::indexOf(const git::Reference &ref) const {
   }
 
   return -1;
+}
+
+void ReferenceItems::prepend(const QVariantMap &item) {
+  mRefs.prepend(git::Reference());
+  mItems.prepend(item);
 }
 
 void ReferenceItems::add(const git::Reference &ref, const QString &icon) {

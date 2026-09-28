@@ -25,6 +25,8 @@ public:
   ~QmlDialog() override;
 
 protected:
+  void showEvent(QShowEvent *event) override;
+
   void setContent(const QString &name,
                   const QVariantMap &context = QVariantMap());
 

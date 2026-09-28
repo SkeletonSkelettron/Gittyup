@@ -24,7 +24,9 @@ public:
     LocalBranches = 0x2,
     RemoteBranches = 0x4,
     Tags = 0x8,
-    AllRefs = DetachedHead | LocalBranches | RemoteBranches | Tags
+    AllRefs = DetachedHead | LocalBranches | RemoteBranches | Tags,
+    // Leave out the branch that HEAD points to.
+    ExcludeHead = 0x10
   };
 
   // 'none' is the text of a first item without a reference, if any.
@@ -36,6 +38,9 @@ public:
 
   git::Reference reference(int index) const;
   int indexOf(const git::Reference &ref) const;
+
+  // Insert an item without a reference at the top, like a commit.
+  void prepend(const QVariantMap &item);
 
 private:
   void add(const git::Reference &ref, const QString &icon);
