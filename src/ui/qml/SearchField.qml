@@ -45,6 +45,7 @@ Rectangle {
     TextInput {
         id: input
 
+        objectName: "searchInput"
         anchors.left: leading.right
         anchors.leftMargin: 6
         anchors.right: clearButton.visible ? clearButton.left : advancedButton.left

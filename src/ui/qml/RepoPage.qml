@@ -4,14 +4,18 @@ import Gittyup
 
 // The repository page: references on the left, the commit graph or the diff
 // of the selected file in the middle and the details on the right. The
-// activity log slides in at the bottom.
-Rectangle {
+// activity log slides in at the bottom. The page keeps the focus of its
+// items while another page of the window is shown.
+FocusScope {
     id: root
 
     // Height of the log when it's shown. The user can drag its top edge.
     property real logHeight: 180
 
-    color: Theme.base
+    Rectangle {
+        anchors.fill: parent
+        color: Theme.base
+    }
 
     Controls.SplitView {
         anchors.left: parent.left

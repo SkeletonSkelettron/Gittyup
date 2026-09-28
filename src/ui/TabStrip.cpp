@@ -10,7 +10,6 @@
 #include "RepoView.h"
 #include "TabWidget.h"
 #include "qml/QmlSupport.h"
-#include "qml/QmlTheme.h"
 #include <QApplication>
 #include <QClipboard>
 #include <QDir>
@@ -19,38 +18,9 @@
 #include <QTabBar>
 #include <QTimer>
 
-namespace {
+TabStrip::TabStrip(MainWindow *parent) : QObject(parent) {}
 
-const int kTabStripHeight = 36;
-
-} // namespace
-
-TabStrip::TabStrip(MainWindow *parent) : QToolBar(parent) {
-  setMovable(false);
-  setFloatable(false);
-  setObjectName("tabstrip");
-  setFixedHeight(kTabStripHeight);
-  setContentsMargins(0, 0, 0, 0);
-  setContextMenuPolicy(Qt::PreventContextMenu);
-  setStyleSheet(QString("TabStrip {"
-                        "  background: %1;"
-                        "  border: none;"
-                        "  padding: 0px;"
-                        "  spacing: 0px"
-                        "}")
-                    .arg(QmlTheme::instance()->base().name()));
-
-  mView = QmlSupport::createView(
-      "TabStrip", {{"tabStrip", QVariant::fromValue<QObject *>(this)}}, this);
-  mView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-  mView->setMinimumHeight(kTabStripHeight);
-  addWidget(mView);
-}
-
-TabStrip::~TabStrip() {
-  // The QML view references this object, so it has to go first.
-  delete mView;
-}
+TabStrip::~TabStrip() {}
 
 void TabStrip::setTabWidget(TabWidget *tabs) {
   mTabWidget = tabs;

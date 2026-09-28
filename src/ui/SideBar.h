@@ -11,7 +11,7 @@
 #define SIDEBAR_H
 
 #include <QModelIndex>
-#include <QWidget>
+#include <QObject>
 
 class Account;
 class MainWindow;
@@ -20,19 +20,19 @@ class QMenu;
 class QQuickWidget;
 class TabWidget;
 
-// The repository sidebar. The list is drawn by qrc:/qml/SideBar.qml, which
-// reads the model and calls the invokable methods.
-class SideBar : public QWidget {
+// The repository sidebar. The list is drawn by qrc:/qml/SideBar.qml as
+// 'sidebar' in the view of the main window.
+class SideBar : public QObject {
   Q_OBJECT
 
   Q_PROPERTY(QAbstractItemModel *model READ model CONSTANT)
 
 public:
-  SideBar(TabWidget *tabs, MainWindow *mainWindow, QWidget *parent = nullptr);
+  SideBar(TabWidget *tabs, MainWindow *mainWindow);
   ~SideBar() override;
 
-  QSize sizeHint() const override;
-  QSize minimumSizeHint() const override;
+  // The view that draws the sidebar, for the positions of menus.
+  void setView(QQuickWidget *view) { mView = view; }
 
   QAbstractItemModel *model() const { return mModel; }
 
@@ -56,7 +56,7 @@ private:
   TabWidget *mTabs;
   MainWindow *mMainWindow;
   QAbstractItemModel *mModel;
-  QQuickWidget *mView;
+  QQuickWidget *mView = nullptr;
   QMenu *mAddMenu;
   QMenu *mOptionsMenu;
 };

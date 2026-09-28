@@ -25,7 +25,7 @@
 #include <QFuture>
 #include <QFutureWatcher>
 #include <QProcess>
-#include <QSplitter>
+#include <QWidget>
 #include <QTimer>
 #include <functional>
 
@@ -38,7 +38,8 @@ class Location;
 class LogEntry;
 class LogPanel;
 class MainWindow;
-class QQuickWidget;
+class QQmlContext;
+class QQuickItem;
 class RefsPanel;
 class RemoteCallbacks;
 class TreeModel;
@@ -49,7 +50,7 @@ namespace git {
 class Result;
 }
 
-class RepoView : public QSplitter {
+class RepoView : public QWidget {
   Q_OBJECT
 
   Q_PROPERTY(QString pathspec READ pathspec WRITE setPathspec NOTIFY
@@ -325,6 +326,9 @@ public:
   // Map a point in the scene of the QML page to global coordinates.
   QPoint mapFromPage(qreal x, qreal y) const;
 
+  // Show the page of the current tab, and hide the others.
+  void setPageVisible(bool visible);
+
   git::Commit nextRevision(const QString &path) const;
   git::Commit previousRevision(const QString &path) const;
 
@@ -382,7 +386,6 @@ signals:
   void maximizedChanged();
 
 protected:
-  void showEvent(QShowEvent *event) override;
   void closeEvent(QCloseEvent *event) override;
 
 private:
@@ -437,8 +440,8 @@ private:
   TreeModel *mPathModel;
   CommitList *mCommits;
   DetailView *mDetails;
-  QWidget *mSideBar;
-  QQuickWidget *mPage;
+  QQuickItem *mPage = nullptr;
+  QQmlContext *mPageContext = nullptr;
 
   LogEntry *mLogRoot;
   LogEntry *mRebase{nullptr};

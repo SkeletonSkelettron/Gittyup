@@ -8,7 +8,7 @@
 #ifndef TABSTRIP_H
 #define TABSTRIP_H
 
-#include <QToolBar>
+#include <QObject>
 #include <QVariantList>
 
 class MainWindow;
@@ -17,7 +17,9 @@ class QQuickWidget;
 
 // The repository tabs above the tool bar. qrc:/qml/TabStrip.qml draws them
 // from the tabs of the main window's TabWidget, whose own tab bar is hidden.
-class TabStrip : public QToolBar {
+// The repository tabs above the tool bar, drawn by qrc:/qml/TabStrip.qml as
+// 'tabStrip' in the view of the main window.
+class TabStrip : public QObject {
   Q_OBJECT
 
   Q_PROPERTY(QVariantList tabs READ tabs NOTIFY tabsChanged)
@@ -29,6 +31,9 @@ public:
   ~TabStrip() override;
 
   void setTabWidget(TabWidget *tabs);
+
+  // The view that draws the tabs, for the positions of menus.
+  void setView(QQuickWidget *view) { mView = view; }
 
   QVariantList tabs() const { return mTabs; }
   int current() const { return mCurrent; }
@@ -50,7 +55,7 @@ private:
   void updateTabs();
 
   TabWidget *mTabWidget = nullptr;
-  QQuickWidget *mView;
+  QQuickWidget *mView = nullptr;
   QVariantList mTabs;
   int mCurrent = -1;
   bool mWelcome = false;

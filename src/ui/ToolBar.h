@@ -11,7 +11,7 @@
 #define TOOLBAR_H
 
 #include <QAction>
-#include <QToolBar>
+#include <QObject>
 
 class MainWindow;
 class RepoView;
@@ -19,9 +19,9 @@ class SearchField;
 class QMenu;
 class QQuickWidget;
 
-// The main window tool bar. The buttons are drawn by qrc:/qml/ToolBar.qml,
-// which reads the properties below and calls the invokable methods.
-class ToolBar : public QToolBar {
+// The main window tool bar, drawn by qrc:/qml/ToolBar.qml as 'toolbar' in
+// the view of the main window.
+class ToolBar : public QObject {
   Q_OBJECT
 
   Q_PROPERTY(bool hasView READ hasView NOTIFY stateChanged)
@@ -47,6 +47,10 @@ public:
   ~ToolBar() override;
 
   SearchField *searchField() const { return mSearchField; }
+  MainWindow *window() const { return mWindow; }
+
+  // The view that draws the tool bar, for the positions of menus.
+  void setView(QQuickWidget *view) { mView = view; }
 
   bool hasView() const { return mState.hasView; }
   bool sidebarVisible() const { return mState.sidebarVisible; }
@@ -121,7 +125,8 @@ private:
   State mState;
   bool mPullRequestAvailable = false;
 
-  QQuickWidget *mView;
+  MainWindow *mWindow;
+  QQuickWidget *mView = nullptr;
   QMenu *mPrevMenu;
   QMenu *mNextMenu;
   QMenu *mPullMenu;

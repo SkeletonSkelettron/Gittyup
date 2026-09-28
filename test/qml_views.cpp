@@ -35,7 +35,6 @@
 #include "ui/FindController.h"
 #include "ui/MainWindow.h"
 #include "ui/RepoView.h"
-#include "ui/TabStrip.h"
 #include "ui/TabWidget.h"
 #include "ui/TemplateDialog.h"
 #include "ui/MenuBar.h"
@@ -224,12 +223,9 @@ void TestQmlViews::search() {
 
   // The edit menu works on the focused QML field.
   search->setText("hello");
-  QQuickWidget *view = mWindow->toolBar()->findChild<QQuickWidget *>();
-  QQuickItem *input = nullptr;
-  for (QQuickItem *item : view->rootObject()->findChildren<QQuickItem *>()) {
-    if (item->inherits("QQuickTextInput"))
-      input = item;
-  }
+  QQuickWidget *view = mWindow->quickView();
+  QQuickItem *input =
+      view->rootObject()->findChild<QQuickItem *>("searchInput");
   QVERIFY(input);
   mWindow->activateWindow();
   QVERIFY(qWaitForWindowActive(mWindow));
@@ -282,9 +278,8 @@ void TestQmlViews::dragTab() {
   QString first = mWindow->tabWidget()->tabText(0);
   QString second = mWindow->tabWidget()->tabText(1);
 
-  TabStrip *strip = mWindow->findChild<TabStrip *>();
-  QVERIFY(strip);
-  QQuickWidget *view = strip->findChild<QQuickWidget *>();
+  // The tabs are at the top of the view of the window.
+  QQuickWidget *view = mWindow->quickView();
   QVERIFY(view);
 
   // Drag the first tab past the second one.

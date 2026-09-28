@@ -16,7 +16,6 @@
 #include "dialogs/SettingsDialog.h"
 #include "git/Branch.h"
 #include "qml/QmlSupport.h"
-#include "qml/QmlTheme.h"
 #include "ui/HotkeyManager.h"
 #include <QMenu>
 #include <QQuickWidget>
@@ -25,7 +24,6 @@
 
 namespace {
 
-const int kToolBarHeight = 52;
 const QString kStarredQuery = "is:starred";
 
 static Hotkey terminalHotkey = HotkeyManager::registerHotkey(
@@ -36,41 +34,23 @@ static Hotkey fileManagerHotkey = HotkeyManager::registerHotkey(
 
 } // namespace
 
-ToolBar::ToolBar(MainWindow *parent) : QToolBar(parent) {
+ToolBar::ToolBar(MainWindow *parent) : QObject(parent), mWindow(parent) {
   Q_ASSERT(parent);
-
-  setMovable(false);
-  setObjectName("toolbar");
-  setFixedHeight(kToolBarHeight);
-  setContentsMargins(0, 0, 0, 0);
-
-  QmlTheme *theme = QmlTheme::instance();
-  setStyleSheet(QString("ToolBar {"
-                        "  background: %1;"
-                        "  border: none;"
-                        "  border-bottom: 1px solid %2;"
-                        "  padding: 0px;"
-                        "  spacing: 0px"
-                        "}")
-                    .arg(theme->toolbar().name(), theme->border().name()));
-
-  // Disable the built-in context menu.
-  setContextMenuPolicy(Qt::PreventContextMenu);
 
   mPullRequestAvailable = !qgetenv("GITTYUP_OAUTH").isEmpty();
 
   // Menus are native so they aren't clipped to the QML view.
-  mPrevMenu = new QMenu(this);
+  mPrevMenu = new QMenu(parent);
   connect(mPrevMenu, &QMenu::triggered, [this](QAction *action) {
     currentView()->history()->setIndex(action->data().toInt());
   });
 
-  mNextMenu = new QMenu(this);
+  mNextMenu = new QMenu(parent);
   connect(mNextMenu, &QMenu::triggered, [this](QAction *action) {
     currentView()->history()->setIndex(action->data().toInt());
   });
 
-  mPullMenu = new QMenu(this);
+  mPullMenu = new QMenu(parent);
   QAction *mergeAction = mPullMenu->addAction(tr("Merge"));
   connect(mergeAction, &QAction::triggered,
           [this] { currentView()->pull(RepoView::Merge); });
@@ -79,7 +59,7 @@ ToolBar::ToolBar(MainWindow *parent) : QToolBar(parent) {
   connect(rebaseAction, &QAction::triggered,
           [this] { currentView()->pull(RepoView::Rebase); });
 
-  mSettingsMenu = new QMenu(this);
+  mSettingsMenu = new QMenu(parent);
   mRepoConfigAction = mSettingsMenu->addAction(tr("Repository settings"));
   connect(mRepoConfigAction, &QAction::triggered,
           [this] { currentView()->configureSettings(); });
@@ -89,16 +69,7 @@ ToolBar::ToolBar(MainWindow *parent) : QToolBar(parent) {
   connect(appConfigAction, &QAction::triggered,
           [] { SettingsDialog::openSharedInstance(); });
 
-  // Create the QML buttons and search field.
   mSearchField = new SearchField(this);
-  mView = QmlSupport::createView(
-      "ToolBar",
-      {{"toolbar", QVariant::fromValue<QObject *>(this)},
-       {"search", QVariant::fromValue<QObject *>(mSearchField)}},
-      this);
-  mView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-  mView->setMinimumHeight(kToolBarHeight - 1);
-  addWidget(mView);
 
   connect(mSearchField, &SearchField::textChanged, [this](const QString &text) {
     QStringList terms = text.split(QRegularExpression("\\s+"));
@@ -109,19 +80,16 @@ ToolBar::ToolBar(MainWindow *parent) : QToolBar(parent) {
     }
   });
 
-  QShortcut *shortcut = new QShortcut(this);
+  QShortcut *shortcut = new QShortcut(parent);
   terminalHotkey.use(shortcut);
   connect(shortcut, &QShortcut::activated, this, &ToolBar::openTerminal);
 
-  shortcut = new QShortcut(this);
+  shortcut = new QShortcut(parent);
   fileManagerHotkey.use(shortcut);
   connect(shortcut, &QShortcut::activated, this, &ToolBar::openFileManager);
 }
 
-ToolBar::~ToolBar() {
-  // The QML view references this object, so it has to go first.
-  delete mView;
-}
+ToolBar::~ToolBar() {}
 
 void ToolBar::toggleSideBar() {
   MainWindow *window = static_cast<MainWindow *>(parent());
@@ -301,5 +269,5 @@ void ToolBar::updateView() {
 void ToolBar::updateSearch() { mSearchField->setEnabled(currentView()); }
 
 RepoView *ToolBar::currentView() const {
-  return static_cast<MainWindow *>(parent())->currentView();
+  return mWindow->currentView();
 }

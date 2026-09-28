@@ -57,7 +57,8 @@
 #include <QDesktopServices>
 #include <QtNetwork>
 #include <QPushButton>
-#include <QQuickWidget>
+#include <QQmlContext>
+#include <QQuickItem>
 #include <QSettings>
 #include <QShortcut>
 #include <QUrl>
@@ -143,8 +144,9 @@ private:
 } // namespace
 
 RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
-    : QSplitter(Qt::Vertical, parent), mRepo(repo) {
-  setHandleWidth(0);
+    : QWidget(parent), mRepo(repo) {
+  // The page is drawn by the view of the main window. This widget is only
+  // the parent of the dialogs of the repository.
   setAttribute(Qt::WA_DeleteOnClose);
 
   // Start (or restart) indexing after any reference is updated.
@@ -268,17 +270,15 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
   mLogPanel = new LogPanel(mLogRoot, this);
 
   // Create the QML page with the reference panel, the commit graph, the
-  // diff and the details.
-  mSideBar = QmlSupport::createView(
+  // diff and the details in the view of the window.
+  mPage = parent->createPage(
       "RepoPage",
       {{"repoView", QVariant::fromValue<QObject *>(this)},
        {"refsPanel", QVariant::fromValue<QObject *>(mRefs)},
        {"commitList", QVariant::fromValue<QObject *>(mCommits)},
        {"detailView", QVariant::fromValue<QObject *>(mDetails)},
        {"logPanel", QVariant::fromValue<QObject *>(mLogPanel)}},
-      this);
-  mPage = static_cast<QQuickWidget *>(mSideBar);
-  mPage->setMinimumWidth(480);
+      this, &mPageContext);
 
   // Respond to diff/tree mode change.
   connect(mDetails, &DetailView::viewModeChanged, this,
@@ -394,9 +394,6 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
   connect(mLogPanel->model(), &QAbstractItemModel::dataChanged, this,
           &RepoView::startLogTimer);
 
-  addWidget(mPage);
-  setCollapsible(0, false);
-
   // Connect automatic fetch timer.
   connect(&mFetchTimer, &QTimer::timeout, this,
           [this] { fetch(git::Remote(), false, false); });
@@ -413,11 +410,29 @@ void RepoView::diffSelected(const git::Diff diff, const QString &file,
 RepoView::~RepoView() {
   // The QML page references this object, so it has to go first.
   delete mPage;
-  mSideBar = nullptr;
+  delete mPageContext;
 }
 
 QPoint RepoView::mapFromPage(qreal x, qreal y) const {
-  return QmlSupport::host(mPage)->mapToGlobal(x, y);
+  return static_cast<MainWindow *>(window())->mapFromScene(x, y);
+}
+
+void RepoView::setPageVisible(bool visible) {
+  if (!mPage || visible == mPage->isVisible())
+    return;
+
+  mPage->setVisible(visible);
+  if (!visible)
+    return;
+
+  mPage->forceActiveFocus();
+
+  // Start background tasks after showing for the first time.
+  if (!mShown) {
+    mShown = true;
+    startIndexing();
+    startFetchTimer();
+  }
 }
 
 void RepoView::clean(const QStringList &untracked) {
@@ -2811,18 +2826,6 @@ RepoView *RepoView::parentView(const QWidget *widget) {
   return parentView(parent);
 }
 
-void RepoView::showEvent(QShowEvent *event) {
-  QSplitter::showEvent(event);
-
-  if (mShown)
-    return;
-
-  // Start background tasks after showing for the first time.
-  mShown = true;
-  startIndexing();
-  startFetchTimer();
-}
-
 void RepoView::closeEvent(QCloseEvent *event) {
   // Try to close tracked windows. Iterate over a copy since closing a
   // window may synchronously remove it from mTrackedWindows.
@@ -2835,7 +2838,7 @@ void RepoView::closeEvent(QCloseEvent *event) {
   }
 
   cancelBackgroundTasks();
-  QSplitter::closeEvent(event);
+  QWidget::closeEvent(event);
 }
 
 ToolBar *RepoView::toolBar() const {

@@ -27,7 +27,6 @@
 #include <QSettings>
 #include <QStyle>
 #include <QTabBar>
-#include <QVBoxLayout>
 
 namespace {
 
@@ -661,17 +660,17 @@ bool autoHideSideBar() {
 
 } // namespace
 
-SideBar::SideBar(TabWidget *tabs, MainWindow *mainWindow, QWidget *parent)
-    : QWidget(parent), mTabs(tabs), mMainWindow(mainWindow) {
+SideBar::SideBar(TabWidget *tabs, MainWindow *mainWindow)
+    : QObject(mainWindow), mTabs(tabs), mMainWindow(mainWindow) {
   RepoModel *model = new RepoModel(tabs, this);
   mModel = model;
 
   // add menu
-  mAddMenu = new QMenu(this);
+  mAddMenu = new QMenu(mMainWindow);
 
   QAction *clone = mAddMenu->addAction(tr("Clone Repository"));
   connect(clone, &QAction::triggered, [this] {
-    CloneDialog *dialog = new CloneDialog(CloneDialog::Clone, this);
+    CloneDialog *dialog = new CloneDialog(CloneDialog::Clone, mMainWindow);
     connect(dialog, &CloneDialog::accepted, [dialog] {
       if (MainWindow *window = MainWindow::open(dialog->path()))
         window->currentView()->addLogEntry(dialog->message(),
@@ -684,7 +683,7 @@ SideBar::SideBar(TabWidget *tabs, MainWindow *mainWindow, QWidget *parent)
   connect(openAction, &QAction::triggered, [this] {
     // FIXME: Filter out non-git dirs.
     QFileDialog *dialog =
-        new QFileDialog(this, tr("Open Repository"), QDir::homePath());
+        new QFileDialog(mMainWindow, tr("Open Repository"), QDir::homePath());
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     dialog->setFileMode(QFileDialog::Directory);
     dialog->setOption(QFileDialog::ShowDirsOnly);
@@ -695,7 +694,7 @@ SideBar::SideBar(TabWidget *tabs, MainWindow *mainWindow, QWidget *parent)
 
   QAction *init = mAddMenu->addAction(tr("Initialize New Repository"));
   connect(init, &QAction::triggered, [this] {
-    CloneDialog *dialog = new CloneDialog(CloneDialog::Init, this);
+    CloneDialog *dialog = new CloneDialog(CloneDialog::Init, mMainWindow);
     connect(dialog, &CloneDialog::accepted, [dialog] {
       if (MainWindow *window = MainWindow::open(dialog->path()))
         window->currentView()->addLogEntry(dialog->message(),
@@ -711,7 +710,7 @@ SideBar::SideBar(TabWidget *tabs, MainWindow *mainWindow, QWidget *parent)
     QString text = tr("Add %1 Account").arg(Account::name(kind));
     QAction *add = mAddMenu->addAction(text);
     connect(add, &QAction::triggered, [this, kind] {
-      AccountDialog *dialog = new AccountDialog(nullptr, this);
+      AccountDialog *dialog = new AccountDialog(nullptr, mMainWindow);
       dialog->setKind(kind);
       dialog->open();
     });
@@ -719,7 +718,7 @@ SideBar::SideBar(TabWidget *tabs, MainWindow *mainWindow, QWidget *parent)
 
   // options menu
   QSettings settings;
-  mOptionsMenu = new QMenu(this);
+  mOptionsMenu = new QMenu(mMainWindow);
 
   QAction *clear = mOptionsMenu->addAction(tr("Clear All Recent"));
   connect(clear, &QAction::triggered,
@@ -760,24 +759,9 @@ SideBar::SideBar(TabWidget *tabs, MainWindow *mainWindow, QWidget *parent)
     model->setShowFullName(checked);
   });
 
-  // Create the QML view.
-  mView = QmlSupport::createView(
-      "SideBar", {{"sidebar", QVariant::fromValue<QObject *>(this)}}, this);
-
-  QVBoxLayout *layout = new QVBoxLayout(this);
-  layout->setContentsMargins(0, 0, 0, 0);
-  layout->setSpacing(0);
-  layout->addWidget(mView);
 }
 
-SideBar::~SideBar() {
-  // The QML view references this object, so it has to go first.
-  delete mView;
-}
-
-QSize SideBar::sizeHint() const { return QSize(240, 0); }
-
-QSize SideBar::minimumSizeHint() const { return QSize(0, 0); }
+SideBar::~SideBar() {}
 
 void SideBar::activate(const QModelIndex &index) {
   if (isRepoIndex(index))
@@ -803,7 +787,7 @@ void SideBar::open(const QModelIndex &index) {
   QVariant accountKindVariant = index.data(AccountKindRole);
   if (accountKindVariant.isValid()) {
     Account *account = index.data(AccountRole).value<Account *>();
-    AccountDialog *dialog = new AccountDialog(account, this);
+    AccountDialog *dialog = new AccountDialog(account, mMainWindow);
     dialog->setKind(accountKindVariant.value<Account::Kind>());
     dialog->open();
     return;
@@ -813,7 +797,7 @@ void SideBar::open(const QModelIndex &index) {
   QVariant repoVariant = index.data(RepositoryRole);
   if (repoVariant.isValid()) {
     Repository *repo = repoVariant.value<Repository *>();
-    CloneDialog *dialog = new CloneDialog(CloneDialog::Clone, this, repo);
+    CloneDialog *dialog = new CloneDialog(CloneDialog::Clone, mMainWindow, repo);
     connect(dialog, &CloneDialog::accepted, [this, repo, dialog] {
       // Set local path.
       Account *account = repo->account();
@@ -843,7 +827,7 @@ void SideBar::remove(const QModelIndex &index) {
                      "association for %1?</p><p>The local clone itself will "
                      "not be affected.</p>");
 
-    ConfirmDialog *dialog = new ConfirmDialog(this);
+    ConfirmDialog *dialog = new ConfirmDialog(mMainWindow);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     dialog->setTitle(tr("Remove Repository Association?"));
     dialog->setText(fmt.arg(repo->fullName()));
@@ -860,7 +844,7 @@ void SideBar::remove(const QModelIndex &index) {
 }
 
 void SideBar::showContextMenu(const QModelIndex &index, qreal x, qreal y) {
-  QMenu *menu = new QMenu(this);
+  QMenu *menu = new QMenu(mMainWindow);
   menu->setAttribute(Qt::WA_DeleteOnClose);
 
   if (RepoView *view = index.data(TabRole).value<RepoView *>()) {
@@ -938,7 +922,7 @@ void SideBar::promptToRemoveAccount(Account *account) {
          "<p>Only the account association will be removed. Remote "
          "configurations and local clones will not be affected.</p>");
 
-  ConfirmDialog *dialog = new ConfirmDialog(this);
+  ConfirmDialog *dialog = new ConfirmDialog(mMainWindow);
   dialog->setAttribute(Qt::WA_DeleteOnClose);
   dialog->setTitle(tr("Remove Account?"));
   dialog->setText(fmt.arg(Account::name(account->kind()), account->username()));

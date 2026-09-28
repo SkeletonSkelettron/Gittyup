@@ -23,10 +23,11 @@ class TabWidget : public QTabWidget {
 
 public:
   TabWidget(QWidget *parent = nullptr);
-  ~TabWidget() override;
 
   bool isWelcomeVisible() const { return mWelcomeVisible; }
   void setWelcomeVisible(bool visible);
+
+  WelcomePage *welcomePage() const { return mWelcomePage; }
 
 signals:
   void tabAboutToBeInserted();
@@ -36,14 +37,12 @@ signals:
   void welcomeChanged();
 
 protected:
-  void resizeEvent(QResizeEvent *event) override;
   void tabInserted(int index) override;
   void tabRemoved(int index) override;
 
 private:
   void updateWelcome();
 
-  QQuickWidget *mWelcome;
   WelcomePage *mWelcomePage;
   bool mWelcomeRequested = false;
   bool mWelcomeVisible = false;

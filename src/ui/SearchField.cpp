@@ -10,6 +10,7 @@
 #include "SearchField.h"
 #include "QmlPopup.h"
 #include "RepoView.h"
+#include "MainWindow.h"
 #include "ToolBar.h"
 #include "index/Query.h"
 #include <QDate>
@@ -235,7 +236,7 @@ void SearchField::showAdvanced() {
   if (!mAdvancedPopup) {
     mAdvancedPopup = new QmlPopup(
         "AdvancedSearch", {{"search", QVariant::fromValue<QObject *>(this)}},
-        true, mToolBar);
+        true, mToolBar->window());
     connect(mAdvancedPopup, &QmlPopup::hidden, this,
             [this] { mFieldMap.clear(); });
   }
@@ -358,7 +359,8 @@ void SearchField::updateCompletions(int cursor) {
   if (!mCompletionPopup)
     mCompletionPopup = new QmlPopup(
         "SearchCompletions",
-        {{"search", QVariant::fromValue<QObject *>(this)}}, false, mToolBar);
+        {{"search", QVariant::fromValue<QObject *>(this)}}, false,
+        mToolBar->window());
 
   mCompletionPopup->popup(mField, mField.width());
 }

@@ -10,9 +10,6 @@
 #include "TabWidget.h"
 #include "MenuBar.h"
 #include "WelcomePage.h"
-#include "qml/QmlSupport.h"
-#include <QQuickWidget>
-#include <QResizeEvent>
 #include <QTabBar>
 
 TabWidget::TabWidget(QWidget *parent) : QTabWidget(parent) {
@@ -24,11 +21,8 @@ TabWidget::TabWidget(QWidget *parent) : QTabWidget(parent) {
   setDocumentMode(true);
   bar->hide();
 
-  // Create the welcome page.
-  mWelcomePage = new WelcomePage(this);
-  mWelcome = QmlSupport::createView(
-      "WelcomePage", {{"welcome", QVariant::fromValue<QObject *>(mWelcomePage)}},
-      this);
+  // Dialogs of the welcome page open on the main window.
+  mWelcomePage = new WelcomePage(parent ? parent : this);
   connect(mWelcomePage, &WelcomePage::closeRequested, this,
           [this] { setWelcomeVisible(false); });
   updateWelcome();
@@ -44,22 +38,12 @@ TabWidget::TabWidget(QWidget *parent) : QTabWidget(parent) {
           [this] { setWelcomeVisible(false); });
 }
 
-TabWidget::~TabWidget() {
-  // The QML view references the welcome page, so it has to go first.
-  delete mWelcome;
-}
-
 void TabWidget::setWelcomeVisible(bool visible) {
   if (visible == mWelcomeRequested)
     return;
 
   mWelcomeRequested = visible;
   updateWelcome();
-}
-
-void TabWidget::resizeEvent(QResizeEvent *event) {
-  QTabWidget::resizeEvent(event);
-  mWelcome->setGeometry(rect());
 }
 
 void TabWidget::tabInserted(int index) {
@@ -82,13 +66,6 @@ void TabWidget::tabRemoved(int index) {
 void TabWidget::updateWelcome() {
   bool visible = !count() || mWelcomeRequested;
   mWelcomePage->setClosable(count() > 0);
-  mWelcome->setGeometry(rect());
-  mWelcome->setVisible(visible);
-  if (visible) {
-    mWelcome->raise();
-    mWelcome->setFocus();
-  }
-
   if (visible != mWelcomeVisible) {
     mWelcomeVisible = visible;
     emit welcomeChanged();
