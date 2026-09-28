@@ -8,6 +8,8 @@
 //
 
 #include "Test.h"
+#include "dialogs/NewBranchDialog.h"
+#include <QQuickWidget>
 #include "dialogs/ConfigDialog.h"
 #include "ui/Footer.h"
 #include "ui/MainWindow.h"
@@ -73,27 +75,32 @@ void TestBranchesPanel::createBranch() {
   mouseClick(addRemote, Qt::LeftButton, Qt::KeyboardModifiers(), QPoint(),
              inputDelay);
 
-  // Click upstream combobox
-  QComboBox *referenceList = panel->findChild<QComboBox *>();
-  QVERIFY(referenceList);
-  mouseClick(referenceList, Qt::LeftButton, Qt::KeyboardModifiers(), QPoint(),
-             inputDelay);
+  // The new branch dialog opens with the name field focused.
+  NewBranchDialog *dialog = panel->findChild<NewBranchDialog *>();
+  QVERIFY(dialog);
+  QVERIFY(qWaitForWindowExposed(dialog));
+  QQuickWidget *view = dialog->findChild<QQuickWidget *>();
+  QVERIFY(view);
+  keyClicks(view, "feature");
+  QCOMPARE(dialog->name(), QString("feature"));
 
-  // Select upstream test_remote/master
-  auto *menu = qobject_cast<QFrame *>(QApplication::activePopupWidget());
-  QVERIFY(menu);
-  keyClick(menu, Qt::Key_Down, Qt::NoModifier, inputDelay);
-  keyClick(menu, Qt::Key_Return, Qt::NoModifier, inputDelay);
+  // Select upstream origin/master.
+  QVariantList upstreams = dialog->upstreams();
+  int upstream = -1;
+  for (int i = 0; i < upstreams.size(); ++i) {
+    if (upstreams.at(i).toMap().value("text") == "origin/master")
+      upstream = i;
+  }
+  QVERIFY(upstream > 0);
+  dialog->setUpstreamIndex(upstream);
 
-  // Click Accept
-  QDialog *newBranchDialog = panel->findChild<QDialog *>();
-  QVERIFY(newBranchDialog);
-  QList<QPushButton *> buttons = newBranchDialog->findChildren<QPushButton *>();
-  QVERIFY(buttons.count() >= 2);
-  QPushButton *createBranch = buttons.at(1);
-  QVERIFY(createBranch);
-  mouseClick(createBranch, Qt::LeftButton, Qt::KeyboardModifiers(), QPoint(),
-             inputDelay);
+  // Accept.
+  QVERIFY(dialog->isAcceptable());
+  dialog->accept();
+
+  git::Branch branch = mRepo->lookupBranch("feature", GIT_BRANCH_LOCAL);
+  QVERIFY(branch.isValid());
+  QCOMPARE(branch.upstream().name(), QString("origin/master"));
 
   // Verify branch created
   QTableView *branchTable = panel->findChild<QTableView *>();

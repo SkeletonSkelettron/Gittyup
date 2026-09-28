@@ -1,7 +1,8 @@
 import QtQuick
 import Gittyup
 
-// A text button. 'primary' buttons are filled with the accent color.
+// A text button. 'primary' buttons are filled with the accent color, or
+// red when they are also 'danger' buttons.
 Rectangle {
     id: root
 
@@ -10,22 +11,24 @@ Rectangle {
     property string tip
     property bool primary: false
     property bool danger: false
+    property int minimumWidth: 0
 
     signal clicked()
 
+    readonly property color fill: danger ? Theme.deleted : Theme.accent
     readonly property color foreground: !enabled ? Theme.textDisabled
-                                       : primary ? Theme.accentText
+                                       : primary ? (danger ? "#ffffff" : Theme.accentText)
                                        : danger ? Theme.deleted : Theme.text
 
-    implicitWidth: row.implicitWidth + 20
+    implicitWidth: Math.max(minimumWidth, row.implicitWidth + 20)
     implicitHeight: 28
     radius: 6
     // Disabled buttons look alike, so the label stays readable.
     readonly property bool filled: primary && enabled
 
-    color: filled ? (mouse.pressed ? Qt.darker(Theme.accent, 1.15)
-                                   : mouse.containsMouse ? Qt.lighter(Theme.accent, 1.1)
-                                                         : Theme.accent)
+    color: filled ? (mouse.pressed ? Qt.darker(fill, 1.15)
+                                   : mouse.containsMouse ? Qt.lighter(fill, 1.1)
+                                                         : fill)
                   : (!enabled ? Theme.field
                               : mouse.pressed ? Theme.pressed
                                               : mouse.containsMouse ? Theme.hover : Theme.field)

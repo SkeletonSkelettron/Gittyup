@@ -21,6 +21,8 @@ add_library(
   NewBranchDialog.cpp
   PluginsPanel.cpp
   PullRequestDialog.cpp
+  QmlDialog.cpp
+  ReferenceItems.cpp
   RemoteDialog.cpp
   RemoteTableModel.cpp
   RenameBranchDialog.cpp
@@ -46,6 +48,7 @@ target_link_libraries(
   host
   index
   plugins
+  Qt6::QuickWidgets
   Qt6::Widgets)
 
 set_target_properties(dialogs PROPERTIES AUTOMOC ON)
