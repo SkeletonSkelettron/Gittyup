@@ -8,6 +8,7 @@
 //
 
 #include "MainWindow.h"
+#include "CommandPalette.h"
 #include "dialogs/ConfirmDialog.h"
 #include "MenuBar.h"
 #include "RepoView.h"
@@ -134,6 +135,7 @@ MainWindow::MainWindow(const git::Repository &repo, QWidget *parent,
   mTabStrip->setTabWidget(mTabs);
   mToolBar = new ToolBar(this);
   mSideBar = new SideBar(mTabs, this);
+  mPalette = new CommandPalette(this);
 
   // The actions of the menu bar are also added to the window, so their
   // shortcuts work while the view draws the menu bar.
@@ -149,7 +151,8 @@ MainWindow::MainWindow(const git::Repository &repo, QWidget *parent,
        {"toolbar", QVariant::fromValue<QObject *>(mToolBar)},
        {"search", QVariant::fromValue<QObject *>(mToolBar->searchField())},
        {"sidebar", QVariant::fromValue<QObject *>(mSideBar)},
-       {"welcome", QVariant::fromValue<QObject *>(mTabs->welcomePage())}},
+       {"welcome", QVariant::fromValue<QObject *>(mTabs->welcomePage())},
+       {"commandPalette", QVariant::fromValue<QObject *>(mPalette)}},
       this);
   mView->setMinimumSize(kMinimumWidth, kMinimumHeight);
   QmlSupport::setDrawsPopups(mView, true);

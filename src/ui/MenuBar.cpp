@@ -9,6 +9,7 @@
 
 #include "MenuBar.h"
 #include "CommitList.h"
+#include "CommandPalette.h"
 #include "EditorWindow.h"
 #include "FileEditor.h"
 #include "FindController.h"
@@ -107,6 +108,9 @@ static Hotkey saveHotkey =
 static Hotkey quitHotkey =
     HotkeyManager::registerHotkey(QKeySequence::Quit, "file/quit", "File/Exit");
 #endif
+
+static Hotkey commandPaletteHotkey = HotkeyManager::registerHotkey(
+    "Ctrl+P", "view/commandPalette", "View/Command Palette");
 
 static Hotkey undoHotkey =
     HotkeyManager::registerHotkey(QKeySequence::Undo, "edit/undo", "Edit/Undo");
@@ -313,6 +317,8 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
   });
 
   QMenu *openRecent = file->addMenu(tr("Open Recent"));
+  // The command palette lists the recent repositories itself.
+  openRecent->setObjectName("openRecent");
   connect(openRecent, &QMenu::aboutToShow, [openRecent] {
     openRecent->clear();
     RecentRepositories *repos = RecentRepositories::instance();
@@ -507,6 +513,17 @@ MenuBar::MenuBar(QWidget *parent) : QMenuBar(parent) {
 
   // View
   QMenu *viewMenu = addMenu(tr("View"));
+
+  // Find commands, branches, files and repositories, like GitKraken.
+  QAction *palette = viewMenu->addAction(tr("Command Palette..."));
+  palette->setObjectName("commandPalette");
+  commandPaletteHotkey.use(palette);
+  connect(palette, &QAction::triggered, [this] {
+    if (MainWindow *win = qobject_cast<MainWindow *>(window()))
+      win->commandPalette()->open();
+  });
+
+  viewMenu->addSeparator();
 
   mRefresh = viewMenu->addAction(tr("Refresh"));
   refreshHotkey.use(mRefresh);

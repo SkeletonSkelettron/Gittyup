@@ -19,6 +19,7 @@ class QQmlContext;
 class QQuickItem;
 class QQuickWidget;
 class RepoView;
+class CommandPalette;
 class SideBar;
 class TabWidget;
 class ToolBar;
@@ -49,6 +50,8 @@ public:
              Qt::WindowFlags flags = Qt::WindowFlags());
 
   ToolBar *toolBar() const { return mToolBar; }
+  // Finds commands, branches, files and repositories.
+  CommandPalette *commandPalette() const { return mPalette; }
 
   ~MainWindow() override;
 
@@ -123,6 +126,7 @@ private:
   TabStrip *mTabStrip;
   ToolBar *mToolBar;
   SideBar *mSideBar;
+  CommandPalette *mPalette;
   MenuBar *mMenuBar;
   QQuickWidget *mView;
 

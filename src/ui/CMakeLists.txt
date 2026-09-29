@@ -2,6 +2,7 @@ add_library(
   ui
   ChangedFilesModel.cpp
   CommitList.cpp
+  CommandPalette.cpp
   CodeHighlighter.cpp
   CommitMessage.cpp
   DetailView.cpp

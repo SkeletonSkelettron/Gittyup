@@ -15,6 +15,11 @@ Rectangle {
 
     ToolTipPopup {}
 
+    // Ctrl+P finds commands, branches, files and repositories.
+    CommandPalette {
+        anchors.fill: parent
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0

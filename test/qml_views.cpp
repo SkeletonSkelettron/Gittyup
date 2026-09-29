@@ -35,6 +35,7 @@
 #include "ui/MergeModel.h"
 #include "git/Config.h"
 #include "ui/CommitList.h"
+#include "ui/CommandPalette.h"
 #include "ui/FindController.h"
 #include "ui/MainWindow.h"
 #include "ui/RepoView.h"
@@ -87,6 +88,7 @@ private slots:
   void menu();
   void solo();
   void hide();
+  void palette();
   void merge();
   void dragTab();
   void cleanupTestCase();
@@ -406,6 +408,64 @@ void TestQmlViews::hide() {
 
   repo.index().setStaged({"side.txt"}, false);
   QFile::remove(repo.workdir().filePath("side.txt"));
+  QVERIFY2(sMessages.isEmpty(), qPrintable(sMessages.join('\n')));
+}
+
+void TestQmlViews::palette() {
+  RepoView *view = mWindow->currentView();
+  git::Repository repo = view->repo();
+  CommandPalette *palette = mWindow->commandPalette();
+
+  // Fuzzy matching prefers the starts of words and consecutive characters.
+  QList<int> positions;
+  QCOMPARE(CommandPalette::score("chk", "Checkout", &positions), 15);
+  QCOMPARE(positions, QList<int>({0, 1, 4}));
+  QVERIFY(CommandPalette::score("fb", "foo_bar") >
+          CommandPalette::score("fb", "fooxbar"));
+  QCOMPARE(CommandPalette::score("xyz", "Checkout"), -1);
+
+  // Ctrl+P opens it with the focus in the search field.
+  QQuickItem *input = mWindow->quickView()->rootObject()->findChild<QQuickItem *>(
+      "commandPaletteInput");
+  QVERIFY(input);
+  mWindow->activateWindow();
+  keyClick(mWindow->quickView(), Qt::Key_P, Qt::ControlModifier);
+  QTRY_VERIFY(palette->isVisible());
+  QTRY_VERIFY(input->hasActiveFocus());
+  QVERIFY(palette->rowCount() > 0);
+
+  // Files, commands and branches.
+  palette->setQuery("file.txt");
+  QVERIFY(palette->rowCount() > 0);
+  QCOMPARE(palette->index(0).data(CommandPalette::KindRole).toInt(),
+           int(CommandPalette::File));
+  QCOMPARE(palette->index(0).data(CommandPalette::TitleRole).toString(),
+           QString("file.txt"));
+
+  palette->setQuery(">refresh");
+  QVERIFY(palette->rowCount() > 0);
+  QCOMPARE(palette->index(0).data(CommandPalette::TitleRole).toString(),
+           QString("Refresh"));
+  for (int row = 0; row < palette->rowCount(); ++row)
+    QCOMPARE(palette->index(row).data(CommandPalette::KindRole).toInt(),
+             int(CommandPalette::Command));
+
+  palette->setQuery("@" + repo.head().name());
+  QVERIFY(palette->rowCount() > 0);
+  QCOMPARE(palette->index(0).data(CommandPalette::KindRole).toInt(),
+           int(CommandPalette::Branch));
+
+  // Escape closes it.
+  keyClick(mWindow->quickView(), Qt::Key_Escape);
+  QTRY_VERIFY(!palette->isVisible());
+
+  // Opening a file shows it in the tree view.
+  palette->open("file.txt");
+  palette->activate(0);
+  QVERIFY(!palette->isVisible());
+  QTRY_COMPARE(view->viewMode(), RepoView::Tree);
+  QTRY_COMPARE(view->detailView()->file(), QString("file.txt"));
+  view->setViewMode(RepoView::DoubleTree);
   QVERIFY2(sMessages.isEmpty(), qPrintable(sMessages.join('\n')));
 }
 
