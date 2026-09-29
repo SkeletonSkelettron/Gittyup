@@ -9,6 +9,8 @@ Rectangle {
     id: root
 
     readonly property int rowHeight: commitList.compact ? 26 : 32
+    // The header keeps only icons when the view is narrow.
+    readonly property bool narrowHeader: width < 700
     readonly property int laneWidth: commitList.compact ? 16 : 20
     readonly property int refsWidth: Math.min(180, width * 0.22)
     // The message keeps at least this much space. The optional columns and
@@ -123,10 +125,91 @@ Rectangle {
                     }
                 }
 
+                // The hidden branches, with a button to show them again.
+                Rectangle {
+                    id: hiddenChip
+
+                    visible: !commitList.filtered && commitList.solo.length === 0
+                             && commitList.hidden.length > 0
+                    implicitWidth: hiddenRow.implicitWidth + 20
+                    implicitHeight: 26
+                    radius: 13
+                    color: Theme.hover
+                    border.color: Theme.border
+
+                    HoverHandler {
+                        id: hiddenHover
+                    }
+
+                    HoverTip {
+                        target: hiddenChip
+                        text: qsTr("Hidden in the graph:") + "<br>"
+                              + commitList.hidden.map((name) => name.replace(/^refs\/(heads|remotes)\//, "")
+                                                                   .replace(/\/$/, "/*"))
+                                                 .join("<br>")
+                        hovered: hiddenHover.hovered && !showAllMouse.containsMouse
+                    }
+
+                    Row {
+                        id: hiddenRow
+
+                        anchors.centerIn: parent
+                        spacing: 6
+
+                        Icon {
+                            anchors.verticalCenter: parent.verticalCenter
+                            name: "eye-off"
+                            size: 13
+                            color: Theme.textMuted
+                        }
+
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: root.narrowHeader ? commitList.hidden.length
+                                                    : qsTr("Hidden: %1").arg(commitList.hiddenText)
+                            color: Theme.text
+                            font.pixelSize: 12
+                            font.bold: true
+                        }
+
+                        Rectangle {
+                            id: showAll
+
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 18
+                            height: 18
+                            radius: 9
+                            color: showAllMouse.containsMouse ? Theme.pressed : "transparent"
+
+                            Icon {
+                                anchors.centerIn: parent
+                                name: "close"
+                                size: 10
+                                color: Theme.textMuted
+                            }
+
+                            MouseArea {
+                                id: showAllMouse
+
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                onClicked: commitList.showAll()
+                                onExited: host.hideToolTip()
+                            }
+
+                            HoverTip {
+                                target: showAll
+                                text: qsTr("Show all hidden branches")
+                                hovered: showAllMouse.containsMouse
+                            }
+                        }
+                    }
+                }
+
                 MenuButton {
                     visible: !commitList.filtered && commitList.solo.length === 0
                     icon: "branch"
-                    text: commitList.refsFilterName
+                    text: root.narrowHeader ? "" : commitList.refsFilterName
                     tip: qsTr("Which branches to show")
                     onMenuRequested: (x, y) => commitList.showRefsFilterMenu(x, y)
                 }
@@ -134,7 +217,7 @@ Rectangle {
                 MenuButton {
                     visible: !commitList.filtered
                     icon: "sort"
-                    text: commitList.sortName
+                    text: root.narrowHeader ? "" : commitList.sortName
                     tip: qsTr("Commit order")
                     onMenuRequested: (x, y) => commitList.showSortMenu(x, y)
                 }
@@ -158,7 +241,10 @@ Rectangle {
                 FilterField {
                     id: pathField
 
-                    Layout.preferredWidth: Math.min(260, root.width * 0.35)
+                    // Shrink to keep the buttons in narrow views.
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 90
+                    Layout.maximumWidth: Math.min(260, root.width * 0.35)
                     icon: "filter"
                     placeholder: qsTr("Filter by path")
                     text: repoView.pathspec

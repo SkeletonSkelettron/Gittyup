@@ -47,6 +47,10 @@ class CommitList : public QObject {
   // GitKraken, by their qualified names.
   Q_PROPERTY(QStringList solo READ solo NOTIFY soloChanged)
   Q_PROPERTY(QString soloText READ soloText NOTIFY soloChanged)
+  // The branches that aren't shown in the graph, like 'hide' in GitKraken,
+  // by their qualified names. Names that end with a slash hide a remote.
+  Q_PROPERTY(QStringList hidden READ hidden NOTIFY hiddenChanged)
+  Q_PROPERTY(QString hiddenText READ hiddenText NOTIFY hiddenChanged)
 
 public:
   enum Role {
@@ -146,6 +150,16 @@ public:
   Q_INVOKABLE void setSoloed(const QString &name, bool soloed);
   Q_INVOKABLE void unsoloAll();
 
+  QStringList hidden() const { return mHidden; }
+  // The hidden branch or remote, or how many are hidden.
+  QString hiddenText() const;
+  // Whether the branch is hidden, also when its remote is.
+  bool isHidden(const QString &name) const;
+  // The checked out branch can't be hidden.
+  bool canHide(const QString &name) const;
+  Q_INVOKABLE void setHidden(const QString &name, bool hidden);
+  Q_INVOKABLE void showAll();
+
 signals:
   void statusChanged(bool dirty);
   void diffSelected(const git::Diff diff, const QString &file = QString(),
@@ -163,6 +177,7 @@ signals:
   void laneCountChanged();
   void settingsChanged();
   void soloChanged();
+  void hiddenChanged();
 
   // Ask the view to scroll so that the row is visible.
   void scrollRequested(int row);
@@ -177,6 +192,7 @@ private:
   void setLoading(bool loading);
   void setConfigValue(const QString &key, const QVariant &value);
   void setSolo(const QStringList &solo);
+  void setHidden(const QStringList &hidden);
 
   QModelIndexList sortedIndexes() const;
 
@@ -203,6 +219,7 @@ private:
   QMap<git::Id, QVariantList> mRefs;
 
   QStringList mSolo;
+  QStringList mHidden;
 
   bool mRestoreSelection{true};
 

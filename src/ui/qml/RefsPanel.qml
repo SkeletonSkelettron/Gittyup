@@ -75,14 +75,20 @@ Rectangle {
                 required property bool expandable
                 required property bool soloed
                 required property string refName
+                required property bool hidden
 
                 readonly property bool isHeader: kind === root.kindHeader
                 readonly property bool isBranch: kind === root.kindBranch
                                                  || kind === root.kindRemoteBranch
                 readonly property bool hovered: mouse.containsMouse || addMouse.containsMouse
-                                                || soloMouse.containsMouse
-                // Branches that are hidden in the graph while others are soloed.
-                readonly property bool dimmed: refsPanel.soloActive && isBranch && !soloed
+                                                || soloMouse.containsMouse || eyeMouse.containsMouse
+                // Branches that are hidden in the graph while others are soloed,
+                // or that are hidden.
+                readonly property bool dimmed: refsPanel.soloActive ? isBranch && !soloed
+                                                                    : hidden
+                // Branches and remotes can be hidden, but not the checked out branch.
+                readonly property bool hideable: (isBranch && !isHead)
+                                                 || kind === root.kindRemoteGroup
                 // Branches and tags are dragged onto branches and remotes.
                 readonly property bool draggable: isBranch || kind === root.kindTag
                 readonly property bool dropTarget: drop.containsDrag
@@ -158,6 +164,7 @@ Rectangle {
                     target: row
                     text: row.isHeader || refDrop.active ? "" : row.toolTip
                     hovered: mouse.containsMouse && !row.isHeader && !soloMouse.containsMouse
+                             && !eyeMouse.containsMouse
                 }
 
                 RowLayout {
@@ -225,6 +232,32 @@ Rectangle {
                             target: soloIcon
                             text: row.soloed ? qsTr("Unsolo") : qsTr("Solo")
                             hovered: soloMouse.containsMouse
+                        }
+                    }
+
+                    // Hide the branch or remote in the graph, like GitKraken.
+                    Icon {
+                        id: eyeIcon
+
+                        visible: row.hideable && (row.hidden || row.hovered)
+                        name: row.hidden ? "eye-off" : "eye"
+                        size: 14
+                        color: eyeMouse.containsMouse ? Theme.text : Theme.textMuted
+
+                        MouseArea {
+                            id: eyeMouse
+
+                            anchors.fill: parent
+                            anchors.margins: -4
+                            hoverEnabled: true
+                            onClicked: refsPanel.toggleHidden(row.index)
+                            onExited: host.hideToolTip()
+                        }
+
+                        HoverTip {
+                            target: eyeIcon
+                            text: row.hidden ? qsTr("Show in graph") : qsTr("Hide in graph")
+                            hovered: eyeMouse.containsMouse
                         }
                     }
 

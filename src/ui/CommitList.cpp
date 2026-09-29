@@ -37,6 +37,18 @@ namespace {
 
 // The branches that are soloed, separated by spaces.
 const QString kSoloKey = "solo.refs";
+// The branches that are hidden, separated by spaces. Names that end with a
+// slash hide the branches of a remote.
+const QString kHiddenKey = "hide.refs";
+
+// Whether 'name' is one of the hidden branches or on a hidden remote.
+bool matchesHidden(const QStringList &hidden, const QString &name) {
+  for (const QString &entry : hidden) {
+    if (entry == name || (entry.endsWith('/') && name.startsWith(entry)))
+      return true;
+  }
+  return false;
+}
 
 // FIXME: Factor out into theme?
 const QColor kTaintedColor = Qt::gray;
@@ -220,6 +232,15 @@ public:
       return;
 
     mSolo = solo;
+    resetWalker();
+  }
+
+  // Don't walk these branches, unless they are soloed.
+  void setHidden(const QStringList &hidden) {
+    if (hidden == mHidden)
+      return;
+
+    mHidden = hidden;
     resetWalker();
   }
 
@@ -465,6 +486,7 @@ private:
     bool sortDate;
     CommitList::RefsFilter refsFilter;
     QStringList solo;
+    QStringList hidden;
     bool showCleanStatus;
     git::Repository repo;
     git::Diff statusDiff;
@@ -749,7 +771,9 @@ private:
           ctx.refsFilter == CommitList::RefsFilter::SelectedRefIgnoreMerge);
       if (ctx.ref.isLocalBranch()) {
         // Add the upstream branch.
-        if (git::Branch upstream = git::Branch(ctx.ref).upstream())
+        git::Branch upstream = git::Branch(ctx.ref).upstream();
+        if (upstream.isValid() &&
+            !matchesHidden(ctx.hidden, upstream.qualifiedName()))
           result.walker.push(upstream);
       }
 
@@ -759,9 +783,10 @@ private:
           result.walker.push(mergeHead);
       }
 
+      // Hidden branches aren't walked, like in GitKraken.
       if (ctx.refsFilter == CommitList::RefsFilter::AllRefs) {
         for (const git::Reference &ref : ctx.repo.refs()) {
-          if (!ref.isStash())
+          if (!ref.isStash() && !matchesHidden(ctx.hidden, ref.qualifiedName()))
             result.walker.push(ref);
         }
       }
@@ -793,6 +818,7 @@ private:
                      mSortDate,
                      mRefsFilter,
                      mSolo,
+                     mHidden,
                      mShowCleanStatus,
                      mRepo,
                      status(),
@@ -835,6 +861,7 @@ private:
   bool mSuppressResetWalker{false};
   CommitList::RefsFilter mRefsFilter{CommitList::RefsFilter::AllRefs};
   QStringList mSolo;
+  QStringList mHidden;
   bool mSortDate = true;
   bool mShowCleanStatus = true;
   bool mGraphVisible = true;
@@ -930,6 +957,11 @@ CommitList::CommitList(Index *index, RepoView *view)
   }
   static_cast<CommitModel *>(mModel)->setSolo(mSolo);
 
+  // Restore the hidden branches.
+  QString hidden = repo.appConfig().value<QString>(kHiddenKey, QString());
+  mHidden = hidden.split(' ', Qt::SkipEmptyParts);
+  static_cast<CommitModel *>(mModel)->setHidden(mHidden);
+
   setModel(mModel);
   updateRefs();
 
@@ -978,7 +1010,7 @@ CommitList::CommitList(Index *index, RepoView *view)
   connect(notifier, &git::RepositoryNotifier::referenceRemoved, this,
           &CommitList::updateRefs);
 
-  // Stop soloing branches that are gone.
+  // Stop soloing and hiding branches that are gone.
   connect(notifier, &git::RepositoryNotifier::referenceRemoved, this, [this] {
     QStringList solo;
     git::Repository repo = mView->repo();
@@ -987,6 +1019,13 @@ CommitList::CommitList(Index *index, RepoView *view)
         solo.append(name);
     }
     setSolo(solo);
+
+    QStringList hidden;
+    for (const QString &name : mHidden) {
+      if (name.endsWith('/') || repo.lookupRef(name).isValid())
+        hidden.append(name);
+    }
+    setHidden(hidden);
   });
 
   QShortcut *shortcut = new QShortcut(view);
@@ -1427,6 +1466,29 @@ void CommitList::showContextMenu(int row, qreal x, qreal y) {
     if (!mSolo.isEmpty())
       menu.addAction(tr("Unsolo All"), [this] { unsoloAll(); });
 
+    // Hide the branches of the commit from the graph, like GitKraken.
+    QList<git::Reference> hideable;
+    for (const git::Reference &ref : branches) {
+      if (!ref.isHead())
+        hideable.append(ref);
+    }
+
+    if (hideable.size() == 1) {
+      QString name = hideable.first().qualifiedName();
+      menu.addAction(tr("Hide %1").arg(hideable.first().name()),
+                     [this, name] { setHidden(name, true); });
+    } else if (hideable.size() > 1) {
+      QMenu *hideMenu = menu.addMenu(tr("Hide"));
+      for (const git::Reference &ref : hideable) {
+        QString name = ref.qualifiedName();
+        hideMenu->addAction(ref.name(),
+                            [this, name] { setHidden(name, true); });
+      }
+    }
+
+    if (!mHidden.isEmpty())
+      menu.addAction(tr("Show All Hidden Branches"), [this] { showAll(); });
+
     // single selection
     if (selectedIndexes().size() <= 1) {
       menu.addSeparator();
@@ -1681,6 +1743,51 @@ void CommitList::setSoloed(const QString &name, bool soloed) {
 
 void CommitList::unsoloAll() { setSolo(QStringList()); }
 
+QString CommitList::hiddenText() const {
+  if (mHidden.size() == 1) {
+    QString name = mHidden.first();
+    if (name.endsWith('/'))
+      return name.section('/', 2, 2);
+    return mView->repo().lookupRef(name).name();
+  }
+
+  return tr("%1 branches").arg(mHidden.size());
+}
+
+bool CommitList::isHidden(const QString &name) const {
+  return matchesHidden(mHidden, name);
+}
+
+bool CommitList::canHide(const QString &name) const {
+  git::Reference head = mView->repo().head();
+  return !head.isValid() || head.qualifiedName() != name;
+}
+
+void CommitList::setHidden(const QString &name, bool hidden) {
+  QStringList list = mHidden;
+  if (hidden && !list.contains(name) && canHide(name)) {
+    list.append(name);
+  } else if (!hidden) {
+    list.removeAll(name);
+  }
+
+  setHidden(list);
+}
+
+void CommitList::showAll() { setHidden(QStringList()); }
+
+void CommitList::setHidden(const QStringList &hidden) {
+  if (hidden == mHidden)
+    return;
+
+  mHidden = hidden;
+  mView->repo().appConfig().setValue(kHiddenKey, hidden.join(' '));
+
+  updateRefs();
+  static_cast<CommitModel *>(mModel)->setHidden(hidden);
+  emit hiddenChanged();
+}
+
 void CommitList::setSolo(const QStringList &solo) {
   if (solo == mSolo)
     return;
@@ -1820,6 +1927,11 @@ void CommitList::updateRefs() {
 
     if (!solo.isEmpty() && (ref.isLocalBranch() || ref.isRemoteBranch()) &&
         !solo.contains(ref.qualifiedName()))
+      continue;
+
+    // Hidden branches have no labels, unless they are soloed.
+    if (solo.isEmpty() && !ref.isHead() &&
+        matchesHidden(mHidden, ref.qualifiedName()))
       continue;
 
     if (ref.isRemoteBranch()) {

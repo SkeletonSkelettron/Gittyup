@@ -265,6 +265,12 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
   mRefs->setSolo(mCommits->solo());
   connect(mCommits, &CommitList::soloChanged, mRefs,
           [this] { mRefs->setSolo(mCommits->solo()); });
+
+  // And the hidden ones.
+  static_cast<RefsModel *>(mRefs->model())->setHidden(mCommits->hidden());
+  connect(mCommits, &CommitList::hiddenChanged, mRefs, [this] {
+    static_cast<RefsModel *>(mRefs->model())->setHidden(mCommits->hidden());
+  });
   connect(mCommits, &CommitList::statusChanged, this, &RepoView::statusChanged);
   connect(mCommits, &CommitList::loadingChanged, this,
           &RepoView::loadingChanged);

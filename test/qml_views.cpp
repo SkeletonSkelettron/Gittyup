@@ -86,6 +86,7 @@ private slots:
   void search();
   void menu();
   void solo();
+  void hide();
   void merge();
   void dragTab();
   void cleanupTestCase();
@@ -348,6 +349,63 @@ void TestQmlViews::solo() {
   commits->setSoloed(other.qualifiedName(), true);
   other.remove();
   QTRY_VERIFY(commits->solo().isEmpty());
+  QVERIFY2(sMessages.isEmpty(), qPrintable(sMessages.join('\n')));
+}
+
+void TestQmlViews::hide() {
+  RepoView *view = mWindow->currentView();
+  git::Repository repo = view->repo();
+  CommitList *commits = view->commitList();
+  QAbstractItemModel *model = commits->model();
+
+  // A branch with a commit that HEAD doesn't have.
+  git::Commit first = repo.head().target();
+  QFile file(repo.workdir().filePath("side.txt"));
+  QVERIFY(file.open(QFile::WriteOnly));
+  file.write("side\n");
+  file.close();
+  repo.index().setStaged({"side.txt"}, true);
+  git::Commit second = repo.commit("side");
+  git::Branch side = repo.createBranch("side", second);
+  repo.head().setTarget(first, "test");
+  QTRY_VERIFY(!commits->isLoading());
+  QTRY_COMPARE(model->rowCount(), 3);
+
+  // Hiding it leaves out its commit and saves it in the repository.
+  QVERIFY(!commits->canHide(repo.head().qualifiedName()));
+  commits->setHidden(side.qualifiedName(), true);
+  QVERIFY(commits->isHidden(side.qualifiedName()));
+  QCOMPARE(commits->hiddenText(), QString("side"));
+  QCOMPARE(repo.appConfig().value<QString>("hide.refs"),
+           side.qualifiedName());
+  QTRY_COMPARE(model->rowCount(), 2);
+
+  // The checked out branch can't be hidden.
+  commits->setHidden(repo.head().qualifiedName(), true);
+  QCOMPARE(commits->hidden(), QStringList({side.qualifiedName()}));
+
+  // Hiding a remote hides its branches.
+  commits->setHidden("refs/remotes/origin/", true);
+  QVERIFY(commits->isHidden("refs/remotes/origin/main"));
+  QCOMPARE(commits->hiddenText(), QString("2 branches"));
+
+  commits->showAll();
+  QVERIFY(commits->hidden().isEmpty());
+  QTRY_COMPARE(model->rowCount(), 3);
+
+  // Soloing a hidden branch shows it.
+  commits->setHidden(side.qualifiedName(), true);
+  QTRY_COMPARE(model->rowCount(), 2);
+  commits->setSoloed(side.qualifiedName(), true);
+  QTRY_COMPARE(model->rowCount(), 2); // The commit and its parent.
+  commits->unsoloAll();
+
+  // Deleting a hidden branch stops hiding it.
+  side.remove();
+  QTRY_VERIFY(commits->hidden().isEmpty());
+
+  repo.index().setStaged({"side.txt"}, false);
+  QFile::remove(repo.workdir().filePath("side.txt"));
   QVERIFY2(sMessages.isEmpty(), qPrintable(sMessages.join('\n')));
 }
 

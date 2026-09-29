@@ -292,6 +292,23 @@ QVariant RefsModel::data(const QModelIndex &index, int role) const {
     case SoloRole:
       return (item.kind == Branch || item.kind == RemoteBranch) &&
              item.ref.isValid() && mSolo.contains(item.ref.qualifiedName());
+    case HiddenRole: {
+      QString name;
+      if (item.kind == RemoteGroup) {
+        name = QString("refs/remotes/%1/").arg(item.name);
+      } else if ((item.kind == Branch || item.kind == RemoteBranch) &&
+                 item.ref.isValid()) {
+        name = item.ref.qualifiedName();
+      } else {
+        return false;
+      }
+
+      for (const QString &entry : mHidden) {
+        if (entry == name || (entry.endsWith('/') && name.startsWith(entry)))
+          return true;
+      }
+      return false;
+    }
     case RefNameRole:
       if (item.kind == RemoteGroup)
         return QString("remote:%1").arg(item.name);
@@ -301,6 +318,15 @@ QVariant RefsModel::data(const QModelIndex &index, int role) const {
   }
 
   return QVariant();
+}
+
+void RefsModel::setHidden(const QStringList &hidden) {
+  if (hidden == mHidden)
+    return;
+
+  mHidden = hidden;
+  if (!mItems.isEmpty())
+    emit dataChanged(index(0), index(mItems.size() - 1), {HiddenRole});
 }
 
 void RefsModel::setSolo(const QStringList &solo) {
@@ -319,7 +345,8 @@ QHash<int, QByteArray> RefsModel::roleNames() const {
           {CurrentRole, "isCurrent"},   {AheadRole, "ahead"},
           {BehindRole, "behind"},       {CountRole, "count"},
           {ExpandedRole, "expanded"},   {ExpandableRole, "expandable"},
-          {SoloRole, "soloed"},         {RefNameRole, "refName"}};
+          {SoloRole, "soloed"},         {RefNameRole, "refName"},
+          {HiddenRole, "hidden"}};
 }
 
 RefsPanel::RefsPanel(const git::Repository &repo, RepoView *view)
@@ -463,6 +490,34 @@ void RefsPanel::toggleSolo(int row) {
   commits->setSoloed(name, !commits->isSoloed(name));
 }
 
+void RefsPanel::toggleHidden(int row) {
+  if (row < 0 || row >= mModel->rowCount())
+    return;
+
+  const RefsModel::Item &item = mModel->item(row);
+  QString name;
+  if (item.kind == RefsModel::RemoteGroup) {
+    name = QString("refs/remotes/%1/").arg(item.name);
+  } else if ((item.kind == RefsModel::Branch ||
+              item.kind == RefsModel::RemoteBranch) &&
+             item.ref.isValid()) {
+    name = item.ref.qualifiedName();
+  } else {
+    return;
+  }
+
+  CommitList *commits = mView->commitList();
+  if (!commits->isHidden(name)) {
+    commits->setHidden(name, true);
+    return;
+  }
+
+  // Show a branch of a hidden remote by showing the remote.
+  if (!commits->hidden().contains(name) && item.ref.isRemoteBranch())
+    name = QString("refs/remotes/%1/").arg(item.ref.name().section('/', 0, 0));
+  commits->setHidden(name, false);
+}
+
 void RefsPanel::showContextMenu(int row, qreal x, qreal y) {
   if (row < 0 || row >= mModel->rowCount())
     return;
@@ -480,6 +535,20 @@ void RefsPanel::showContextMenu(int row, qreal x, qreal y) {
 
       menu.addAction(tr("Fetch %1").arg(item.name),
                      [view, remote] { view->fetch(remote); });
+
+      // Hide the branches of the remote in the graph, like GitKraken.
+      CommitList *commits = view->commitList();
+      QString name = QString("refs/remotes/%1/").arg(item.name);
+      bool hidden = commits->isHidden(name);
+      menu.addAction(hidden ? tr("Show in Graph") : tr("Hide in Graph"),
+                     [commits, name, hidden] {
+                       commits->setHidden(name, !hidden);
+                     });
+      if (!commits->hidden().isEmpty())
+        menu.addAction(tr("Show All Hidden Branches"),
+                       [commits] { commits->showAll(); });
+      menu.addSeparator();
+
       menu.addAction(tr("Edit Remotes..."), [view] {
         view->configureSettings(ConfigDialog::Remotes);
       });
@@ -523,6 +592,17 @@ void RefsPanel::showContextMenu(int row, qreal x, qreal y) {
 
         if (!commits->solo().isEmpty())
           menu.addAction(tr("Unsolo All"), [commits] { commits->unsoloAll(); });
+
+        // Hide the branch in the graph, like GitKraken.
+        if (commits->canHide(name)) {
+          bool hidden = commits->isHidden(name);
+          menu.addAction(hidden ? tr("Show in Graph") : tr("Hide in Graph"),
+                         [this, row] { toggleHidden(row); });
+        }
+
+        if (!commits->hidden().isEmpty())
+          menu.addAction(tr("Show All Hidden Branches"),
+                         [commits] { commits->showAll(); });
 
         menu.addSeparator();
       }

@@ -51,7 +51,9 @@ public:
     SoloRole,
     // The qualified name of a reference, or "remote:<name>" for a remote,
     // for dragging and dropping.
-    RefNameRole
+    RefNameRole,
+    // The branch or remote is hidden in the graph.
+    HiddenRole
   };
 
   struct Item {
@@ -80,6 +82,8 @@ public:
 
   // The qualified names of the soloed branches.
   void setSolo(const QStringList &solo);
+  // The qualified names of the hidden branches, and remotes with a slash.
+  void setHidden(const QStringList &hidden);
 
   int rowCount(const QModelIndex &parent = QModelIndex()) const override;
   QVariant data(const QModelIndex &index,
@@ -97,6 +101,7 @@ private:
   QSet<QString> mCollapsed;
   QList<Item> mItems;
   QStringList mSolo;
+  QStringList mHidden;
 };
 
 // Controller for the references panel. It replaces the reference drop-down
@@ -128,6 +133,8 @@ public:
   void setSolo(const QStringList &solo);
   // Solo or unsolo the branch of a row.
   Q_INVOKABLE void toggleSolo(int row);
+  // Hide or show the branch or remote of a row.
+  Q_INVOKABLE void toggleHidden(int row);
 
 signals:
   // The reference that the commit graph should show changed.
