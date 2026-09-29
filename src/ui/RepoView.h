@@ -38,6 +38,7 @@ class InteractiveRebase;
 class Location;
 class LogEntry;
 class LogPanel;
+class PullRequestList;
 class MainWindow;
 class QQmlContext;
 class QQuickItem;
@@ -100,6 +101,8 @@ public:
   RefDrop *refDrop() const { return mRefDrop; }
   // The editor of interactive rebases.
   InteractiveRebase *interactiveRebase() const { return mInteractiveRebase; }
+  // The open pull requests of the default remote.
+  PullRequestList *pullRequestList() const { return mPullRequests; }
   Index *index() const { return mIndex; }
 
   Repository *remoteRepo();
@@ -447,6 +450,7 @@ private:
   UndoHistory *mUndo = nullptr;
   RefDrop *mRefDrop = nullptr;
   InteractiveRebase *mInteractiveRebase = nullptr;
+  PullRequestList *mPullRequests = nullptr;
 
   Repository *mRemoteRepo;
   bool mRemoteRepoCached = false;

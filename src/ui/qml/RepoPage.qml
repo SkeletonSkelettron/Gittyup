@@ -50,6 +50,7 @@ FocusScope {
             GraphView {
                 anchors.fill: parent
                 visible: detailView.selectedFile === "" && !interactiveRebase.active
+                         && !pullRequests.active
             }
 
             DiffPanel {
@@ -77,6 +78,13 @@ FocusScope {
             RebasePanel {
                 anchors.fill: parent
                 visible: interactiveRebase.active
+            }
+
+            // A pull request of the references panel.
+            PullRequestPanel {
+                anchors.fill: parent
+                visible: pullRequests.active && !interactiveRebase.active
+                         && detailView.selectedFile === ""
             }
         }
 

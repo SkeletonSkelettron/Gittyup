@@ -14,6 +14,7 @@
 #include "FileEditor.h"
 #include "FileContextMenu.h"
 #include "History.h"
+#include "PullRequestList.h"
 #include "InteractiveRebase.h"
 #include "MainWindow.h"
 #include "MenuBar.h"
@@ -288,6 +289,10 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
   mRefDrop = new RefDrop(this);
   mInteractiveRebase = new InteractiveRebase(this);
 
+  // List the open pull requests in the references panel.
+  mPullRequests = new PullRequestList(this);
+  static_cast<RefsModel *>(mRefs->model())->setPullRequests(mPullRequests);
+
   // Create log.
   mLogRoot = new LogEntry(this);
   mLogPanel = new LogPanel(mLogRoot, this);
@@ -303,7 +308,8 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
        {"logPanel", QVariant::fromValue<QObject *>(mLogPanel)},
        {"refDrop", QVariant::fromValue<QObject *>(mRefDrop)},
        {"interactiveRebase",
-        QVariant::fromValue<QObject *>(mInteractiveRebase)}},
+        QVariant::fromValue<QObject *>(mInteractiveRebase)},
+       {"pullRequests", QVariant::fromValue<QObject *>(mPullRequests)}},
       this, &mPageContext);
 
   // Respond to diff/tree mode change.

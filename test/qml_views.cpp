@@ -36,6 +36,9 @@
 #include "git/Config.h"
 #include "ui/CommitList.h"
 #include "ui/CommandPalette.h"
+#include "ui/PullRequestList.h"
+#include "ui/RefsPanel.h"
+#include "host/PullRequests.h"
 #include "ui/FindController.h"
 #include "ui/MainWindow.h"
 #include "ui/RepoView.h"
@@ -89,6 +92,7 @@ private slots:
   void solo();
   void hide();
   void palette();
+  void pullRequests();
   void merge();
   void dragTab();
   void cleanupTestCase();
@@ -466,6 +470,99 @@ void TestQmlViews::palette() {
   QTRY_COMPARE(view->viewMode(), RepoView::Tree);
   QTRY_COMPARE(view->detailView()->file(), QString("file.txt"));
   view->setViewMode(RepoView::DoubleTree);
+  QVERIFY2(sMessages.isEmpty(), qPrintable(sMessages.join('\n')));
+}
+
+void TestQmlViews::pullRequests() {
+  // Remote URLs of the hosting services.
+  QString server, path;
+  QVERIFY(PullRequests::parseUrl("git@github.com:owner/repo.git", &server,
+                                 &path));
+  QCOMPARE(server, QString("github.com"));
+  QCOMPARE(path, QString("owner/repo"));
+  QVERIFY(PullRequests::parseUrl("https://gitlab.com/group/sub/repo", &server,
+                                 &path));
+  QCOMPARE(path, QString("group/sub/repo"));
+  QVERIFY(PullRequests::parseUrl("ssh://git@example.com:2222/a/b.git",
+                                 &server, &path));
+  QCOMPARE(server, QString("example.com"));
+  QCOMPARE(path, QString("a/b"));
+  QVERIFY(!PullRequests::parseUrl("/home/user/repo", &server, &path));
+
+  // Replies of GitHub and GitLab.
+  QByteArray github = R"([{
+    "number": 12, "title": "Add login", "body": "Adds **login**.",
+    "user": {"login": "ada"}, "draft": false,
+    "html_url": "https://github.com/owner/repo/pull/12",
+    "created_at": "2026-09-01T10:00:00Z", "updated_at": "2026-09-02T10:00:00Z",
+    "head": {"ref": "login", "repo": {"full_name": "owner/repo"}},
+    "base": {"ref": "main", "repo": {"full_name": "owner/repo"}},
+    "labels": [{"name": "feature"}]
+  }, {
+    "number": 13, "title": "Fix typo", "user": {"login": "bob"}, "draft": true,
+    "head": {"ref": "typo", "repo": {"full_name": "bob/repo"}},
+    "base": {"ref": "main", "repo": {"full_name": "owner/repo"}}
+  }])";
+  QString error;
+  QList<PullRequest> list =
+      PullRequests::parse(PullRequests::GitHub, github, &error);
+  QCOMPARE(error, QString());
+  QCOMPARE(list.size(), 2);
+  QCOMPARE(list.at(0).number, 12);
+  QCOMPARE(list.at(0).author, QString("ada"));
+  QCOMPARE(list.at(0).head, QString("login"));
+  QCOMPARE(list.at(0).labels, QStringList({"feature"}));
+  QVERIFY(!list.at(0).fork);
+  QVERIFY(list.at(1).fork);
+  QVERIFY(list.at(1).draft);
+  QCOMPARE(list.at(1).headRepo, QString("bob/repo"));
+
+  QByteArray gitlab = R"([{"iid": 3, "title": "Speed up", "description": "",
+    "author": {"username": "cy"}, "source_branch": "fast",
+    "target_branch": "main", "source_project_id": 1, "target_project_id": 1,
+    "web_url": "https://gitlab.com/g/r/-/merge_requests/3", "labels": ["perf"]}])";
+  list = PullRequests::parse(PullRequests::GitLab, gitlab, &error);
+  QCOMPARE(list.size(), 1);
+  QCOMPARE(list.at(0).number, 3);
+  QCOMPARE(list.at(0).head, QString("fast"));
+  QVERIFY(!list.at(0).fork);
+
+  PullRequests::parse(PullRequests::GitHub, R"({"message": "Not Found"})",
+                      &error);
+  QCOMPARE(error, QString("Not Found"));
+
+  // The references panel lists them, and they are shown in the page.
+  RepoView *view = mWindow->currentView();
+  PullRequestList *pulls = view->pullRequestList();
+  QVERIFY(!pulls->isSupported());
+  QVERIFY(pulls->source()->setRemote("https://github.com/owner/repo.git"));
+  QCOMPARE(pulls->service(), QString("GitHub"));
+  pulls->source()->setPullRequests(
+      PullRequests::parse(PullRequests::GitHub, github));
+
+  QAbstractItemModel *refs = view->findChild<RefsPanel *>()->model();
+  QStringList names;
+  for (int row = 0; row < refs->rowCount(); ++row)
+    names.append(refs->index(row, 0).data(RefsModel::NameRole).toString());
+  QVERIFY(names.contains("Pull Requests"));
+  QVERIFY(names.contains("#12 Add login"));
+  QVERIFY(names.contains("#13 Fix typo"));
+
+  pulls->show(12);
+  QVERIFY(pulls->isActive());
+  QCOMPARE(pulls->current().value("title").toString(), QString("Add login"));
+  QVERIFY(!pulls->canCheckout());
+  QTest::qWait(100);
+  pulls->show(13);
+  QCOMPARE(pulls->current().value("head").toString(),
+           QString("bob/repo:typo"));
+  pulls->close();
+  QVERIFY(!pulls->isActive());
+
+  // The list of another repository closes the one that's shown.
+  pulls->show(12);
+  pulls->source()->setRemote(QString());
+  QVERIFY(!pulls->isActive());
   QVERIFY2(sMessages.isEmpty(), qPrintable(sMessages.join('\n')));
 }
 

@@ -13,6 +13,7 @@ add_library(
   FileEditor.cpp
   FileViewModel.cpp
   MergeModel.cpp
+  PullRequestList.cpp
   FindController.cpp
   History.cpp
   IgnoreDialog.cpp

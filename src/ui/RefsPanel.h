@@ -13,6 +13,7 @@
 #include <QAbstractListModel>
 #include <QSet>
 
+class PullRequestList;
 class RepoView;
 
 // Flat list of the references of a repository, grouped into collapsible
@@ -30,10 +31,11 @@ public:
     Tag,
     Stash,
     Submodule,
-    Empty
+    Empty,
+    PullRequest
   };
 
-  enum Section { Local, Remote, Tags, Stashes, Submodules };
+  enum Section { Local, Remote, Tags, Stashes, Submodules, PullRequests };
 
   enum Role {
     KindRole = Qt::UserRole,
@@ -53,7 +55,9 @@ public:
     // for dragging and dropping.
     RefNameRole,
     // The branch or remote is hidden in the graph.
-    HiddenRole
+    HiddenRole,
+    // The number of a pull request.
+    NumberRole
   };
 
   struct Item {
@@ -62,7 +66,8 @@ public:
     QString name;
     int depth = 0;
     git::Reference ref;
-    int index = -1; // stash index
+    int index = -1; // stash index, or pull request number
+    QString tip;
     int count = 0;
     bool head = false;
     int ahead = 0;
@@ -85,6 +90,9 @@ public:
   // The qualified names of the hidden branches, and remotes with a slash.
   void setHidden(const QStringList &hidden);
 
+  // The open pull requests, when the host of the repository is supported.
+  void setPullRequests(PullRequestList *pullRequests);
+
   int rowCount(const QModelIndex &parent = QModelIndex()) const override;
   QVariant data(const QModelIndex &index,
                 int role = Qt::DisplayRole) const override;
@@ -102,6 +110,7 @@ private:
   QList<Item> mItems;
   QStringList mSolo;
   QStringList mHidden;
+  PullRequestList *mPullRequests = nullptr;
 };
 
 // Controller for the references panel. It replaces the reference drop-down

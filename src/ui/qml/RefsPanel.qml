@@ -16,9 +16,12 @@ Rectangle {
     readonly property int kindTag: 4
     readonly property int kindStash: 5
     readonly property int kindSubmodule: 6
+    readonly property int kindEmpty: 7
+    readonly property int kindPullRequest: 8
 
     // Keep in sync with RefsModel::Section.
-    readonly property var sectionIcons: ["laptop", "cloud", "tag", "stash", "repo"]
+    readonly property var sectionIcons: ["laptop", "cloud", "tag", "stash", "repo",
+                                         "pull-request"]
 
     function iconFor(kind, section, head) {
         switch (kind) {
@@ -29,6 +32,8 @@ Rectangle {
         case kindTag: return "tag"
         case kindStash: return "stash"
         case kindSubmodule: return "repo"
+        case kindEmpty: return "info"
+        case kindPullRequest: return "pull-request"
         }
         return ""
     }
@@ -76,6 +81,7 @@ Rectangle {
                 required property bool soloed
                 required property string refName
                 required property bool hidden
+                required property int number
 
                 readonly property bool isHeader: kind === root.kindHeader
                 readonly property bool isBranch: kind === root.kindBranch
@@ -92,8 +98,11 @@ Rectangle {
                 // Branches and tags are dragged onto branches and remotes.
                 readonly property bool draggable: isBranch || kind === root.kindTag
                 readonly property bool dropTarget: drop.containsDrag
-                // Current, and not the target of a dragged branch.
-                readonly property bool highlighted: isCurrent && !dropTarget
+                // Current, and not the target of a dragged branch, or the pull
+                // request that's shown.
+                readonly property bool highlighted: (isCurrent && !dropTarget)
+                    || (number > 0 && pullRequests.active
+                        && pullRequests.current.number === number)
 
                 width: ListView.view.width
                 height: isHeader ? 30 : 26
@@ -199,10 +208,12 @@ Rectangle {
                     Text {
                         Layout.fillWidth: true
                         text: row.name
-                        elide: Text.ElideMiddle
-                        color: row.isHeader ? Theme.textMuted
+                        elide: row.kind === root.kindPullRequest || row.kind === root.kindEmpty
+                               ? Text.ElideRight : Text.ElideMiddle
+                        color: row.isHeader || row.kind === root.kindEmpty ? Theme.textMuted
                                : row.highlighted ? Theme.selectedText : Theme.text
                         font.pixelSize: row.isHeader ? 11 : 13
+                        font.italic: row.kind === root.kindEmpty
                         font.bold: row.isHeader || row.isHead
                         font.capitalization: row.isHeader ? Font.AllUppercase : Font.MixedCase
                         font.letterSpacing: row.isHeader ? 0.8 : 0
@@ -305,7 +316,9 @@ Rectangle {
 
                     // Add a branch, remote, tag, stash or submodule.
                     Icon {
+                        // Pull requests are created with an account.
                         visible: row.isHeader && row.hovered
+                                 && (row.section !== 5 || toolbar.pullRequestAvailable)
                         name: "plus"
                         size: 14
                         color: addMouse.containsMouse ? Theme.accent : Theme.textMuted

@@ -6,6 +6,8 @@
 //
 
 #include "RefsPanel.h"
+#include "PullRequestList.h"
+#include "dialogs/PullRequestDialog.h"
 #include "InteractiveRebase.h"
 #include "qml/QmlSupport.h"
 #include "CommitList.h"
@@ -186,6 +188,51 @@ void RefsModel::update() {
     }
   }
 
+  // Open pull requests, like GitKraken lists them.
+  if (mPullRequests && mPullRequests->isSupported()) {
+    QList<Item> pulls;
+    for (const ::PullRequest &pr : mPullRequests->pullRequests()) {
+      QString name = QString("#%1 %2").arg(pr.number).arg(pr.title);
+      if (!matches(name))
+        continue;
+
+      Item item;
+      item.kind = PullRequest;
+      item.section = PullRequests;
+      item.name = name;
+      item.depth = 1;
+      item.index = pr.number;
+      item.tip = tr("%1 wants to merge %2 into %3")
+                     .arg(pr.author, pr.head, pr.base);
+      pulls.append(item);
+    }
+
+    addHeader(PullRequests, tr("Pull Requests"), pulls.size());
+    if (isExpanded(mItems.last().key)) {
+      mItems.append(pulls);
+
+      // Say why there are none.
+      QString text;
+      if (!mPullRequests->error().isEmpty()) {
+        text = mPullRequests->error();
+      } else if (pulls.isEmpty() && mPullRequests->isLoading()) {
+        text = tr("Loading...");
+      } else if (pulls.isEmpty() && mFilter.isEmpty()) {
+        text = tr("No open pull requests");
+      }
+
+      if (!text.isEmpty()) {
+        Item item;
+        item.kind = Empty;
+        item.section = PullRequests;
+        item.name = text;
+        item.tip = text;
+        item.depth = 1;
+        mItems.append(item);
+      }
+    }
+  }
+
   // tags
   QList<Item> tags;
   for (const git::Reference &ref : mRepo.refs()) {
@@ -267,6 +314,8 @@ QVariant RefsModel::data(const QModelIndex &index, int role) const {
     case NameRole:
       return item.name;
     case Qt::ToolTipRole:
+      if (!item.tip.isEmpty())
+        return item.tip;
       return item.ref.isValid() ? item.ref.qualifiedName() : item.name;
     case KindRole:
       return item.kind;
@@ -309,6 +358,8 @@ QVariant RefsModel::data(const QModelIndex &index, int role) const {
       }
       return false;
     }
+    case NumberRole:
+      return item.kind == PullRequest ? item.index : 0;
     case RefNameRole:
       if (item.kind == RemoteGroup)
         return QString("remote:%1").arg(item.name);
@@ -318,6 +369,12 @@ QVariant RefsModel::data(const QModelIndex &index, int role) const {
   }
 
   return QVariant();
+}
+
+void RefsModel::setPullRequests(PullRequestList *pullRequests) {
+  mPullRequests = pullRequests;
+  connect(pullRequests, &PullRequestList::changed, this, &RefsModel::update);
+  update();
 }
 
 void RefsModel::setHidden(const QStringList &hidden) {
@@ -346,7 +403,7 @@ QHash<int, QByteArray> RefsModel::roleNames() const {
           {BehindRole, "behind"},       {CountRole, "count"},
           {ExpandedRole, "expanded"},   {ExpandableRole, "expandable"},
           {SoloRole, "soloed"},         {RefNameRole, "refName"},
-          {HiddenRole, "hidden"}};
+          {HiddenRole, "hidden"},       {NumberRole, "number"}};
 }
 
 RefsPanel::RefsPanel(const git::Repository &repo, RepoView *view)
@@ -420,6 +477,8 @@ void RefsPanel::activate(int row) {
     case RefsModel::Branch:
     case RefsModel::RemoteBranch:
     case RefsModel::Tag: {
+      // Show the graph again.
+      mView->pullRequestList()->close();
       git::Reference ref = item.ref;
       setCurrent(ref);
       emit referenceSelected(ref);
@@ -432,6 +491,10 @@ void RefsPanel::activate(int row) {
       emit stashSelected(index);
       break;
     }
+
+    case RefsModel::PullRequest:
+      mView->pullRequestList()->show(item.index);
+      break;
 
     default:
       break;
@@ -552,6 +615,27 @@ void RefsPanel::showContextMenu(int row, qreal x, qreal y) {
       menu.addAction(tr("Edit Remotes..."), [view] {
         view->configureSettings(ConfigDialog::Remotes);
       });
+      break;
+    }
+
+    case RefsModel::Header:
+      if (item.section != RefsModel::PullRequests)
+        return;
+      menu.addAction(tr("Refresh Pull Requests"),
+                     [view] { view->pullRequestList()->refresh(); });
+      break;
+
+    case RefsModel::PullRequest: {
+      PullRequestList *pulls = view->pullRequestList();
+      int number = item.index;
+      menu.addAction(tr("Show"), [pulls, number] { pulls->show(number); });
+      menu.addAction(tr("Open in Browser"), [pulls, number] {
+        pulls->show(number);
+        pulls->openInBrowser();
+      });
+      menu.addSeparator();
+      menu.addAction(tr("Refresh Pull Requests"),
+                     [pulls] { pulls->refresh(); });
       break;
     }
 
@@ -718,6 +802,9 @@ void RefsPanel::add(int section) {
       break;
     case RefsModel::Submodules:
       mView->configureSettings(ConfigDialog::Submodules);
+      break;
+    case RefsModel::PullRequests:
+      (new PullRequestDialog(mView))->open();
       break;
   }
 }
