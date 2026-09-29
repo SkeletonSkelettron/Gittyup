@@ -101,6 +101,8 @@ PreferencesPage {
                 }
             }
 
+            SigningSection {}
+
             SettingSection {
                 title: qsTr("Automatic actions")
 

@@ -120,6 +120,7 @@ test(NAME qml_views)
 test(NAME undo)
 test(NAME refdrop)
 test(NAME interactive_rebase)
+test(NAME signing)
 
 # Test case not compatible with Windows
 if(NOT WIN32)

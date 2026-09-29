@@ -54,6 +54,8 @@ class DetailView : public QObject {
   Q_PROPERTY(QString date READ date NOTIFY commitChanged)
   Q_PROPERTY(QString shortId READ shortId NOTIFY commitChanged)
   Q_PROPERTY(QVariantList parents READ parents NOTIFY commitChanged)
+  // How the commit is signed, like "GPG" or "SSH", or an empty string.
+  Q_PROPERTY(QString signature READ signature NOTIFY commitChanged)
   Q_PROPERTY(QVariantList refs READ refs NOTIFY commitChanged)
 
   // files
@@ -153,6 +155,7 @@ public:
   QString date() const { return mDate; }
   QString shortId() const { return mShortId; }
   QVariantList parents() const { return mParents; }
+  QString signature() const { return mSignature; }
   QVariantList refs() const { return mRefs; }
 
   QAbstractItemModel *files() const;
@@ -260,6 +263,7 @@ private:
   QString mShortId;
   QString mId;
   QVariantList mParents;
+  QString mSignature;
   QVariantList mRefs;
   QFutureWatcher<QString> mDescription;
 

@@ -255,6 +255,50 @@ Rectangle {
                     }
                 }
 
+                // Signed commits, like GitKraken marks them.
+                Rectangle {
+                    id: signedChip
+
+                    visible: detailView.mode === root.commitMode && detailView.signature !== ""
+                    implicitWidth: signedRow.implicitWidth + 12
+                    implicitHeight: 22
+                    radius: 4
+                    color: Qt.rgba(Theme.added.r, Theme.added.g, Theme.added.b, 0.14)
+                    border.color: Qt.rgba(Theme.added.r, Theme.added.g, Theme.added.b, 0.6)
+
+                    Row {
+                        id: signedRow
+
+                        anchors.centerIn: parent
+                        spacing: 4
+
+                        Icon {
+                            anchors.verticalCenter: parent.verticalCenter
+                            name: "key"
+                            size: 12
+                            color: Theme.added
+                        }
+
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("Signed · %1").arg(detailView.signature)
+                            color: Theme.text
+                            font.pixelSize: 11
+                        }
+                    }
+
+                    HoverHandler {
+                        id: signedHover
+                    }
+
+                    HoverTip {
+                        target: signedChip
+                        text: qsTr("The commit has a %1 signature. It isn't verified.")
+                                  .arg(detailView.signature)
+                        hovered: signedHover.hovered
+                    }
+                }
+
                 Flow {
                     Layout.fillWidth: true
                     visible: detailView.refs.length > 0

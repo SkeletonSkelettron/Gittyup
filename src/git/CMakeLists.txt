@@ -23,6 +23,7 @@ add_library(
   RevWalk.cpp
   Rewrite.cpp
   Signature.cpp
+  Signing.cpp
   Submodule.cpp
   Tag.cpp
   TagRef.cpp

@@ -8,6 +8,7 @@
 //
 
 #include "Repository.h"
+#include "Signing.h"
 #include "AnnotatedCommit.h"
 #include "Blame.h"
 #include "Branch.h"
@@ -636,11 +637,12 @@ Commit Repository::commit(const Signature &author, const Signature &committer,
   if (mergeHead.isValid())
     parents.append(mergeHead.commit());
 
-  // Create the commit.
+  // Create the commit, signed when the configuration asks for it.
   git_oid id;
-  if (git_commit_create(&id, d->repo, "HEAD", author, committer, 0,
-                        message.toUtf8(), tree, parents.size(),
-                        (const git_commit **)parents.data()))
+  QByteArray raw = message.toUtf8();
+  if (Signing::createCommit(&id, d->repo, "HEAD", author, committer,
+                            raw.constData(), tree, parents.size(),
+                            (const git_commit **)parents.data()))
     return Commit();
 
   // Cleanup merge state.
@@ -918,6 +920,9 @@ bool Repository::merge(const AnnotatedCommit &mergeHead) {
 Rebase Repository::rebaseOpen() {
   git_rebase *rebase = nullptr;
   git_rebase_options opts = GIT_REBASE_OPTIONS_INIT; // TODO: check quite option
+  // Sign the commits when the configuration asks for it.
+  opts.commit_create_cb = Signing::createRebaseCommit;
+  opts.payload = d->repo;
   git_rebase_open(&rebase, d->repo, &opts);
   return Rebase(d->repo, rebase);
 }
@@ -936,6 +941,8 @@ void Repository::rebase(const AnnotatedCommit &mergeHead,
                         const QString &overrideEmail) {
   git_rebase *r = nullptr;
   git_rebase_options opts = GIT_REBASE_OPTIONS_INIT;
+  opts.commit_create_cb = Signing::createRebaseCommit;
+  opts.payload = d->repo;
   git_rebase_init(&r, d->repo, nullptr, mergeHead, nullptr, &opts);
   auto rebase = git::Rebase(d->repo, r, overrideUser, overrideEmail);
 

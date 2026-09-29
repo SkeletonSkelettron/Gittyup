@@ -418,6 +418,7 @@ void DetailView::setCommits(const QList<git::Commit> &commits) {
   mShortId.clear();
   mId.clear();
   mParents.clear();
+  mSignature.clear();
 
   setReferences(commits);
 
@@ -470,6 +471,7 @@ void DetailView::setCommits(const QList<git::Commit> &commits) {
                              QLocale::LongFormat);
   mShortId = commit.shortId();
   mId = commit.id().toString();
+  mSignature = commit.signatureKind();
 
   for (const git::Commit &parent : commit.parents()) {
     mParents.append(QVariantMap{{"id", parent.id().toString()},

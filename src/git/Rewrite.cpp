@@ -6,6 +6,7 @@
 //
 
 #include "Rewrite.h"
+#include "Signing.h"
 #include "Tree.h"
 #include "git2/cherrypick.h"
 #include "git2/commit.h"
@@ -144,9 +145,10 @@ Commit Rewrite::apply(const Commit &onto, const QList<Step> &steps,
       parentList.append(base);
 
     git_oid id;
-    error = git_commit_create(&id, repo, nullptr, author, committer, nullptr,
-                              message.toUtf8(), tree, parentList.size(),
-                              parentList.data());
+    QByteArray raw = message.toUtf8();
+    error = Signing::createCommit(&id, repo, nullptr, author, committer,
+                                  raw.constData(), tree, parentList.size(),
+                                  parentList.data());
     git_tree_free(tree);
     if (error)
       return fail(lastError(), step.commit);
