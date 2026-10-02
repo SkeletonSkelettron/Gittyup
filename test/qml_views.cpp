@@ -55,6 +55,7 @@
 #include <QTextDocument>
 #include <QTimer>
 #include <QFile>
+#include <QProcess>
 #include <QQuickItem>
 #include <QQuickWidget>
 
@@ -95,6 +96,7 @@ private slots:
   void pullRequests();
   void merge();
   void mergeEncoding();
+  void mergeScroll();
   void dragTab();
   void cleanupTestCase();
 
@@ -685,6 +687,116 @@ void TestQmlViews::mergeEncoding() {
   QVERIFY(file.open(QFile::ReadOnly));
   QCOMPARE(file.readAll(), latin1 + "theirs\n");
   file.close();
+  QVERIFY2(sMessages.isEmpty(), qPrintable(sMessages.join('\n')));
+}
+
+void TestQmlViews::mergeScroll() {
+  // A merge with two conflicts that have more lines on the second side.
+  ScratchRepository repo;
+  auto git = [&repo](const QStringList &args) {
+    QProcess process;
+    process.setWorkingDirectory(repo->workdir().path());
+    process.start(GIT_EXECUTABLE, args);
+    return process.waitForFinished() &&
+           process.exitStatus() == QProcess::NormalExit;
+  };
+
+  auto write = [&repo](const QStringList &changes) {
+    QStringList lines;
+    for (int i = 1; i <= 100; ++i)
+      lines.append(QString("line %1").arg(i));
+    for (const QString &change : changes) {
+      int index = change.section(':', 0, 0).toInt();
+      lines[index] = change.section(':', 1);
+    }
+
+    QFile file(repo->workdir().filePath("file.txt"));
+    if (file.open(QFile::WriteOnly))
+      file.write(lines.join('\n').toUtf8() + '\n');
+  };
+
+  write({});
+  QVERIFY(git({"add", "file.txt"}));
+  QVERIFY(git({"commit", "-q", "-m", "Add file"}));
+  QVERIFY(git({"checkout", "-q", "-b", "other"}));
+  write({"4:theirs 1\na\nb\nc\nd\ne\nf\ng", "20:theirs 2\na\nb"});
+  QVERIFY(git({"commit", "-q", "-am", "Change theirs"}));
+  QVERIFY(git({"checkout", "-q", "-"}));
+  write({"4:ours 1\na", "20:ours 2"});
+  QVERIFY(git({"commit", "-q", "-am", "Change ours"}));
+  git({"merge", "other"});
+
+  MainWindow window(repo);
+  window.resize(1200, 1000);
+  window.show();
+  QVERIFY(qWaitForWindowExposed(&window));
+  RepoView *view = window.currentView();
+  refresh(view);
+
+  // The file can be selected when the diff of the working copy is loaded.
+  DetailView *detail = view->findChild<DetailView *>();
+  detail->setMergeEditor(true);
+  QTRY_VERIFY((detail->selectPath("file.txt"),
+               detail->property("selectedFile").toString() == "file.txt"));
+
+  QCOMPARE(repo->index().isStaged("file.txt"), git::Index::Conflicted);
+  // The page of the repository belongs to its view.
+  QQuickItem *panel = nullptr;
+  QTRY_VERIFY((panel = view->findChild<QQuickItem *>("mergePanel")) &&
+              panel->isVisible());
+  QObject *ours = panel->findChild<QObject *>("mergeOurs");
+  QObject *theirs = panel->findChild<QObject *>("mergeTheirs");
+  QObject *output = panel->findChild<QObject *>("mergeOutput");
+  QObject *outputPane = panel->findChild<QObject *>("mergeOutputPane");
+  QVERIFY(ours && theirs && output && outputPane);
+  QTRY_COMPARE(panel->property("layout").toList().size(), 5);
+
+  // Rows of the sides, and the parts of the output, which has nothing of the
+  // conflicts yet.
+  qreal line = panel->property("lineHeight").toReal();
+  auto y = [](QObject *pane) { return pane->property("contentY").toReal(); };
+  auto bounds = [outputPane](int part) {
+    return outputPane->property("bounds").toList().value(part).toReal();
+  };
+  QTRY_VERIFY(bounds(5) > bounds(4));
+
+  // The pane under the mouse leads.
+  QCOMPARE(panel->property("driver").toInt(), -1);
+  panel->setProperty("driver", 0);
+
+  // Scrolling ours into its conflict scrolls theirs faster through the longer
+  // one. The output waits at the conflict.
+  ours->setProperty("contentY", 5 * line);
+  QCOMPARE(y(theirs), 4 * line + 9 * line / 3);
+  QCOMPARE(y(output), bounds(1));
+
+  // Scrolling theirs through its conflict, ours waits at the end of its
+  // shorter one.
+  panel->setProperty("driver", 1);
+  theirs->setProperty("contentY", 10 * line);
+  QCOMPARE(y(ours), 7 * line);
+  QCOMPARE(y(output), bounds(1));
+
+  // Common lines scroll line by line in every pane, also in the output,
+  // whose lines have another height.
+  theirs->setProperty("contentY", 15 * line);
+  QCOMPARE(y(ours), 9 * line);
+  QCOMPARE(y(output), bounds(2) + 2 * (bounds(3) - bounds(2)) / 15);
+
+  // Taken lines are in the output.
+  QObject *merge = detail->mergeModel();
+  QMetaObject::invokeMethod(merge, "setConflictChecked", Q_ARG(int, 1),
+                            Q_ARG(int, 0), Q_ARG(bool, true));
+  QTRY_VERIFY(bounds(2) > bounds(1));
+  panel->setProperty("driver", 0);
+  ours->setProperty("contentY", 0);
+  ours->setProperty("contentY", 4 * line + 3 * line / 2);
+  QCOMPARE(y(output), bounds(1) + (bounds(2) - bounds(1)) / 2);
+
+  // The output following its text cursor doesn't move the sides.
+  qreal before = y(ours);
+  output->setProperty("contentY", 0);
+  QCOMPARE(y(ours), before);
   QVERIFY2(sMessages.isEmpty(), qPrintable(sMessages.join('\n')));
 }
 

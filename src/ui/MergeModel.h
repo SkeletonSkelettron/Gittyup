@@ -90,6 +90,9 @@ class MergeModel : public QObject {
   // The ranges of the conflicts in the output, as 'start', 'middle' and
   // 'end' positions. The lines of the 'first' side are before 'middle'.
   Q_PROPERTY(QVariantList regions READ regions NOTIFY regionsChanged)
+  // The parts of the file in order, as the 'conflict' or -1 for common lines,
+  // and the number of 'lines' of each side.
+  Q_PROPERTY(QVariantList layout READ layout NOTIFY loaded)
 
 public:
   struct Conflict {
@@ -126,6 +129,7 @@ public:
   QObject *ours() const;
   QObject *theirs() const;
   QVariantList regions() const;
+  QVariantList layout() const;
 
   const QList<Segment> &segments() const { return mSegments; }
   const QList<Conflict> &conflicts() const { return mConflicts; }

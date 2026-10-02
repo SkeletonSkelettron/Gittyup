@@ -270,6 +270,26 @@ QVariantList MergeModel::regions() const {
   return regions;
 }
 
+QVariantList MergeModel::layout() const {
+  QVariantList layout;
+  for (const Segment &segment : mSegments) {
+    if (segment.conflict < 0) {
+      int lines = segment.common.size();
+      layout.append(
+          QVariantMap{{"conflict", -1}, {"lines", QVariantList{lines, lines}}});
+      continue;
+    }
+
+    const Conflict &conflict = mConflicts.at(segment.conflict);
+    layout.append(
+        QVariantMap{{"conflict", segment.conflict},
+                    {"lines", QVariantList{conflict.lines[0].size(),
+                                           conflict.lines[1].size()}}});
+  }
+
+  return layout;
+}
+
 void MergeModel::setDocument(QQuickTextDocument *document) {
   if (document)
     setTextDocument(document->textDocument());

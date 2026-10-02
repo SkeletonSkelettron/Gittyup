@@ -9,32 +9,144 @@ import Gittyup
 Rectangle {
     id: root
 
+    objectName: "mergePanel"
+
     readonly property var merge: detailView.merge
     readonly property real charWidth: metrics.advanceWidth("0")
     readonly property int lineHeight: Math.max(20, Math.ceil(metrics.height) + 4)
     readonly property int numberWidth: charWidth * merge.lineNumberWidth + 12
     readonly property color sideColor0: Theme.diffOurs
     readonly property color sideColor1: Theme.diffTheirs
+    // The bars beside the lines of the conflicts, in the color of their side.
+    readonly property color sideBar0: Theme.dark ? "#4C8DFF" : "#2F6FE0"
+    readonly property color sideBar1: Theme.dark ? "#B57BFF" : "#9B3FD6"
     readonly property var sideLabels: [merge.oursLabel, merge.theirsLabel]
 
     // The conflict that the arrows move between.
     property int current: 0
 
+    // The parts of the file, and their tops and ends in the panes of the
+    // sides. Every row of a side has the same height.
+    readonly property var layout: merge.layout
+    readonly property var sideBounds0: bounds(0)
+    readonly property var sideBounds1: bounds(1)
+
+    // Scrolling one pane scrolls the others. The pane that the others follow
+    // is the one under the mouse, or the output while typing, so that the
+    // output following its text cursor doesn't move the sides.
+    property bool syncing: false
+    property int driver: -1
+
+    // The first conflict is shown when the panes have their size.
+    property bool positioned: false
+
     function sideColor(side) {
         return side === 0 ? root.sideColor0 : root.sideColor1
     }
 
+    function sideBar(side) {
+        return side === 0 ? root.sideBar0 : root.sideBar1
+    }
+
+    // The background of the lines of a side, stronger when they are taken.
+    function sideTint(side, taken) {
+        const bar = sideBar(side)
+        return taken ? Qt.tint(sideColor(side), Qt.rgba(bar.r, bar.g, bar.b, 0.3))
+                     : sideColor(side)
+    }
+
+    function bounds(side) {
+        const result = [0]
+        let y = 0
+        for (const part of root.layout) {
+            // Conflicts have a header.
+            y += ((part.conflict >= 0 ? 1 : 0) + part.lines[side]) * root.lineHeight
+            result.push(y)
+        }
+        return result
+    }
+
+    // The position in a pane with the parts at 'to' and lines of 'toLine'
+    // pixels that shows what 'y' shows in a pane with the parts at 'from' and
+    // lines of 'fromLine' pixels. Where a part has fewer lines, it waits at
+    // its end while the longer one scrolls on, and where it has more lines it
+    // catches up.
+    function mapY(from, fromLine, to, toLine, y) {
+        if (from.length < 2 || from.length !== to.length || fromLine <= 0 || toLine <= 0)
+            return y
+
+        let i = 0
+        while (i < from.length - 2 && y >= from[i + 1])
+            ++i
+
+        const offset = Math.max(0, y - from[i]) / fromLine
+        const fromLines = (from[i + 1] - from[i]) / fromLine
+        const toLines = (to[i + 1] - to[i]) / toLine
+        const lines = toLines <= fromLines ? Math.min(offset, toLines)
+                    : fromLines > 0 ? Math.min(offset * toLines / fromLines, toLines) : 0
+        return to[i] + lines * toLine
+    }
+
+    // Pane 0 and 1 are the sides, and 2 is the output.
+    function sync(pane, y, force) {
+        if (root.syncing || root.layout.length === 0 || (!force && pane !== root.driver))
+            return
+
+        root.syncing = true
+        const from = pane === 0 ? root.sideBounds0
+                   : pane === 1 ? root.sideBounds1 : output.bounds
+        const line = pane === 2 ? output.textLineHeight : root.lineHeight
+        if (pane !== 0)
+            oursPane.scrollTo(mapY(from, line, root.sideBounds0, root.lineHeight, y))
+        if (pane !== 1)
+            theirsPane.scrollTo(mapY(from, line, root.sideBounds1, root.lineHeight, y))
+        if (pane !== 2)
+            output.scrollTo(mapY(from, line, output.bounds, output.textLineHeight, y))
+        root.syncing = false
+    }
+
+    // The sides scroll sideways together.
+    function syncX(pane, x) {
+        if (root.syncing || pane !== root.driver)
+            return
+
+        root.syncing = true
+        if (pane === 0)
+            theirsPane.scrollXTo(x)
+        else
+            oursPane.scrollXTo(x)
+        root.syncing = false
+    }
+
+    // Show a conflict with two lines before it in all panes.
     function showConflict(index) {
         if (merge.conflictCount === 0)
             return
         current = Math.max(0, Math.min(merge.conflictCount - 1, index))
-        oursPane.show(current)
-        theirsPane.show(current)
-        output.show(current)
+        const part = root.layout.findIndex((part) => part.conflict === root.current)
+        if (part < 0)
+            return
+        oursPane.scrollTo(root.sideBounds0[part] - 2 * root.lineHeight)
+        root.sync(0, oursPane.contentY, true)
+        output.placeCursor(root.merge.regionStart(root.current))
+    }
+
+    function position() {
+        if (root.positioned || !root.visible || oursPane.height <= 0 || output.height <= 0)
+            return
+        root.positioned = true
+        root.showConflict(root.current)
     }
 
     color: Theme.base
     focus: visible
+
+    // The file can be loaded before the merge editor is shown.
+    Component.onCompleted: Qt.callLater(root.position)
+    onVisibleChanged: {
+        root.positioned = false
+        Qt.callLater(root.position)
+    }
 
     Keys.onEscapePressed: detailView.closeFile()
 
@@ -45,11 +157,28 @@ Rectangle {
         font.pointSize: Theme.codeFontSize
     }
 
+    // Taking lines changes the output, which the text cursor scrolls, so
+    // align it again with the pane that leads.
+    function resync() {
+        if (!root.positioned)
+            return
+        const pane = root.driver >= 0 ? root.driver : 0
+        root.sync(pane, pane === 0 ? oursPane.contentY
+                      : pane === 1 ? theirsPane.contentY : output.contentY, true)
+    }
+
     Connections {
         target: root.merge
 
+        function onRegionsChanged() {
+            Qt.callLater(root.resync)
+        }
+
         function onLoaded() {
+            // Start at the first conflict.
             root.current = 0
+            root.positioned = false
+            Qt.callLater(root.position)
         }
     }
 
@@ -100,10 +229,23 @@ Rectangle {
         property int side
         property var model
 
-        function show(conflict) {
-            const row = root.merge.conflictRow(pane.side, conflict)
-            if (row >= 0)
-                list.positionViewAtIndex(row, ListView.Beginning)
+        readonly property real contentY: list.contentY
+
+        HoverHandler {
+            onHoveredChanged: {
+                if (hovered)
+                    root.driver = pane.side
+            }
+        }
+
+        function scrollTo(y) {
+            // The height of the content is known after the layout.
+            list.forceLayout()
+            list.contentY = Math.max(0, Math.min(y, list.contentHeight - list.height))
+        }
+
+        function scrollXTo(x) {
+            list.contentX = Math.max(0, Math.min(x, list.contentWidth - list.width))
         }
 
         color: Theme.base
@@ -149,6 +291,7 @@ Rectangle {
             ListView {
                 id: list
 
+                objectName: pane.side === 0 ? "mergeOurs" : "mergeTheirs"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
@@ -157,6 +300,10 @@ Rectangle {
                 boundsBehavior: Flickable.StopAtBounds
                 flickableDirection: Flickable.AutoFlickIfNeeded
                 contentWidth: Math.max(width, 30 + root.numberWidth + 2000)
+
+                onContentYChanged: root.sync(pane.side, contentY)
+                onContentXChanged: root.syncX(pane.side, contentX)
+                onHeightChanged: Qt.callLater(root.position)
 
                 Controls.ScrollBar.vertical: ThinScrollBar {}
 
@@ -176,14 +323,21 @@ Rectangle {
                     readonly property bool isConflict: kind === 1
                     readonly property bool isLine: kind === 2
 
+                    // All rows have the same height, so that the panes can
+                    // scroll together.
                     width: list.contentWidth
-                    height: isConflict ? 26 : root.lineHeight
+                    height: root.lineHeight
                     color: isConflict ? Theme.panel
-                           : isLine ? Qt.rgba(root.sideColor(pane.side).r,
-                                              root.sideColor(pane.side).g,
-                                              root.sideColor(pane.side).b,
-                                              checked ? 1 : 0.45)
+                           : isLine ? root.sideTint(pane.side, checked)
                            : "transparent"
+
+                    // The lines of a conflict have the bar of their side.
+                    Rectangle {
+                        visible: row.isConflict || row.isLine
+                        width: 3
+                        height: parent.height
+                        color: root.sideBar(pane.side)
+                    }
 
                     // The header of a conflict takes all its lines.
                     RowLayout {
@@ -433,9 +587,15 @@ Rectangle {
                 Controls.SplitView.fillHeight: true
                 Controls.SplitView.minimumHeight: 120
                 merge: root.merge
+                layout: root.layout
                 lineHeight: root.lineHeight
                 numberWidth: root.numberWidth
-                sideColors: [root.sideColor0, root.sideColor1]
+                // The lines in the output are taken.
+                sideColors: [root.sideTint(0, true), root.sideTint(1, true)]
+                sideBars: [root.sideBar0, root.sideBar1]
+                onScrolled: (y) => root.sync(2, y)
+                onActivated: root.driver = 2
+                onResized: root.position()
             }
         }
     }

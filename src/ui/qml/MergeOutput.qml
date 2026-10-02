@@ -9,10 +9,56 @@ import Gittyup
 Rectangle {
     id: root
 
+    objectName: "mergeOutputPane"
+
     property var merge
+    // The parts of the file, like MergeModel.layout.
+    property var layout: []
     property int lineHeight
     property int numberWidth
     property var sideColors: []
+    property var sideBars: []
+
+    // The tops and ends of the parts of the file in the output: the lines
+    // between the conflicts and the lines taken into each conflict.
+    readonly property var bounds: {
+        area.contentHeight
+        area.width
+        const regions = root.merge.regions
+        const result = [0]
+        for (let i = 0; i < root.layout.length; ++i) {
+            const part = root.layout[i]
+            let end = result[i]
+            if (part.conflict >= 0) {
+                if (part.conflict < regions.length)
+                    end = positionY(regions[part.conflict].end)
+            } else {
+                // Common lines end where the next conflict starts.
+                const next = root.layout[i + 1]
+                end = next && next.conflict < regions.length
+                      ? positionY(regions[next.conflict].start) : area.contentHeight
+            }
+            result.push(Math.max(result[i], end))
+        }
+        return result
+    }
+
+    // The height of a line of the text.
+    readonly property real textLineHeight: {
+        area.contentHeight
+        return area.positionToRectangle(0).height
+    }
+
+    // Scrolling the output, and using it with the mouse or the keyboard.
+    signal scrolled(real y)
+    signal activated()
+    signal resized()
+
+    readonly property real contentY: flick.contentY
+
+    function scrollTo(y) {
+        flick.contentY = Math.max(0, Math.min(y, flick.contentHeight - flick.height))
+    }
 
     // The top of a position of the text.
     function positionY(position) {
@@ -30,14 +76,20 @@ Rectangle {
         return area.positionToRectangle(root.merge.outputPosition(row)).y
     }
 
-    // Scroll to the lines of a conflict.
-    function show(conflict) {
-        const y = positionY(root.merge.regionStart(conflict))
-        const maxY = Math.max(0, flick.contentHeight - flick.height)
-        flick.contentY = Math.max(0, Math.min(y - 40, maxY))
+    // Move the text cursor without selecting.
+    function placeCursor(position) {
+        area.deselect()
+        area.cursorPosition = Math.max(0, Math.min(position, area.length))
     }
 
     color: Theme.base
+
+    HoverHandler {
+        onHoveredChanged: {
+            if (hovered)
+                root.activated()
+        }
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -130,17 +182,53 @@ Rectangle {
                     height: parent.height
                     color: Theme.border
                 }
+
+                // The bars of the sides that the lines of the conflicts come
+                // from.
+                Repeater {
+                    model: root.merge.regions
+
+                    delegate: Item {
+                        id: bar
+
+                        required property var modelData
+
+                        readonly property real startY: root.positionY(modelData.start) - flick.contentY
+                        readonly property real middleY: root.positionY(modelData.middle) - flick.contentY
+                        readonly property real endY: root.positionY(modelData.end) - flick.contentY
+
+                        Rectangle {
+                            x: gutter.width - 4
+                            y: bar.startY
+                            width: 3
+                            height: Math.max(0, bar.middleY - bar.startY)
+                            color: root.sideBars[bar.modelData.first]
+                        }
+
+                        Rectangle {
+                            x: gutter.width - 4
+                            y: bar.middleY
+                            width: 3
+                            height: Math.max(0, bar.endY - bar.middleY)
+                            color: root.sideBars[1 - bar.modelData.first]
+                        }
+                    }
+                }
             }
 
             Flickable {
                 id: flick
 
+                objectName: "mergeOutput"
                 anchors.left: gutter.right
                 anchors.right: parent.right
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
+
+                onContentYChanged: root.scrolled(contentY)
+                onHeightChanged: Qt.callLater(root.resized)
 
                 Controls.ScrollBar.vertical: ThinScrollBar {}
 
@@ -165,6 +253,12 @@ Rectangle {
                     tabStopDistance: 4 * metrics.advanceWidth("0")
                     background: null
                     Component.onCompleted: root.merge.setDocument(textDocument)
+                    // Typing drives the other panes, and the keys still
+                    // reach the text.
+                    Keys.onPressed: (event) => {
+                        root.activated()
+                        event.accepted = false
+                    }
 
                     FontMetrics {
                         id: metrics
