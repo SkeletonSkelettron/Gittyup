@@ -131,4 +131,8 @@ option(GITTYUP_CI_TESTS "Run tests that change global settings" OFF)
 if(GITTYUP_CI_TESTS)
   test(NAME config)
 endif()
-test(NAME ui_screenshot)
+
+# A local tool that saves screenshots of the views; it isn't in the repository.
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/ui_screenshot.cpp)
+  test(NAME ui_screenshot)
+endif()
