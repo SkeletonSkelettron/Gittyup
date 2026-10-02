@@ -438,17 +438,17 @@ set(CPACK_INSTALL_CMAKE_PROJECTS ${CMAKE_BINARY_DIR} ${GITTYUP_NAME}
 if(GITTYUP_PACK_WIN64)
   set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS
       "${CPACK_NSIS_EXTRA_INSTALL_COMMANDS}
-    WriteRegStr HKCR 'Directory\\\\Background\\\\shell\\\\Gittyup' '' 'Open with Gittyup'
-    WriteRegStr HKCR 'Directory\\\\Background\\\\shell\\\\Gittyup' 'Icon' '\\\"$INSTDIR\\\\${CMAKE_INSTALL_BINDIR}\\\\${GITTYUP_EXECUTABLE_NAME}.exe\\\"'
-    WriteRegStr HKCR 'Directory\\\\Background\\\\shell\\\\Gittyup\\\\command' '' '\\\"$INSTDIR\\\\${CMAKE_INSTALL_BINDIR}\\\\${GITTYUP_EXECUTABLE_NAME}.exe\\\" \\\"%V\\\"'
-    WriteRegStr HKCR 'Directory\\\\shell\\\\Gittyup' '' 'Open with Gittyup'
-    WriteRegStr HKCR 'Directory\\\\shell\\\\Gittyup' 'Icon' '\\\"$INSTDIR\\\\${CMAKE_INSTALL_BINDIR}\\\\${GITTYUP_EXECUTABLE_NAME}.exe\\\"'
-    WriteRegStr HKCR 'Directory\\\\shell\\\\Gittyup\\\\command' '' '\\\"$INSTDIR\\\\${CMAKE_INSTALL_BINDIR}\\\\${GITTYUP_EXECUTABLE_NAME}.exe\\\" \\\"%L\\\"'"
+    WriteRegStr HKCR 'Directory\\\\Background\\\\shell\\\\${GITTYUP_NAME}' '' 'Open with ${GITTYUP_NAME}'
+    WriteRegStr HKCR 'Directory\\\\Background\\\\shell\\\\${GITTYUP_NAME}' 'Icon' '\\\"$INSTDIR\\\\${CMAKE_INSTALL_BINDIR}\\\\${GITTYUP_EXECUTABLE_NAME}.exe\\\"'
+    WriteRegStr HKCR 'Directory\\\\Background\\\\shell\\\\${GITTYUP_NAME}\\\\command' '' '\\\"$INSTDIR\\\\${CMAKE_INSTALL_BINDIR}\\\\${GITTYUP_EXECUTABLE_NAME}.exe\\\" \\\"%V\\\"'
+    WriteRegStr HKCR 'Directory\\\\shell\\\\${GITTYUP_NAME}' '' 'Open with ${GITTYUP_NAME}'
+    WriteRegStr HKCR 'Directory\\\\shell\\\\${GITTYUP_NAME}' 'Icon' '\\\"$INSTDIR\\\\${CMAKE_INSTALL_BINDIR}\\\\${GITTYUP_EXECUTABLE_NAME}.exe\\\"'
+    WriteRegStr HKCR 'Directory\\\\shell\\\\${GITTYUP_NAME}\\\\command' '' '\\\"$INSTDIR\\\\${CMAKE_INSTALL_BINDIR}\\\\${GITTYUP_EXECUTABLE_NAME}.exe\\\" \\\"%L\\\"'"
   )
   set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS
       "${CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS}
-    DeleteRegKey HKCR 'Directory\\\\Background\\\\shell\\\\Gittyup'
-    DeleteRegKey HKCR 'Directory\\\\shell\\\\Gittyup'")
+    DeleteRegKey HKCR 'Directory\\\\Background\\\\shell\\\\${GITTYUP_NAME}'
+    DeleteRegKey HKCR 'Directory\\\\shell\\\\${GITTYUP_NAME}'")
 endif()
 
 set(CPACK_PACKAGE_FILE_NAME ${PACKAGE_FILE_NAME})
@@ -464,7 +464,7 @@ if(GITTYUP_PACK_WIN64)
 else()
   install(
     FILES ${CMAKE_SOURCE_DIR}/LICENSE.md
-    DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/Gittyup
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/${GITTYUP_NAME}
     RENAME LICENSE)
 endif()
 
@@ -486,10 +486,10 @@ if(GITTYUP_PACK_WIN64)
     ${CERTIFICATE_PASSWORD}
     ${CMAKE_BINARY_DIR}/${PACKAGE_FILE_NAME}.exe
     COMMAND ${CMAKE_COMMAND} -E make_directory ${PACKAGE_DIR}
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/Gittyup.exe
-            ${PACKAGE_DIR}
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/Gittyup.pdb
-            ${PACKAGE_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_BINARY_DIR}/${GITTYUP_EXECUTABLE_NAME}.exe ${PACKAGE_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_BINARY_DIR}/${GITTYUP_EXECUTABLE_NAME}.pdb ${PACKAGE_DIR}
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/gittyup-indexer.exe
             ${PACKAGE_DIR}
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/gittyup-indexer.pdb

@@ -4,8 +4,8 @@
 #set(DOC_SOURCE_DIR ${CMAKE_SOURCE_DIR}/docs)
 #set(DOC_BINARY_DIR ${CMAKE_BINARY_DIR}/docs)
 #set(CHANGELOG_HTML ${DOC_BINARY_DIR}/changelog.html)
-#set(APPDATA_CONF ${CMAKE_SOURCE_DIR}/rsrc/linux/com.github.Murmele.Gittyup.appdata.xml.in)
-#set(APPDATA ${CMAKE_BINARY_DIR}/rsrc/linux/com.github.Murmele.Gittyup.appdata.xml)
+#set(APPDATA_CONF ${CMAKE_SOURCE_DIR}/rsrc/linux/io.github.SkeletonSkelettron.GittyupNg.appdata.xml.in)
+#set(APPDATA ${CMAKE_BINARY_DIR}/rsrc/linux/io.github.SkeletonSkelettron.GittyupNg.appdata.xml)
 
 # add release notes to the appdata file
 file(READ "${CHANGELOG_HTML}" HTML_CHANGELOGS)

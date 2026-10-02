@@ -4,7 +4,7 @@ import Gittyup
 
 // 'dialog' is the C++ ThemeDialog.
 DialogPage {
-    title: qsTr("Welcome to Gittyup")
+    title: qsTr("Welcome to %1").arg(Qt.application.name)
     subtitle: qsTr("Pick a theme. You can change it later in the settings.")
     contentWidth: 804
     acceptVisible: false

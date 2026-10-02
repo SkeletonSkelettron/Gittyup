@@ -3,7 +3,7 @@
   <id>@GITTYUP_IDENTIFIER@</id>
   <metadata_license>FSFAP</metadata_license>
   <project_license>MIT</project_license>
-  <name>Gittyup</name>
+  <name>Gittyup-ng</name>
   <summary>Graphical Git client designed to help you understand and manage your source code history</summary>
   <developer_name>Gittyup Community</developer_name>
 
@@ -39,8 +39,8 @@
     </screenshot>
   </screenshots>
 
-  <url type="homepage">https://murmele.github.io/Gittyup</url>
-  <url type="vcs-browser">https://github.com/Murmele/Gittyup</url>
+  <url type="homepage">https://github.com/SkeletonSkelettron/Gittyup-ng</url>
+  <url type="vcs-browser">https://github.com/SkeletonSkelettron/Gittyup-ng</url>
   <url type="bugtracker">https://github.com/Murmele/Gittyup/issues</url>
   <url type="help">https://matrix.to/#/#Gittyup:matrix.org</url>
   <url type="donation">https://liberapay.com/Gittyup/donate</url>

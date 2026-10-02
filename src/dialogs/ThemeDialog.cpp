@@ -7,9 +7,11 @@
 
 #include "ThemeDialog.h"
 #include "conf/Settings.h"
+#include <QCoreApplication>
 
 ThemeDialog::ThemeDialog(QWidget *parent) : QmlDialog(parent) {
-  setWindowTitle(tr("Pick a theme for Gittyup"));
+  setWindowTitle(
+      tr("Pick a theme for %1").arg(QCoreApplication::applicationName()));
   setContent("ThemeDialog");
 }
 

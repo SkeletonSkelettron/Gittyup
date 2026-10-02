@@ -4,7 +4,7 @@ import Gittyup
 
 // 'dialog' is the C++ DownloadDialog.
 DialogPage {
-    title: qsTr("Updating Gittyup")
+    title: qsTr("Updating %1").arg(Qt.application.name)
     acceptText: qsTr("Install and Restart")
     acceptVisible: dialog.complete
 

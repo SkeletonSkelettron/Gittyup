@@ -1,10 +1,10 @@
 [Desktop Entry]
 Encoding=UTF-8
-Name=Gittyup
+Name=Gittyup-ng
 Comment=Graphical Git client for Windows, Linux and macOS
-Exec=gittyup
-StartupWMClass=com.github.Murmele.Gittyup
-Icon=gittyup
+Exec=gittyup-ng
+StartupWMClass=io.github.SkeletonSkelettron.GittyupNg
+Icon=gittyup-ng
 Terminal=false
 Type=Application
 Categories=Development;

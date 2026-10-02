@@ -14,13 +14,13 @@ PreferencesPage {
         { title: qsTr("Diff"), icon: "view-double",
           description: qsTr("How changes are compared and shown.") },
         { title: qsTr("Tools"), icon: "wrench",
-          description: qsTr("External programs that Gittyup starts.") },
+          description: qsTr("External programs that %1 starts.").arg(Qt.application.name) },
         { title: qsTr("Appearance"), icon: "palette",
           description: qsTr("The theme, the window and the prompts.") },
         { title: qsTr("Editor"), icon: "code",
           description: qsTr("The font of code in diffs and files, and how the editor indents.") },
         { title: qsTr("Updates"), icon: "download",
-          description: qsTr("Keep Gittyup up to date.") },
+          description: qsTr("Keep %1 up to date.").arg(Qt.application.name) },
         { title: qsTr("Plugins"), icon: "plug",
           description: qsTr("Lua plugins that check your changes.") },
         { title: qsTr("SSH"), icon: "key",
@@ -28,7 +28,7 @@ PreferencesPage {
         { title: qsTr("Hotkeys"), icon: "keyboard",
           description: qsTr("The keyboard shortcuts of the menu actions.") },
         { title: qsTr("Terminal"), icon: "terminal",
-          description: qsTr("Start Gittyup from a terminal.") }
+          description: qsTr("Start %1 from a terminal.").arg(Qt.application.name) }
     ]
 
     title: qsTr("Settings")

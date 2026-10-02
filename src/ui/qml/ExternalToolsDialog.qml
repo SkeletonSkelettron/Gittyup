@@ -6,7 +6,7 @@ import Gittyup
 // 'dialog' is the C++ ExternalToolsDialog.
 DialogPage {
     title: dialog.type === "merge" ? qsTr("External merge tools") : qsTr("External diff tools")
-    subtitle: qsTr("Tools that Gittyup found and tools that you added to the global git configuration.")
+    subtitle: qsTr("Tools that %1 found and tools that you added to the global git configuration.").arg(Qt.application.name)
     contentWidth: 680
     acceptText: qsTr("Done")
     rejectVisible: false

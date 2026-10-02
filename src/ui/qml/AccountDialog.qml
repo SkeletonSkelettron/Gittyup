@@ -6,7 +6,7 @@ import Gittyup
 DialogPage {
     initialFocus: usernameField
     title: qsTr("Connect a hosting service")
-    subtitle: qsTr("Browse and clone your remote repositories from Gittyup.")
+    subtitle: qsTr("Browse and clone your remote repositories from %1.").arg(Qt.application.name)
     acceptText: dialog.busy ? qsTr("Connecting...") : qsTr("Connect")
     acceptEnabled: dialog.acceptable
 

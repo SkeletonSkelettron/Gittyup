@@ -141,7 +141,7 @@ Rectangle {
                     spacing: 2
 
                     Text {
-                        text: qsTr("Welcome to Gittyup")
+                        text: qsTr("Welcome to %1").arg(Qt.application.name)
                         color: Theme.text
                         font.pixelSize: 24
                         font.weight: Font.Bold

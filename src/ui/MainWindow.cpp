@@ -549,9 +549,10 @@ void MainWindow::warnInvalidRepo(const QString &path) {
   if (!reason.isEmpty())
     text += "\n\n" + reason;
   if (reason.contains("not owned by current user"))
-    text += "\n\n" + tr("Start Gittyup as the user that owns the repository, "
+    text += "\n\n" + tr("Start %1 as the user that owns the repository, "
                         "or trust it with 'git config --global --add "
-                        "safe.directory <path>'.");
+                        "safe.directory <path>'.")
+                         .arg(QCoreApplication::applicationName());
   ConfirmDialog::warning(activeWindow(), title, text);
 }
 

@@ -22,8 +22,9 @@ int main(int argc, char *argv[]) {
   if (!git::Config::global().isValid()) {
     ConfirmDialog::warning(
         nullptr, GITTYUP_NAME,
-        QObject::tr("Your global GIT configuration is invalid, Gittyup won't "
-                    "run properly until this is fixed"));
+        QObject::tr("Your global GIT configuration is invalid, %1 won't "
+                    "run properly until this is fixed")
+            .arg(GITTYUP_NAME));
   }
 
   // Restore windows before checking for updates so that

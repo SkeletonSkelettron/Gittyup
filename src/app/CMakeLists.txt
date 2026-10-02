@@ -36,9 +36,8 @@ set(ACKNOWLEDGMENTS_HTML ${DOC_BINARY_DIR}/acknowledgments.html)
 set(PRIVACY_HTML ${DOC_BINARY_DIR}/privacy.html)
 set(PLUGIN_HTML ${DOC_BINARY_DIR}/plugin.html)
 set(APPDATA_CONF
-    ${CMAKE_SOURCE_DIR}/rsrc/linux/com.github.Murmele.Gittyup.appdata.xml.in)
-set(APPDATA
-    ${CMAKE_BINARY_DIR}/rsrc/linux/com.github.Murmele.Gittyup.appdata.xml)
+    ${CMAKE_SOURCE_DIR}/rsrc/linux/${GITTYUP_IDENTIFIER}.appdata.xml.in)
+set(APPDATA ${CMAKE_BINARY_DIR}/rsrc/linux/${GITTYUP_IDENTIFIER}.appdata.xml)
 add_custom_command(
   OUTPUT ${CHANGELOG_HTML} ${ACKNOWLEDGMENTS_HTML} ${PRIVACY_HTML}
          ${PLUGIN_HTML}
@@ -57,6 +56,10 @@ if(UNIX AND NOT APPLE)
   set_target_properties(app PROPERTIES AUTOMOC ON)
 endif()
 
+# The path of the D-Bus object: the identifier with slashes.
+string(REPLACE "." "/" GITTYUP_DBUS_OBJECT_PATH
+               "/${GITTYUP_IDENTIFIER}/Application")
+
 target_compile_definitions(
   app
   PUBLIC GITTYUP_NAME="${GITTYUP_NAME}"
@@ -64,7 +67,7 @@ target_compile_definitions(
          GITTYUP_IDENTIFIER="${GITTYUP_IDENTIFIER}"
          GITTYUP_ORGANIZATION_DOMAIN="${GITTYUP_ORGANIZATION_DOMAIN}"
          GITTYUP_DBUS_INTERFACE_NAME="${GITTYUP_IDENTIFIER}.Application"
-         GITTYUP_DBUS_OBJECT_PATH="/com/github/Murmele/Gittyup/Application"
+         GITTYUP_DBUS_OBJECT_PATH="${GITTYUP_DBUS_OBJECT_PATH}"
   PRIVATE QT_TRANSLATIONS_DIR="${QT_TRANSLATIONS_DIR}"
           BUILD_DESCRIPTION="${BUILD_DESCRIPTION}")
 
@@ -128,7 +131,7 @@ elseif(APPLE)
     gittyup
     PROPERTIES INSTALL_RPATH "/usr/local/qt;@loader_path/../Frameworks"
                MACOSX_BUNDLE_INFO_PLIST ${RSRC_DIR}/Info.plist.in
-               MACOSX_BUNDLE_ICON_FILE ${GITTYUP_NAME}
+               MACOSX_BUNDLE_ICON_FILE Gittyup
                MACOSX_BUNDLE_BUNDLE_NAME ${GITTYUP_NAME}
                MACOSX_BUNDLE_BUNDLE_VERSION ${GITTYUP_VERSION}
                MACOSX_BUNDLE_LONG_VERSION_STRING ${GITTYUP_VERSION}
@@ -213,9 +216,8 @@ execute_process(COMMAND
 else()
   # Windows and UNIX must be ./ otherwise it is interpreted as absolute path
   if(UNIX)
-    install(
-      FILES ${CMAKE_SOURCE_DIR}/rsrc/linux/com.github.Murmele.Gittyup.desktop
-      DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+    install(FILES ${CMAKE_SOURCE_DIR}/rsrc/linux/${GITTYUP_IDENTIFIER}.desktop
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
     if(${GENERATE_APPDATA})
       install(FILES ${APPDATA} DESTINATION ${CMAKE_INSTALL_DATADIR}/metainfo)
     endif()

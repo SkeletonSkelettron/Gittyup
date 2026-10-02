@@ -290,9 +290,8 @@ bool Updater::uninstallGittyup(bool system) {
 
   QStringList args;
   args.append("-c");
-  args.append(QString("flatpak-spawn --host flatpak remove -y %1 "
-                      "com.github.Murmele.Gittyup")
-                  .arg(loc));
+  args.append(QString("flatpak-spawn --host flatpak remove -y %1 %2")
+                  .arg(loc, QGuiApplication::desktopFileName()));
   auto *p = new QProcess(this);
 
   p->start(bash, args);
@@ -340,7 +339,8 @@ bool Updater::install(const DownloadRef &download, QString &error) {
   Debug("Relauncher command: " << relauncher_cmd);
 
   // Start the relaunch helper.
-  QString app = "flatpak-spawn --host flatpak run com.github.Murmele.Gittyup";
+  QString app =
+      "flatpak-spawn --host flatpak run " + QGuiApplication::desktopFileName();
   QString pid = QString::number(QCoreApplication::applicationPid());
   if (!QProcess::startDetached(relauncher_cmd, {app, pid})) {
     error = tr("Helper application failed to start");

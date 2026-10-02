@@ -1,26 +1,14 @@
-[![Gittyup Status](https://github.com/Murmele/Gittyup/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/Murmele/Gittyup/actions/workflows/build.yml)
-[![Matrix](https://img.shields.io/matrix/Gittyup:matrix.org?label=Matrix%20Chat)](https://matrix.to/#/#Gittyup:matrix.org)
-[![Donate Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/Gittyup/donate)
-
-<a href="https://flathub.org/apps/details/com.github.Murmele.Gittyup">
-<img
-    src="https://flathub.org/assets/badges/flathub-badge-i-en.png"
-    alt="Download Gittyup on Flathub"
-    width="240px"/>
-</a>
-
-Gittyup
+Gittyup-ng
 ==================================
 
-Gittyup is a graphical Git client designed to help you understand and manage your source code history. The [latest stable release](https://github.com/Murmele/Gittyup/releases/latest)
-is available either as pre-built flatpak for Linux, 32 / 64 binary for Windows, macOS,
-or can be built from source by following the directions [below](https://github.com/Murmele/Gittyup#how-to-build).
+Gittyup-ng is a graphical Git client designed to help you understand and manage your source code history.
+It continues [Gittyup](https://github.com/Murmele/Gittyup) with a new interface written in QML.
+Windows installers are on the [releases page](https://github.com/SkeletonSkelettron/Gittyup-ng/releases);
+on other systems, build it from source by following the directions [below](#how-to-build).
 
-The [latest development version](https://github.com/Murmele/Gittyup/releases/tag/development) is available pre-built as well.
+Gittyup-ng runs beside Gittyup. The first time it runs, it starts with the settings of Gittyup.
 
 Gittyup is a continuation of the [GitAhead](https://github.com/gitahead/gitahead) client.
-
-![Gittyup](https://raw.githubusercontent.com/Murmele/Gittyup/master/rsrc/screenshots/main_dark_orig.png)
 
 Table of contents
 =================
@@ -31,7 +19,6 @@ Table of contents
    * [Dependencies](#dependencies)
    * [How to Build](#how-to-build)
    * [How to Install](#how-to-install)
-      * [Flatpak from terminal](#flatpak-from-terminal)
    * [How to Contribute](#how-to-contribute)
    * [License](#license)
 <!--te-->
@@ -140,45 +127,15 @@ where `<path-to-qt>` points to the Qt install directory that contains
 
 How to Install
 -----------------
-### Linux
+### Windows
 
-The easiest way to install Gittyup is by using [Flatpak](https://flathub.org/apps/details/com.github.Murmele.Gittyup).
+Download the installer or the zip from the [releases page](https://github.com/SkeletonSkelettron/Gittyup-ng/releases).
+Start Gittyup-ng from the Start menu after installing it.
 
-**Arch Linux**
+### Linux and macOS
 
-Install the `gittyup` package from the Arch User Repository.
-
-	git clone https://aur.archlinux.org/gittyup.git
-	cd gittyup
-	makepkg -si
-
-Or use an AUR helper.
-Install `gittyup-git` for the VCS build.
-
-### Mac OS
-
-**Homebrew**
-
-Install the `gittyup` cask from [Homebrew](https://formulae.brew.sh/cask/gittyup).
-
-    brew install gittyup
-
-### Flatpak from terminal
-
-If you want a more pure console use, this script run flatpak version disowning the process and silence the output pushing it to /dev/null.
-Just save the script somewhere in your path, for example `/usr/bin` (or `~/.local/bin` if you have exported it), give execution permissions `chmod +x`, and run `gittyup` from your terminal.
-
-```bash
-#!/bin/bash
-DIR=$(dirname "${BASH_SOURCE[0]}")
-function run_disown() {
-    "$@" & disown
-}
-function run_disown_silence(){
-    run_disown "$@" 1>/dev/null 2>/dev/null
-}
-run_disown_silence flatpak run com.github.Murmele.Gittyup
-```
+Build Gittyup-ng from source by following the directions [above](#how-to-build).
+The packages on Flathub, the AUR and Homebrew install Gittyup, not Gittyup-ng.
 
 How to Contribute
 -----------------
@@ -205,4 +162,4 @@ regressions. These are run using `ctest` in `<build-dir>`.
 License
 -------
 
-Gittyup and its predecessor GitAhead are licensed under the MIT license. See LICENSE.md for details.
+Gittyup-ng and its predecessors Gittyup and GitAhead are licensed under the MIT license. See LICENSE.md for details.

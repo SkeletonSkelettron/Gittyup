@@ -1,8 +1,8 @@
-app-id: com.github.Murmele.Gittyup
+app-id: io.github.SkeletonSkelettron.GittyupNg
 runtime: org.kde.Platform
 runtime-version: 6.9
 sdk: org.kde.Sdk
-command: gittyup
+command: gittyup-ng
 desktop-file-name-suffix: "" # used to create development version
 finish-args:
   - --socket=wayland
@@ -78,14 +78,14 @@ modules:
           - autoreconf -fiv
         dest-filename: autogen.sh
 
-  - name: Gittyup
+  - name: Gittyup-ng
     buildsystem: cmake-ninja
     config-opts: [-DCMAKE_BUILD_TYPE=Release, -DFLATPAK=ON, -DGENERATE_APPDATA=ON, -DENABLE_UPDATE_OVER_GUI=OFF]
     builddir: true
     sources:
       - type: git
-        url: https://github.com/Murmele/Gittyup.git
-        tag: gittyup_v1.3.0
+        url: https://github.com/SkeletonSkelettron/Gittyup-ng.git
+        branch: master
       - type: archive
         url: https://downloads.sourceforge.net/project/scintilla/scintilla/5.6.6/scintilla566.tgz
         sha256: b6b08598c68fac90990d010c1142494d707530602b5320753274d045c2b02189
