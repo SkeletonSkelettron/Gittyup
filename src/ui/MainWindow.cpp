@@ -539,9 +539,20 @@ void MainWindow::dropEvent(QDropEvent *event) {
 }
 
 void MainWindow::warnInvalidRepo(const QString &path) {
+  // Say why, like that the repository belongs to another user.
+  QString reason;
+  if (git::Repository::lastErrorKind() != 0)
+    reason = git::Repository::lastError();
+
   QString title = tr("Invalid Git Repository");
-  QString text = tr("%1 does not contain a valid git repository.");
-  ConfirmDialog::warning(activeWindow(), title, text.arg(path));
+  QString text = tr("%1 does not contain a valid git repository.").arg(path);
+  if (!reason.isEmpty())
+    text += "\n\n" + reason;
+  if (reason.contains("not owned by current user"))
+    text += "\n\n" + tr("Start Gittyup as the user that owns the repository, "
+                        "or trust it with 'git config --global --add "
+                        "safe.directory <path>'.");
+  ConfirmDialog::warning(activeWindow(), title, text);
 }
 
 void MainWindow::updateTabNames() {

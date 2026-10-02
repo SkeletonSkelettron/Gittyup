@@ -65,6 +65,23 @@ namespace git {
 
 namespace {
 
+// Whether git itself opens the repository at 'path'.
+bool gitAccepts(const QString &path) {
+  QString git = QStandardPaths::findExecutable("git");
+#ifdef Q_OS_WIN
+  if (git.isEmpty() && QFileInfo::exists("C:/Program Files/Git/cmd/git.exe"))
+    git = "C:/Program Files/Git/cmd/git.exe";
+#endif
+  if (git.isEmpty())
+    return false;
+
+  QProcess process;
+  process.start(git, {"-C", path, "rev-parse", "--git-dir"});
+  return process.waitForFinished(10000) &&
+         process.exitStatus() == QProcess::NormalExit &&
+         process.exitCode() == 0;
+}
+
 const QString kConfigDir = "gittyup";
 const QString kConfigFile = "config";
 const QString kStarFile = "starred";
@@ -1233,8 +1250,18 @@ Repository Repository::init(const QString &path, bool bare) {
 Repository Repository::open(const QString &path, bool searchParents) {
   git_repository *repo = nullptr;
   int flags = searchParents ? 0 : GIT_REPOSITORY_OPEN_NO_SEARCH;
-  git_repository_open_ext(&repo, util::canonicalizePath(path).toUtf8(), flags,
-                          nullptr);
+  QByteArray dir = util::canonicalizePath(path).toUtf8();
+  int error = git_repository_open_ext(&repo, dir, flags, nullptr);
+
+  // libgit2 refuses more repositories that aren't owned by the current user
+  // than git on Windows, like folders of the Administrators while Gittyup
+  // isn't elevated. Open the repositories that git itself opens.
+  if (error == GIT_EOWNER && gitAccepts(path)) {
+    git_libgit2_opts(GIT_OPT_SET_OWNER_VALIDATION, 0);
+    git_repository_open_ext(&repo, dir, flags, nullptr);
+    git_libgit2_opts(GIT_OPT_SET_OWNER_VALIDATION, 1);
+  }
+
   return Repository(repo);
 }
 

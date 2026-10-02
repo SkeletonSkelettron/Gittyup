@@ -123,6 +123,7 @@ test(NAME interactive_rebase)
 test(NAME signing)
 test(NAME pull_branch)
 test(NAME ssh_credentials)
+test(NAME open_repository)
 
 # Test case not compatible with Windows
 if(NOT WIN32)
