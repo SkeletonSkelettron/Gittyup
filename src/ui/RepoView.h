@@ -208,6 +208,10 @@ public:
   void pull(MergeFlags flags = Default,
             const git::Remote &remote = git::Remote(), bool tags = false,
             bool prune = false);
+
+  // Pull the checked out branch, or fetch the upstream of another local
+  // branch and fast-forward the branch to it.
+  void pullBranch(const git::Branch &branch);
   void merge(MergeFlags flags, const git::Reference &ref = git::Reference(),
              const git::AnnotatedCommit &commit = git::AnnotatedCommit(),
              LogEntry *parent = nullptr,

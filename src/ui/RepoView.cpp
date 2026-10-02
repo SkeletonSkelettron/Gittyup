@@ -1140,6 +1140,72 @@ void RepoView::pull(MergeFlags flags, const git::Remote &rmt, bool tags,
   }
 }
 
+void RepoView::pullBranch(const git::Branch &branch) {
+  if (branch.isHead()) {
+    pull();
+    return;
+  }
+
+  if (mWatcher) {
+    // Queue pull.
+    connect(mWatcher, &QFutureWatcher<git::Result>::finished, mWatcher,
+            [this, branch] { pullBranch(branch); });
+
+    return;
+  }
+
+  git::Remote remote = branch.remote();
+  QString name = remote.isValid() ? remote.name() : tr("<i>no remote</i>");
+  QString text = tr("%1 from %2").arg(branch.name(), name);
+  LogEntry *entry = addLogEntry(text, tr("Pull"));
+
+  if (!branch.upstream().isValid()) {
+    QString msg = tr("The branch '%1' has no upstream branch.");
+    entry->addEntry(LogEntry::Error, msg.arg(branch.name()));
+    return;
+  }
+
+  // Fast-forward the branch without checking it out, like
+  // 'git fetch origin main:main'.
+  QString qualifiedName = branch.qualifiedName();
+  QFutureWatcher<git::Result> *watcher = new QFutureWatcher<git::Result>(this);
+  connect(watcher, &QFutureWatcher<git::Result>::finished, watcher,
+          [this, entry, watcher, qualifiedName] {
+            watcher->deleteLater();
+            if (!watcher->result())
+              return;
+
+            git::Branch local = mRepo.lookupRef(qualifiedName);
+            git::Branch upstream = local.upstream();
+            git::Commit commit = local.target();
+            git::Commit target = upstream.target();
+            if (!commit.isValid() || !target.isValid()) {
+              error(entry, tr("fast-forward"), local.name());
+              return;
+            }
+
+            git::Commit base = mRepo.mergeBase(commit, target);
+            if (base.isValid() && base.id() == target.id()) {
+              entry->addEntry(tr("Already up-to-date."));
+              return;
+            }
+
+            if (!base.isValid() || base.id() != commit.id()) {
+              QString msg = tr("Unable to fast-forward. Check out '%1' to "
+                               "merge or rebase it.");
+              entry->addEntry(LogEntry::Error, msg.arg(local.name()));
+              return;
+            }
+
+            if (!local.setTarget(target, "pull: fast-forward").isValid())
+              error(entry, tr("fast-forward"), local.name());
+          });
+
+  watcher->setFuture(fetch(remote, false, true, entry, nullptr, false));
+  if (watcher->isCanceled())
+    delete watcher;
+}
+
 void RepoView::merge(MergeFlags flags, const git::Reference &ref,
                      const git::AnnotatedCommit &commit, LogEntry *parent,
                      const std::function<void()> &callback) {

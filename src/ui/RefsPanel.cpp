@@ -703,6 +703,12 @@ void RefsPanel::showContextMenu(int row, qreal x, qreal y) {
         });
         rename->setEnabled(!ref.isHead());
 
+        // Pull the checked out branch, or fast-forward another branch.
+        QAction *pull =
+            menu.addAction(tr("Pull"), [view, ref] { view->pullBranch(ref); });
+        pull->setEnabled(git::Branch(ref).upstream().isValid() &&
+                         !(ref.isHead() && mRepo.isBare()));
+
         QAction *push = menu.addAction(tr("Push"), [view, ref] {
           view->push(git::Remote(), ref);
         });
