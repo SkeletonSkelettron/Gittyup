@@ -399,7 +399,9 @@ elseif(GITTYUP_PACK_WIN64)
     \\\"$INSTDIR\\\\${CMAKE_INSTALL_BINDIR}\\\\${GITTYUP_EXECUTABLE_NAME}.exe\\\""
   )
   set(CPACK_NSIS_EXECUTABLES_DIRECTORY ${CMAKE_INSTALL_BINDIR})
-  set(CPACK_NSIS_MUI_FINISHPAGE_RUN ${GITTYUP_EXECUTABLE_NAME}.exe)
+  # The installer doesn't offer to run Gittyup when it finishes: it would run
+  # with the rights of the installer, often as another administrator, who
+  # doesn't own the repositories of the user.
 
   # Builds of MinGW ship its runtime instead.
   if(MSVC)
