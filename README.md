@@ -6,13 +6,12 @@ It continues [Gittyup](https://github.com/Murmele/Gittyup) with a new interface 
 Windows installers are on the [releases page](https://github.com/SkeletonSkelettron/Gittyup-ng/releases);
 on other systems, build it from source by following the directions [below](#how-to-build).
 
-Gittyup-ng runs beside Gittyup. The first time it runs, it starts with the settings of Gittyup.
-
 Gittyup is a continuation of the [GitAhead](https://github.com/gitahead/gitahead) client.
 
 Table of contents
 =================
 <!--ts-->
+   * [What Gittyup-ng Changes](#what-gittyup-ng-changes)
    * [Features](#features)
    * [How to Get Help](#how-to-get-help)
    * [Build Environment](#build-environment)
@@ -22,6 +21,66 @@ Table of contents
    * [How to Contribute](#how-to-contribute)
    * [License](#license)
 <!--te-->
+
+What Gittyup-ng Changes
+---------------
+Gittyup-ng starts from the master branch of Gittyup of 24 September 2026. On top of it:
+
+### A new interface in QML
+
+* The Qt Widgets interface is replaced by QML, in a style like GitKraken's, with dark and light Kraken themes.
+  The main window is a single QML scene: the tool bar, the sidebar with branches, remotes, tags and pull requests,
+  repository tabs that are reordered by dragging, the welcome page, the commit graph, the details of commits,
+  the diff, the activity log, the menu bar, the context menus and the tool tips.
+* Every dialog is in QML: branches, tags, checkout, merge, clone, commit messages and amends, fetch, pull and push,
+  submodules, ignore patterns, commit templates, accounts, credentials, settings with the hotkeys,
+  repository settings, external tools, plugins, pull requests, about and updates.
+* Files are shown and edited in a QML text editor instead of Scintilla, with a find bar, blame in a margin like
+  GitKraken's, the wrapping and indentation settings, and spell checking of commit messages.
+  Diffs show images before and after a change.
+* Syntax highlighting covers more languages: TypeScript, JSON, Dart, Dockerfile, PowerShell, TOML, Gradle,
+  Protocol Buffers, Nix, Elixir, Haskell, F#, Julia, R and Zig.
+
+### Features like GitKraken's
+
+* **Merge editor**: conflicts are resolved by taking lines or whole conflicts from either side into an output
+  that can be edited. The panes scroll together, the output waits while the conflicts scroll by, each side has
+  a color of its own, and the syntax is highlighted.
+* **Undo and redo** (Ctrl+Z) of the actions that move HEAD, branches, tags or upstreams, like commits, resets,
+  merges and checkouts.
+* **Drag and drop**: dropping a branch onto another branch fast-forwards, merges or rebases, and dropping it onto
+  a remote pushes it.
+* **Interactive rebase**: commits are picked, reworded, squashed, dropped and reordered in place of the graph.
+* **Solo and hide branches** in the graph.
+* **Command palette** (Ctrl+P) to find commands, branches, tags, files and repositories.
+* **Pull requests** of GitHub, GitLab and Gitea in the sidebar.
+* **Pull** a branch that isn't checked out from its context menu.
+* **Signed commits** with GPG, SSH or X.509 keys, as `commit.gpgsign` and `gpg.format` say.
+
+### Fixes
+
+* SSH tries every key of `~/.ssh/config`, of the settings and the default keys, and only asks for the passphrase
+  of a key that has one, naming the key.
+* Text that isn't ASCII, like Georgian, is read and saved as UTF-8 on Windows instead of in the code page of
+  the system.
+* Repositories that git opens also open when libgit2 refuses them because of who owns them, and the warning
+  about a repository that doesn't open says why.
+
+### Windows packages
+
+* The Windows installer and zip are cross-built with MinGW on Linux and ship the QML modules they need.
+* The installer doesn't start the application when it finishes: it would run as the administrator who installed it,
+  who doesn't own the repositories of the user.
+
+### The name
+
+* The application is called Gittyup-ng and has an identifier of its own, so it runs beside Gittyup.
+  The first time it runs, it starts with the settings and the data of Gittyup, and leaves them for Gittyup.
+
+### Tests
+
+* New tests load every QML view and cover the merge editor, undo and redo, dragging branches, interactive rebase,
+  signing, pulling branches, SSH keys and opening repositories.
 
 Features
 ---------------
