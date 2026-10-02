@@ -696,13 +696,16 @@ void DiffModel::saveConflict(int hunk) {
   QString path = repo.workdir().filePath(mPath);
 
   QStringList lines;
+  QStringConverter::Encoding encoding = QStringConverter::Utf8;
   {
     QFile file(path);
     if (!file.open(QFile::ReadOnly))
       return;
 
-    // Keep the line endings.
-    QString text = repo.decode(file.readAll());
+    // Keep the line endings and the encoding.
+    QByteArray bytes = file.readAll();
+    encoding = repo.encoding(bytes);
+    QString text = QStringDecoder(encoding).decode(bytes);
     int pos = 0;
     while (pos < text.length()) {
       int end = text.indexOf('\n', pos);
@@ -730,7 +733,7 @@ void DiffModel::saveConflict(int hunk) {
     return;
 
   QTextStream out(&file);
-  out.setEncoding(repo.encoding());
+  out.setEncoding(encoding);
   out << lines.join(QString());
   out.flush();
   if (!file.commit())

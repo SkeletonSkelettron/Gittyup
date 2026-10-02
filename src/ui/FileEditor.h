@@ -106,6 +106,8 @@ private:
 
   // The text isn't in the document until QML gives it.
   QString mText;
+  // The file is saved in the encoding it was read in.
+  QStringConverter::Encoding mEncoding = QStringConverter::Utf8;
   bool mCrlf = false;
   int mLine = -1;
 

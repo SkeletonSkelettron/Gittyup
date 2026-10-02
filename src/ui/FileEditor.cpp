@@ -98,7 +98,9 @@ bool FileEditor::load(const QString &name, const git::Blob &blob,
 
   // The text area has lines without carriage returns.
   mCrlf = content.contains("\r\n");
-  mText = mRepo.isValid() ? mRepo.decode(content) : QString::fromUtf8(content);
+  mEncoding =
+      mRepo.isValid() ? mRepo.encoding(content) : QStringConverter::Utf8;
+  mText = QStringDecoder(mEncoding).decode(content);
   if (mCrlf)
     mText.replace("\r\n", "\n");
 
@@ -169,8 +171,7 @@ bool FileEditor::save() {
     text.replace("\n", "\r\n");
 
   QTextStream out(&file);
-  if (mRepo.isValid())
-    out.setEncoding(mRepo.encoding());
+  out.setEncoding(mEncoding);
   out << text;
   out.flush();
   if (!file.commit())
@@ -293,8 +294,7 @@ QByteArray FileEditor::text() const {
   // Encode like the file is saved.
   QByteArray bytes;
   QTextStream out(&bytes);
-  if (mRepo.isValid())
-    out.setEncoding(mRepo.encoding());
+  out.setEncoding(mEncoding);
   out << text;
   out.flush();
   return bytes;

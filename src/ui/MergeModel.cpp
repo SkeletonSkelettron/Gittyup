@@ -191,6 +191,7 @@ void MergeModel::load(const QString &path) {
   mConflicts.clear();
   mRegions.clear();
 
+  mEncoding = repo.encoding(content);
   if (git::Blob::isBinary(content)) {
     mNotice = tr("Binary files can't be merged here.");
   } else if (!parse(repo.decode(content))) {
@@ -412,7 +413,7 @@ void MergeModel::save() {
     return;
 
   QTextStream out(&file);
-  out.setEncoding(repo.encoding());
+  out.setEncoding(mEncoding);
   out << text;
   out.flush();
   if (!file.commit())

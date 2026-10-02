@@ -1073,11 +1073,32 @@ void Repository::cleanupState() {
 QStringConverter::Encoding Repository::encoding() const {
   QString encoding = gitConfig().value<QString>("gui.encoding");
   auto conv = QStringConverter::encodingForName(encoding.toLocal8Bit().data());
-  return conv ? conv.value() : QStringConverter::System;
+  return conv ? conv.value() : QStringConverter::Utf8;
+}
+
+QStringConverter::Encoding Repository::encoding(const QByteArray &text) const {
+  QString encoding = gitConfig().value<QString>("gui.encoding");
+  auto conv = QStringConverter::encodingForName(encoding.toLocal8Bit().data());
+  if (conv)
+    return conv.value();
+
+  // Most text is UTF-8 now, and the encoding of the system isn't on Windows.
+  // (Decoders decode when the result is converted.)
+  QStringDecoder utf8(QStringConverter::Utf8);
+  QString decoded = utf8.decode(text);
+  if (!utf8.hasError())
+    return QStringConverter::Utf8;
+
+  // Older text is in the encoding of the system, or else in Latin-1, which
+  // keeps every byte when the text is saved again.
+  QStringDecoder system(QStringConverter::System);
+  decoded = system.decode(text);
+  return system.hasError() ? QStringConverter::Latin1
+                           : QStringConverter::System;
 }
 
 QString Repository::decode(const QByteArray &text) const {
-  return QStringDecoder{encoding()}.decode(text);
+  return QStringDecoder{encoding(text)}.decode(text);
 }
 
 QString Repository::attributeValue(const QString &attribute,

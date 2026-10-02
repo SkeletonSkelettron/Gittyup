@@ -177,6 +177,8 @@ private:
   QByteArray mContent;
   bool mCrlf = false;
   bool mTrailingNewline = true;
+  // The output is saved in the encoding of the file.
+  QStringConverter::Encoding mEncoding = QStringConverter::Utf8;
 
   QList<Segment> mSegments;
   QList<Conflict> mConflicts;

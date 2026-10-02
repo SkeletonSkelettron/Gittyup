@@ -94,6 +94,7 @@ private slots:
   void palette();
   void pullRequests();
   void merge();
+  void mergeEncoding();
   void dragTab();
   void cleanupTestCase();
 
@@ -636,6 +637,54 @@ void TestQmlViews::merge() {
            QByteArray("edited top\nours 1\nmiddle\nours 2a\nours 2b\nbottom\n"));
   file.close();
   QCOMPARE(repo.index().isStaged("conflict.txt"), git::Index::Staged);
+  QVERIFY2(sMessages.isEmpty(), qPrintable(sMessages.join('\n')));
+}
+
+void TestQmlViews::mergeEncoding() {
+  RepoView *view = mWindow->currentView();
+  git::Repository repo = view->repo();
+
+  // UTF-8 text isn't decoded in the encoding of the system, and is saved in
+  // UTF-8 again. Georgian has bytes that Windows-1252 doesn't define.
+  QString text = QString::fromUtf8("// \xe1\x83\xa5\xe1\x83\x90\xe1\x83\xa0"
+                                   "\xe1\x83\x97\xe1\x83\xa3\xe1\x83\x9a"
+                                   "\xe1\x83\x98\n");
+  QByteArray utf8 = text.toUtf8();
+  QCOMPARE(repo.encoding(utf8), QStringConverter::Utf8);
+  QCOMPARE(repo.decode(utf8), text);
+
+  QFile file(repo.workdir().filePath("georgian.txt"));
+  QVERIFY(file.open(QFile::WriteOnly));
+  file.write(utf8 + "<<<<<<< HEAD\nours\n=======\ntheirs\n>>>>>>> other\n");
+  file.close();
+
+  MergeModel merge(view);
+  QTextDocument document;
+  merge.setTextDocument(&document);
+  merge.load("georgian.txt");
+  QCOMPARE(merge.conflictCount(), 1);
+  QCOMPARE(document.toPlainText(), text);
+
+  merge.takeAll(0);
+  merge.save();
+  QVERIFY(file.open(QFile::ReadOnly));
+  QCOMPARE(file.readAll(), utf8 + "ours\n");
+  file.close();
+
+  // Text that isn't UTF-8 keeps its bytes.
+  QByteArray latin1 = "caf\xe9\n";
+  QVERIFY(repo.encoding(latin1) != QStringConverter::Utf8);
+  QVERIFY(file.open(QFile::WriteOnly));
+  file.write(latin1 + "<<<<<<< HEAD\nours\n=======\ntheirs\n>>>>>>> other\n");
+  file.close();
+
+  merge.load("georgian.txt");
+  QCOMPARE(document.toPlainText(), QString::fromLatin1("caf\xe9\n"));
+  merge.takeAll(1);
+  merge.save();
+  QVERIFY(file.open(QFile::ReadOnly));
+  QCOMPARE(file.readAll(), latin1 + "theirs\n");
+  file.close();
   QVERIFY2(sMessages.isEmpty(), qPrintable(sMessages.join('\n')));
 }
 
