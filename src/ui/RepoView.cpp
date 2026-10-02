@@ -71,7 +71,7 @@
 #include <QtConcurrent>
 
 #if defined(Q_OS_WIN)
-#include <Windows.h>
+#include <windows.h>
 #include <memory>
 #endif
 
