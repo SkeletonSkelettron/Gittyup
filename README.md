@@ -6,6 +6,9 @@ It continues [Gittyup](https://github.com/Murmele/Gittyup) with a new interface 
 Windows installers are on the [releases page](https://github.com/SkeletonSkelettron/Gittyup-ng/releases);
 on other systems, build it from source by following the directions [below](#how-to-build).
 
+The changes that Gittyup-ng makes to Gittyup were made by an AI: Claude, by Anthropic.
+See [what Gittyup-ng changes](#what-gittyup-ng-changes).
+
 Gittyup is a continuation of the [GitAhead](https://github.com/gitahead/gitahead) client.
 
 Table of contents
@@ -24,6 +27,11 @@ Table of contents
 
 What Gittyup-ng Changes
 ---------------
+> **Made by AI.** All of the changes below were made by Claude Opus 5.5, an AI model by
+> [Anthropic](https://www.anthropic.com), working in [Claude Code](https://claude.com/claude-code)
+> at the request of the maintainer of this fork: the code, the tests, the build of the Windows packages
+> and this description. The commits say so with a `Co-Authored-By: Claude` line.
+
 Gittyup-ng starts from the master branch of Gittyup of 24 September 2026. On top of it:
 
 ### A new interface in QML
