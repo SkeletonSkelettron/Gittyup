@@ -1038,6 +1038,7 @@ QFuture<git::Result> RepoView::fetch(const git::Remote &rmt, bool tags,
   QString url = remote.url();
   mCallbacks = new RemoteCallbacks(RemoteCallbacks::Receive, entry, url,
                                    remote.name(), mWatcher, mRepo);
+  mCallbacks->setInteractive(interactive);
   connect(mCallbacks, &RemoteCallbacks::referenceUpdated, this,
           &RepoView::notifyReferenceUpdated);
 

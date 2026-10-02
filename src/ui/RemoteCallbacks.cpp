@@ -19,6 +19,7 @@
 #include "log/LogEntry.h"
 #include <libssh2.h>
 #include <QApplication>
+#include <QDir>
 #include <QEventLoop>
 #include <QProcess>
 #include <QRegularExpression>
@@ -139,6 +140,16 @@ bool RemoteCallbacks::credentials(const QString &url, QString &username,
     git_error_set_str(GIT_ERROR_NET, error.toUtf8());
 
   return error.isEmpty();
+}
+
+bool RemoteCallbacks::passphrase(const QString &url, const QString &keyFile,
+                                 QString &passphrase) {
+  // The dialog names the key. The passphrase is stored for the key.
+  mKeyFile = keyFile;
+  QString username = keyFile;
+  bool result = credentials(url, username, passphrase);
+  mKeyFile.clear();
+  return result;
 }
 
 void RemoteCallbacks::interactiveAuth(
@@ -286,21 +297,44 @@ void RemoteCallbacks::credentialsImpl(const QString &url, QString &username,
     }
   }
 
-  // Prompt for password.
+  // Automatic fetches don't interrupt with dialogs.
+  if (!mInteractive) {
+    error = tr("authentication required");
+    return;
+  }
+
+  // Prompt for the passphrase of an SSH key, or for a password.
   QString scheme = QUrl(url).scheme().toLower();
   bool https = (scheme == "http" || scheme == "https");
-  QList<InputDialog::Field> fields;
-  if (https)
-    fields.append({tr("Username"), username});
-  fields.append({https ? tr("Password") : tr("Passphrase"), QString(), true});
-
   QString host = QUrl(url).host();
-  InputDialog dialog(
-      https ? tr("HTTPS Credentials") : tr("SSH Passphrase"),
-      https ? tr("Sign in to %1.").arg(host.isEmpty() ? url : host)
-            : tr("Enter the passphrase of your SSH key for %1.").arg(url),
-      fields, QApplication::activeWindow(),
-      https ? tr("Sign In") : tr("Unlock"));
+  if (host.isEmpty())
+    host = url;
+
+  QString title;
+  QString text;
+  QString label = tr("Password");
+  QString accept = tr("Sign In");
+  QList<InputDialog::Field> fields;
+  if (!mKeyFile.isEmpty()) {
+    title = tr("SSH Passphrase");
+    text = tr("Enter the passphrase of the SSH key %1 for %2.")
+               .arg(QDir::toNativeSeparators(mKeyFile), host);
+    label = tr("Passphrase");
+    accept = tr("Unlock");
+  } else if (https) {
+    title = tr("HTTPS Credentials");
+    text = tr("Sign in to %1.").arg(host);
+    fields.append({tr("Username"), username});
+  } else {
+    // The server didn't accept the SSH keys and allows passwords.
+    title = tr("SSH Password");
+    text = tr("%1 didn't accept your SSH keys. Enter the password of %2 on "
+              "%1, or add your public key to your account there.")
+               .arg(host, username);
+  }
+
+  fields.append({label, QString(), true});
+  InputDialog dialog(title, text, fields, QApplication::activeWindow(), accept);
   if (!dialog.exec()) {
     error = tr("authentication canceled");
     return;
@@ -320,6 +354,12 @@ void RemoteCallbacks::interactiveAuthImpl(
     const QString &name, const QString &instruction,
     const QVector<git::Remote::SshInteractivePrompt> &prompts,
     QVector<QString> &responses, QString &error) {
+  // Automatic fetches don't interrupt with dialogs.
+  if (!mInteractive) {
+    error = tr("authentication required");
+    return;
+  }
+
   QList<InputDialog::Field> fields;
   for (const git::Remote::SshInteractivePrompt &prompt : prompts)
     fields.append({prompt.text, QString(), !prompt.echo, false});

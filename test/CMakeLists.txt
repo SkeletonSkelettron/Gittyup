@@ -122,6 +122,7 @@ test(NAME refdrop)
 test(NAME interactive_rebase)
 test(NAME signing)
 test(NAME pull_branch)
+test(NAME ssh_credentials)
 
 # Test case not compatible with Windows
 if(NOT WIN32)
